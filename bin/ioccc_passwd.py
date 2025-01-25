@@ -45,7 +45,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.2.0 2024-12-22"
+VERSION = "2.3.0 2025-01-24"
 
 
 # pylint: disable=too-many-locals
@@ -100,8 +100,7 @@ def main():
                         help='clear the requirement to change password',
                         action='store_true')
     parser.add_argument('-g', '--grace',
-                        help='grace seconds to change the password ' + \
-                             f'(def: {DEFAULT_GRACE_PERIOD})',
+                        help=f'grace seconds to change the password (def: {DEFAULT_GRACE_PERIOD})',
                         metavar='SECS',
                         type=int,
                         nargs=1)
@@ -143,7 +142,7 @@ def main():
     # -g secs - set the grace time to change in seconds from now
     #
     if args.grace:
-        pw_change_by = str(now + timedelta(seconds=args.grace[0]))
+        pw_change_by = f'{now}{timedelta(seconds=args.grace[0])}'
 
     # -c and -C conflict
     #
@@ -168,7 +167,7 @@ def main():
         # case: -g not give, assume default grace period
         #
         if not args.grace:
-            pw_change_by = str(now + timedelta(seconds=DEFAULT_GRACE_PERIOD))
+            pw_change_by = f'{now}{timedelta(seconds=DEFAULT_GRACE_PERIOD)}'
 
     # -C - disable password change at next login
     #

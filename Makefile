@@ -56,7 +56,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.9.12
+VERSION= 0.9.13
 
 # Python package name
 #
@@ -329,12 +329,12 @@ clobber: clean
 	${RM} -f setup.cfg
 	${V} echo DEBUG =-= $@ end =-=
 
-# remove active working elements including users
+# remove active working elements including users and staged
 #
 nuke: clobber
 	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf users
-	${RM} -f ${FLASKKEY}
+	${RM} -rf staged
 	${V} echo DEBUG =-= $@ end =-=
 
 install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
@@ -351,6 +351,7 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	    echo ${CHMOD} -v 0664 ${STATE}; \
 	    ${CHMOD} -v 0664 ${STATE}; \
 	fi
+	@mkdir -p staged/good staged/error
 	@echo 'This only installs locally into a python virtual environment.'
 	@echo
 	@echo 'If you are on the submit sever, next as root, run:'
@@ -389,6 +390,9 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/templates
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/users
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged/error
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged/good
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/wsgi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret

@@ -55,6 +55,7 @@ from .ioccc_common import \
     USERS_DIR_RELATIVE_PATH, \
     VERSION_IOCCC_COMMON, \
     change_startup_appdir, \
+    check_slot_error_nolock, \
     contest_is_open, \
     dbg, \
     debug, \
@@ -62,7 +63,7 @@ from .ioccc_common import \
     error, \
     generate_password, \
     get_all_json_slots, \
-    get_json_slot, \
+    get_json_slot_nolock, \
     hash_password, \
     info, \
     initialize_user_tree, \
@@ -75,7 +76,7 @@ from .ioccc_common import \
     lock_slot, \
     lookup_username, \
     must_change_password, \
-    read_json_file, \
+    read_json_file_nolock, \
     read_state, \
     replace_pwfile, \
     return_client_ip, \
@@ -85,6 +86,7 @@ from .ioccc_common import \
     return_slot_json_filename, \
     return_user_dir_path, \
     setup_logger, \
+    sha256_file, \
     unlock_slot, \
     update_password, \
     update_slot, \

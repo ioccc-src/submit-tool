@@ -82,13 +82,13 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.3.1 2025-01-10"
+VERSION_IOCCC = "2.4 2025-01-24"
 
 
 # Configure the application
 #
 application = Flask(__name__,
-            template_folder=APPDIR + '/templates',
+            template_folder=f'{APPDIR}/templates',
             root_path=APPDIR)
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "iocccsubmit"
@@ -154,9 +154,11 @@ ip_based_limit = limiter.limit(
     limit_value = "8 per minute",
     key_func = get_remote_address,
     per_method = True,
-    error_message = "Too much too often!!  You have exceeded a reasonable rate limit.\n" +
-                    "\n" +
-                    "You have been put into the \"penalty box\" for a period of time until you slow down.",
+    error_message = (
+        # pylint: disable-next=f-string-without-interpolation
+        f'Too much too often!!  You have exceeded a reasonable rate limit.\n'
+        f'\n'
+        f'You have been put into the \"penalty box\" for a period of time until you slow down.'),
     override_defaults = True,
     scope = "IPv4",
 )
@@ -168,9 +170,11 @@ user_based_limit = limiter.shared_limit(
     limit_value = "8 per minute",
     key_func = lambda : current_user.id,
     per_method = True,
-    error_message = "You're going too Fast!!  You have exceeded a reasonable rate limit.\n" +
-                    "\n" +
-                    "You have been put into the \"penalty box\" for a period of time until you slow down.",
+    error_message = (
+        # pylint: disable-next=f-string-without-interpolation
+        f'You\'re going too Fast!!  You have exceeded a reasonable rate limit.\n'
+        f'\n'
+        f'You have been put into the \"penalty box\" for a period of time until you slow down.'),
     override_defaults = True,
     scope = "user",
 )
@@ -285,8 +289,7 @@ def login():
         if not slots:
             error(f'{me}: {return_client_ip()}: '
                   f'username: {username} initialize_user_tree failed: <<{return_last_errmsg()}>>')
-            flash("ERROR: in: " + me + ": initialize_user_tree failed: <<" + \
-                  return_last_errmsg() + ">>")
+            flash(f'ERROR: in {me}: initialize_user_tree failed: <<{return_last_errmsg()}>>')
             flask_login.logout_user()
             info(f'{me}: {return_client_ip()}: '
                  f'forced logout for username: {username}')
@@ -378,8 +381,7 @@ def submit():
     if not user_dir:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} return_user_dir_path failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": return_user_dir_path failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: return_user_dir_path failed: <<{return_last_errmsg()}>>')
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for username: {username}')
@@ -391,8 +393,7 @@ def submit():
     if not slots:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": get_all_json_slots failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for username: {username}')
@@ -441,7 +442,6 @@ def submit():
                                username = username,
                                etable = slots,
                                date=str(close_datetime).replace('+00:00', ''))
-    slot_num_str = user_input
 
     # verify slot number
     #
@@ -450,8 +450,7 @@ def submit():
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} '
               f'return_slot_dir_path failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": return_slot_dir_path failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: return_slot_dir_path failed: <<{return_last_errmsg()}>>')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -482,11 +481,11 @@ def submit():
 
     # verify that the filename is in a submit file form
     #
-    re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
+    re_match_str = f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$'
     if not re.match(re_match_str, file.filename):
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} invalid form of a filename')
-        flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
+        flash(f'Filename for slot: {slot_num} must match this regular expression: {re_match_str}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -495,13 +494,12 @@ def submit():
 
     # save the file in the slot
     #
-    upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
+    upload_file = f'{user_dir}/{slot_num}/{file.filename}'
     file.save(upload_file)
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} update_slot failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": update_slot failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: update_slot failed: <<{return_last_errmsg()}>>')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -561,8 +559,7 @@ def upload():
     if not slots:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": get_all_json_slots failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
         return redirect(url_for('login'))
 
     # setup for user
@@ -571,8 +568,7 @@ def upload():
     if not user_dir:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} return_user_dir_path failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": return_user_dir_path failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: return_user_dir_path failed: <<{return_last_errmsg()}>>')
         return redirect(url_for('login'))
 
     # case: user is required to change password
@@ -618,7 +614,6 @@ def upload():
                                username = username,
                                etable = slots,
                                date=str(close_datetime).replace('+00:00', ''))
-    slot_num_str = user_input
 
     # verify slot number
     #
@@ -627,8 +622,7 @@ def upload():
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} '
               f'return_slot_dir_path failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": return_slot_dir_path failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: return_slot_dir_path failed: <<{return_last_errmsg()}>>')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -659,11 +653,11 @@ def upload():
 
     # verify that the filename is in a submit file form
     #
-    re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
+    re_match_str = f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$'
     if not re.match(re_match_str, file.filename):
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} invalid form of a filename')
-        flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
+        flash(f'Filename for slot: {slot_num} must match this regular expression: {re_match_str}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -672,13 +666,12 @@ def upload():
 
     # save the file in the slot
     #
-    upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
+    upload_file = f'{user_dir}/{slot_num}/{file.filename}'
     file.save(upload_file)
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} update_slot failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": update_slot failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: update_slot failed: <<{return_last_errmsg()}>>')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -768,8 +761,7 @@ def passwd():
     if not slots:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash("ERROR: in: " + me + ": get_all_json_slots failed: <<" + \
-              return_last_errmsg() + ">>")
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
         return redirect(url_for('login'))
 
     # case: process passwd POST
