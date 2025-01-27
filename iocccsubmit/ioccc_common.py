@@ -190,7 +190,7 @@ MAX_USERNAME_LENGTH = 40
 
 # password related JSON values
 #
-PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
+PASSWORD_VERSION_VALUE = "1.2 2025-01-26"
 
 # state (open and close) related JSON values
 #
