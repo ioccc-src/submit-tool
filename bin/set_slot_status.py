@@ -33,7 +33,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.2.0 2024-12-22"
+VERSION = "2.3.0 2025-01-26"
 
 
 def main():
@@ -79,8 +79,8 @@ def main():
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            error(f'{program}: change_startup_appdir failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # verify arguments
@@ -88,27 +88,27 @@ def main():
     username = args.username
     if not lookup_username(username):
         print(f'ERROR via print: lookup_username for  username: {username} '
-              f'failed: <<{return_last_errmsg()}>>')
+              f'failed: {return_last_errmsg()}')
         sys.exit(4)
     slot_num = int(args.slot_num)
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
-        print(f'ERROR via print: invalid slot number: {slot_num} for username: {username}')
-        print(f'Notice: slot numbers must be between 0 and {MAX_SUBMIT_SLOT}')
+        print(f'{program}: invalid slot number: {slot_num} for username: {username}')
+        print(f'{program}: slot numbers must be between 0 and {MAX_SUBMIT_SLOT}')
         sys.exit(5)
     status = args.status
 
     # update slot JSON file
     #
     if not update_slot_status(username, slot_num, status):
-        print(f'ERROR via print: update_slot_status for username: {username} slot_num: {slot_num} '
-              f'failed: <<{return_last_errmsg()}>>')
+        print(f'{program}: update_slot_status for username: {username} slot_num: {slot_num} '
+              f'failed: {return_last_errmsg()}')
         sys.exit(6)
 
     # no option selected
     #
-    info(f'{program}: username: {username} slot_num: {slot_num} status: <<{status}>>')
-    print(f'Notice via print: username: {username} slot_num: {slot_num} status: <<{status}>>')
+    info(f'{program}: username: {username} slot_num: {slot_num} status: {status}')
+    print('{program}: username: {username} slot_num: {slot_num} status: {status}')
     sys.exit(0)
 
 

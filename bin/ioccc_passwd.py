@@ -15,6 +15,7 @@ import sys
 import argparse
 import os
 import uuid
+import re
 
 
 # import from modules
@@ -45,7 +46,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.0 2025-01-24"
+VERSION = "2.4.0 2025-01-26"
 
 
 # pylint: disable=too-many-locals
@@ -59,14 +60,13 @@ def main():
 
     # setup
     #
-    now = datetime.now(timezone.utc)
     force_pw_change = False
     password = None
     pwhash = None
     disable_login = False
     pw_change_by = None
     program = os.path.basename(__file__)
-    admin = False
+    ignore_date = False
 
     # parse args
     #
@@ -107,8 +107,8 @@ def main():
     parser.add_argument('-n', '--nologin',
                         help='disable login (def: login not explicitly disabled)',
                         action='store_true')
-    parser.add_argument('-A', '--admin',
-                        help='user is an admin (def: not an admin)',
+    parser.add_argument('-I', '--ignore_date',
+                        help='user may login when contest is closed (def: may not)',
                         action='store_true')
     parser.add_argument('-U', '--UUID',
                         help='generate a new UUID username and password',
@@ -135,14 +135,15 @@ def main():
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            error(f'{program}: change_startup_appdir failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # -g secs - set the grace time to change in seconds from now
     #
     if args.grace:
-        pw_change_by = f'{now}{timedelta(seconds=args.grace[0])}'
+        pw_change_by = re.sub(r'\+00:00 ', ' ',
+                              f'{datetime.now(timezone.utc)+timedelta(seconds=args.grace[0])} UTC')
 
     # -c and -C conflict
     #
@@ -167,7 +168,8 @@ def main():
         # case: -g not give, assume default grace period
         #
         if not args.grace:
-            pw_change_by = f'{now}{timedelta(seconds=DEFAULT_GRACE_PERIOD)}'
+            pw_change_by = re.sub(r'\+00:00 ', ' ',
+                                  f'{datetime.now(timezone.utc)+timedelta(seconds=DEFAULT_GRACE_PERIOD)} UTC')
 
     # -C - disable password change at next login
     #
@@ -189,13 +191,10 @@ def main():
     if args.nologin:
         disable_login = True
 
-    # -A - make the user an admin
+    # -I - allow user to ignore the date
     #
-    # NOTE: The admin state is currently unused.  Setting this has no effect
-    #       other than to change the state of the user's password entry.
-    #
-    if args.admin:
-        admin = True
+    if args.ignore_date:
+        ignore_date = True
 
     # -a user - add user if they do not already exist
     #
@@ -210,8 +209,8 @@ def main():
         #
         pwhash = hash_password(password)
         if not pwhash:
-            error(f'{program}: -a user: hash_password for username: {username} failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
+            print(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
             sys.exit(4)
 
         # determine the username to add
@@ -222,19 +221,18 @@ def main():
         #
         if lookup_username(username):
             warning(f'{program}: -a user: already exists for username: {username}')
-            print("ERROR via print: username already exists: <<" + username + ">>")
+            print(f'{program}: -a user: already exists for username: {username}')
             sys.exit(5)
 
         # add the user
         #
-        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
             info(f'{program}: -a user: added username: {username}')
-            print("Notice via print: added username: " + username + " password: " + password)
+            print(f'{program}: -a user: added username: {username}')
             sys.exit(0)
         else:
-            error(f'{program}: -a user: add username: {username} failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: failed to add username: <<" + username + ">> password: <<" + password + ">>")
-            print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
+            print(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
             sys.exit(6)
 
     # -u user - update if they exit, or add user if they do not already exist
@@ -258,10 +256,10 @@ def main():
             if not password:
                 pwhash = user_dict['pwhash']
 
-            # case: -A was not given, keep the existing admin
+            # case: -I was not given, keep the existing ignore_date value
             #
-            if not args.admin:
-                admin = user_dict['admin']
+            if not args.ignore_date:
+                ignore_date = user_dict['ignore_date']
 
             # case: -c was not given, keep the existing force_pw_change
             #
@@ -293,30 +291,31 @@ def main():
             #
             pwhash = hash_password(password)
             if not pwhash:
-                error(f'{program}: -u user: hash_password for username: {username} failed: <<{return_last_errmsg()}>>')
-                print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+                error(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
+                print(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
                 sys.exit(7)
 
         # update the user
         #
-        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
             if password:
                 info(f'{program}: -u user: changed password for username: {username}')
-                print("Notice via print: updated username: " + username + " password: " + password)
+                print(f'{program}: -u user: changed password for username: {username}')
             else:
                 info(f'{program}: -u user: changed details for username: {username}')
-                print("Notice via print: updated username: " + username + " password is unchanged")
+                print(f'{program}: -u user: changed details for username: {username}')
             sys.exit(0)
         else:
             if password:
                 error(f'{program}: -u user: failed to change password for username: {username} '
-                      f'failed: <<{return_last_errmsg()}>>')
-                print("ERROR via print: failed to update username: " + username + " password: " + password)
+                      f'failed: {return_last_errmsg()}')
+                print(f'{program}: -u user: failed to change password for username: {username} '
+                      f'failed: {return_last_errmsg()}')
             else:
                 error(f'{program}: -u user: failed to change details for username: {username} '
-                      f'failed: <<{return_last_errmsg()}>>')
-                print("ERROR via print: failed to update username: " + username + " password is unchanged")
-                print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+                      f'failed: {return_last_errmsg()}')
+                print(f'{program}: -u user: failed to change details for username: {username} '
+                      f'failed: {return_last_errmsg()}')
             sys.exit(8)
 
     # -d user - delete user
@@ -330,21 +329,19 @@ def main():
         # the user must already exist
         #
         if not lookup_username(username):
-            info(f'{program}: -d user: no such username: {username}')
-            print("ERROR via print: username does not exist: <<" + username + ">>")
-            print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+            info(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
+            print(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
             sys.exit(9)
 
         # remove the user
         #
         if delete_username(username):
-            info(f'{program}: -d user: deleted username: {username}')
-            print("Notice via print: deleted username: " + username)
+            info(f'{program}: -d user: deleted username: {username} last_errmsg: {return_last_errmsg()}')
+            print(f'{program}: -d user: deleted username: {username} last_errmsg: {return_last_errmsg()}')
             sys.exit(0)
         else:
-            error(f'{program}: -d user: failed to delete username: {username} failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: failed to delete username: <<" + username + ">>")
-            print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
+            print(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
             sys.exit(10)
 
     # -U - add random UUID user
@@ -360,8 +357,8 @@ def main():
         #
         pwhash = hash_password(password)
         if not pwhash:
-            error(f'{program}: -U: hash_password failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: hash_password: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
+            print(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
             sys.exit(11)
 
         # generate an random UUID of type that is not an existing user
@@ -406,31 +403,30 @@ def main():
             # super rare case that we found an existing UUID, so try again
             #
             info(f'{program}: -U: rare: UUID retry {i+1} of {try_limit}')
-            print("Notice via print: rare: UUID retry " + str(i+1) + " of " + str(try_limit))
+            print(f'{program}: -U: rare: UUID retry {i+1} of {try_limit}')
             username = None
 
         # paranoia - no unique username was found
         #
         if not username:
             error(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
-            print("ERROR via print: SUPER RARE: failed to found a new UUID after " + str(try_limit) + " attempts!!!")
+            print(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
             sys.exit(12)
 
         # add the user
         #
-        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
             info(f'{program}: -U: added username: {username}')
-            print("Notice via print: UUID username: " + username + " password: " + password)
+            print(f'{program}: -U: added username: {username}')
             sys.exit(0)
         else:
-            error(f'{program}: -U: add username: {username} failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: failed to add UUID username: <<" + username + ">> password: <<" + password + ">>")
-            print("ERROR via print: last_errmsg: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
+            print(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
             sys.exit(13)
 
     # no option selected
     #
-    print("Notice via print: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime")
+    print(f'{program}: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime')
     sys.exit(14)
 #
 # pylint: enable=too-many-locals

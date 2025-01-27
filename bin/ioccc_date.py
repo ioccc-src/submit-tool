@@ -30,7 +30,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.2.0 2024-12-22"
+VERSION = "2.3.0 2025-01-26"
 
 
 def main():
@@ -83,20 +83,20 @@ def main():
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            error(f'{program}: change_startup_appdir failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # determine the IOCCC start and IOCCC end dates
     #
     start_datetime, stop_datetime = read_state()
     if not start_datetime:
-        error(f'{program}: read_state for start_datetime failed: <<{return_last_errmsg()}>>')
-        print("ERROR via print: unable to fetch of start date: <<" + return_last_errmsg() + ">>")
+        error(f'{program}: read_state for start_datetime failed: {return_last_errmsg()}')
+        print(f'{program}: read_state for start_datetime failed: {return_last_errmsg()}')
         sys.exit(4)
     if not stop_datetime:
-        error(f'{program}: read_state for stop_datetime failed: <<{return_last_errmsg()}>>')
-        print("ERROR via print: unable to fetch of stop date: <<" + return_last_errmsg() + ">>")
+        error(f'{program}: read_state for stop_datetime failed: {return_last_errmsg()}')
+        print(f'{program}: read_state for stop_datetime failed: {return_last_errmsg()}')
         sys.exit(5)
 
     # -s - set IOCCC start date
@@ -104,12 +104,16 @@ def main():
     if args.start:
         start_given = True
         start_datetime = args.start[0]
+    else:
+        start_datetime = f'{start_datetime} UTC'
 
     # -S - set IOCCC stop date
     #
     if args.stop:
         stop_given = True
         stop_datetime = args.stop[0]
+    else:
+        stop_datetime = f'{stop_datetime} UTC'
 
     # if either -s DateTime or -S DateTime was given:
     #
@@ -117,17 +121,17 @@ def main():
 
         # update the start and/or stop dates
         #
-        if not update_state(str(start_datetime), str(stop_datetime)):
-            error(f'{program}: update_state failed: <<{return_last_errmsg()}>>')
-            print("ERROR via print: failed to update start and/or stop date(s): <<" + return_last_errmsg() + ">>")
+        if not update_state(f'{start_datetime}', f'{stop_datetime}'):
+            error(f'{program}: update_state failed: {return_last_errmsg()}')
+            print(f'{program}: update_state failed: {return_last_errmsg()}')
             sys.exit(6)
         else:
-            print("Notice via print: set IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
+            print(f'Notice via print: IOCCC start: {start_datetime} IOCCC stop: {stop_datetime}')
             sys.exit(0)
 
     # no option selected
     #
-    print("Notice via print: IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
+    print(f'Notice via print: IOCCC start: {start_datetime} IOCCC stop: {stop_datetime}')
     sys.exit(0)
 
 

@@ -66,7 +66,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.3.0 2025-01-24"
+VERSION_IOCCC_COMMON = "2.4.0 2025-01-26"
 
 # force password change grace time
 #
@@ -79,13 +79,15 @@ DEFAULT_GRACE_PERIOD = 72*3600
 
 # standard date string in strptime format
 #
-# The string produced by:
+# The date string produced by:
 #
-#   datetime.now(timezone.utc)
+#   date_string = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
 #
-# my be converted back into a datetime object by this strptime format string.
+# may be converted back into a datetime object by:
 #
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f%z"
+#   dt = datetime.strptime(date_string, DATETIME_USEC_FORMAT)
+#
+DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 
 # IP and port when running this code from the command line.
 #
@@ -161,7 +163,7 @@ POSIX_SAFE_RE = "^[0-9A-Za-z][0-9A-Za-z._+-]*$"
 # slot related JSON values
 #
 NO_COMMENT_VALUE = "mandatory comment: because comments were removed from the original JSON spec"
-SLOT_VERSION_VALUE = "1.1 2024-10-13"
+SLOT_VERSION_VALUE = "1.2 2025-01-26"
 EMPTY_JSON_SLOT_TEMPLATE = '''{
     "no_comment": "$NO_COMMENT_VALUE",
     "slot_JSON_format_version":  "$SLOT_VERSION_VALUE",
@@ -169,7 +171,8 @@ EMPTY_JSON_SLOT_TEMPLATE = '''{
     "filename": null,
     "length": null,
     "date": null,
-    "sha256": null,
+    "SHA256": null,
+    "collected": false,
     "status": "slot is empty"
 }'''
 
@@ -191,7 +194,7 @@ PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
 
 # state (open and close) related JSON values
 #
-STATE_VERSION_VALUE = "1.1 2024-10-27"
+STATE_VERSION_VALUE = "1.2 2025-01-26"
 DEFAULT_JSON_STATE_TEMPLATE = '''{
     "no_comment": "$NO_COMMENT_VALUE",
     "state_JSON_format_version": "$STATE_VERSION_VALUE",
@@ -1046,6 +1049,10 @@ def validate_user_dict(user_dict):
 
     # obtain the username
     #
+    if not 'username' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: username is missing from user_dict'
+        error(f'{me}: username is missing from user_dict')
+        return False
     if not isinstance(user_dict['username'], str):
         ioccc_last_errmsg = f'ERROR: {me}: username is not a string: <<{user_dict["username"]}>>'
         error(f'{me}: username is not a string')
@@ -1085,15 +1092,15 @@ def validate_user_dict(user_dict):
 
     # sanity check user no_comment
     #
-    if not user_dict['no_comment']:
-        ioccc_last_errmsg = f'ERROR: {me}: missing no_comment for username: {username}'
-        error(f'{me}: missing no_comment for username: {username}')
+    if not 'no_comment' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: no_comment is missing from user_dict'
+        error(f'{me}: no_comment is missing from user_dict')
         return False
     if not isinstance(user_dict['no_comment'], str):
         ioccc_last_errmsg = f'ERROR: {me}: no_comment is not a string for username: {username}'
         error(f'{me}: no_comment not a string for username: {username}')
         return False
-    if user_dict["no_comment"] != NO_COMMENT_VALUE:
+    if user_dict['no_comment'] != NO_COMMENT_VALUE:
         ioccc_last_errmsg = f'ERROR: {me}: invalid JSON no_comment username: {username}'
         error(f'{me}: invalid JSON no_comment for username: {username} '
               f'user_dict["no_comment"]: {user_dict["no_comment"]} != '
@@ -1102,15 +1109,15 @@ def validate_user_dict(user_dict):
 
     # sanity check user iocccpasswd_format_version
     #
-    if not user_dict['iocccpasswd_format_version']:
-        ioccc_last_errmsg = f'ERROR: {me}: missing iocccpasswd_format_version for username username: {username}'
-        error(f'{me}: missing iocccpasswd_format_version for username: {username}')
+    if not 'iocccpasswd_format_version' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: iocccpasswd_format_version is missing from user_dict'
+        error(f'{me}: iocccpasswd_format_version is missing from user_dict')
         return False
     if not isinstance(user_dict['iocccpasswd_format_version'], str):
         ioccc_last_errmsg = f'ERROR: {me}: iocccpasswd_format_version is not a string for username: {username}'
         error(f'{me}: iocccpasswd_format_version not a string for username: {username}')
         return False
-    if user_dict["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
+    if user_dict['iocccpasswd_format_version'] != PASSWORD_VERSION_VALUE:
         ioccc_last_errmsg = f'ERROR: {me}: invalid iocccpasswd_format_version for username: {username}'
         error(f'{me}: invalid iocccpasswd_format_version for username: {username} iocccpasswd_format_version: '
               f'<<{user_dict["iocccpasswd_format_version"]}>> != PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE}')
@@ -1118,24 +1125,32 @@ def validate_user_dict(user_dict):
 
     # sanity check pwhash for user
     #
-    if not user_dict['pwhash']:
-        ioccc_last_errmsg = f'ERROR: {me}: missing pwhash for username: {username}'
-        error(f'{me}: missing pwhash for username: {username}')
+    if not 'pwhash' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: pwhash is missing from user_dict'
+        error(f'{me}: pwhash is missing from user_dict')
         return False
     if not isinstance(user_dict['pwhash'], str):
         ioccc_last_errmsg = f'ERROR: {me}: pwhash is not a string for username: {username}'
         error(f'{me}: pwhash not a string for username: {username}')
         return False
 
-    # sanity check admin for user
+    # sanity check ignore_date for user
     #
-    if not isinstance(user_dict['admin'], bool):
-        ioccc_last_errmsg = f'ERROR: {me}: admin is not a boolean for username: {username}'
-        error(f'{me}: admin not a boolean for username: {username}')
+    if not 'ignore_date' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: ignore_date is missing from user_dict'
+        error(f'{me}: ignore_date is missing from user_dict')
+        return False
+    if not isinstance(user_dict['ignore_date'], bool):
+        ioccc_last_errmsg = f'ERROR: {me}: ignore_date is not a boolean for username: {username}'
+        error(f'{me}: ignore_date not a boolean for username: {username}')
         return False
 
     # sanity check force_pw_change for user
     #
+    if not 'force_pw_change' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is missing from user_dict'
+        error(f'{me}: force_pw_change is missing from user_dict')
+        return False
     if not isinstance(user_dict['force_pw_change'], bool):
         ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is not a boolean for username: {username}'
         error(f'{me}: force_pw_change not a boolean for username: {username}')
@@ -1143,6 +1158,10 @@ def validate_user_dict(user_dict):
 
     # sanity check pw_change_by for user
     #
+    if not 'pw_change_by' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is missing from user_dict'
+        error(f'{me}: pw_change_by is missing from user_dict')
+        return False
     if user_dict['pw_change_by'] and not isinstance(user_dict['pw_change_by'], str):
         ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is not null nor string for username: {username}'
         error(f'{me}: pw_change_by not null nor string for for username: {username}')
@@ -1150,6 +1169,10 @@ def validate_user_dict(user_dict):
 
     # sanity check disable_login for user
     #
+    if not 'disable_login' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing from user_dict'
+        error(f'{me}: disable_login is missing from user_dict')
+        return False
     if not isinstance(user_dict['disable_login'], bool):
         ioccc_last_errmsg = f'ERROR: {me}: disable_login is not a boolean for username: {username}'
         error(f'{me}: disable_login not a boolean for username: {username}')
@@ -1238,7 +1261,7 @@ def lookup_username(username):
     #
     user_dict = None
     for i in pw_file_json:
-        if i['username'] == username:
+        if 'username' in i and i['username'] == username:
             user_dict = i
             break
     if not user_dict:
@@ -1265,7 +1288,7 @@ def lookup_username(username):
 # pylint: disable=too-many-positional-arguments
 # pylint: disable=too-many-arguments
 #
-def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
     """
     Update a username entry in the password file, or add the entry
     if the username is not already in the password file.
@@ -1273,9 +1296,9 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     Given:
         username            IOCCC submit server username
         pwhash              hashed password as generated by hash_password()
-        admin               boolean indicating if the user is an admin
+        ignore_date         boolean indicating if the user may login when contest is not open
         force_pw_change     boolean indicating if the user will be forced to change their password on next login
-        pw_change_by        date and time string in DATETIME_FORMAT by which password must be changed, or
+        pw_change_by        date and time string in DATETIME_USEC_FORMAT by which password must be changed, or
                             None ==> no deadline for changing password
         disable_login       boolean indicating if the user is banned from login
 
@@ -1330,11 +1353,11 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
         error(f'{me}: pwhash arg is not a string')
         return False
 
-    # paranoia - admin must be a boolean
+    # paranoia - ignore_date must be a boolean
     #
-    if not isinstance(admin, bool):
-        ioccc_last_errmsg = f'ERROR: {me}: admin arg is not a boolean for username: {username}'
-        error(f'{me}: admin arg is not a boolean')
+    if not isinstance(ignore_date, bool):
+        ioccc_last_errmsg = f'ERROR: {me}: ignore_date arg is not a boolean for username: {username}'
+        error(f'{me}: ignore_date arg is not a boolean')
         return False
 
     # paranoia - force_pw_change must be a boolean
@@ -1409,12 +1432,12 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     #
     found_username = False
     for i in pw_file_json:
-        if i['username'] == username:
+        if 'username' in i and i['username'] == username:
 
             # user found, update user info
             #
             i['pwhash'] = pwhash
-            i['admin'] = admin
+            i['ignore_date'] = ignore_date
             i['force_pw_change'] = force_pw_change
             i['pw_change_by'] = pw_change_by
             i['disable_login'] = disable_login
@@ -1431,7 +1454,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
                               "iocccpasswd_format_version" : PASSWORD_VERSION_VALUE,
                               "username" : username,
                               "pwhash" : pwhash,
-                              "admin" : admin,
+                              "ignore_date" : ignore_date,
                               "force_pw_change" : force_pw_change,
                               "pw_change_by" : pw_change_by,
                               "disable_login" : disable_login })
@@ -1591,7 +1614,7 @@ def delete_username(username):
 
         # set aside the username we are deleting
         #
-        if i['username'] == username:
+        if 'usernamne' in i and i['username'] == username:
             deleted_user = i
 
         # otherwise save other users
@@ -1931,6 +1954,12 @@ def verify_user_password(username, password):
         info(f'{me}: login not allowed for username: {username}')
         return False
 
+    # paranoia - just have a pwhash
+    #
+    if not 'pwhash' in user_dict:
+        info(f'{me}: missing pwhash for username: {username}')
+        return False
+
     # return the result of the hashed password check for this user
     #
     return verify_hashed_password(password, user_dict['pwhash'])
@@ -2144,6 +2173,7 @@ def is_proper_password(password):
 
 
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
 #
 def update_password(username, old_password, new_password):
     """
@@ -2246,6 +2276,10 @@ def update_password(username, old_password, new_password):
 
     # return the result of the hashed password check for this user
     #
+    if not 'pwhash' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: pwhash is missing for username: {username}'
+        error(f'{me}: pwhash is missing for username: {username}')
+        return False
     if not verify_hashed_password(old_password, user_dict['pwhash']):
 
         # old_password is not correct
@@ -2254,13 +2288,27 @@ def update_password(username, old_password, new_password):
         info(f'{me}: old_password is not correct for username: {username}')
         return False
 
+    # paranoia - must have ignore_data for this user
+    #
+    if not 'ignore_date' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: ignore_date is missing for username: {username}'
+        error(f'{me}: ignore_date is missing for username: {username}')
+        return False
+
+    # paranoia - must have disable_login for this user
+    #
+    if not 'disable_login' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing for username: {username}'
+        error(f'{me}: disable_login is missing for username: {username}')
+        return False
+
     # update user entry in the password database
     #
     # We force the force_pw_change state to be False as this action IS changing the password.
     #
     if not update_username(username,
                            hash_password(new_password),
-                           user_dict['admin'],
+                           user_dict['ignore_date'],
                            False,
                            None,
                            user_dict['disable_login']):
@@ -2273,9 +2321,11 @@ def update_password(username, old_password, new_password):
     return True
 #
 # pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
 
 
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
 #
 def user_allowed_to_login(user_dict):
     """
@@ -2303,6 +2353,13 @@ def user_allowed_to_login(user_dict):
     #
     if not validate_user_dict(user_dict):
         error(f'{me}: validate_user_dict failed')
+        return False
+
+    # paranoia - must have username for this user_dict
+    #
+    if not 'username' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: username is missing from user_dict'
+        error(f'{me}: username is missing from user_dict')
         return False
 
     # obtain username form user_doct
@@ -2340,6 +2397,13 @@ def user_allowed_to_login(user_dict):
         info(f'{me}: username arg not POSIX safe')
         return False
 
+    # paranoia - must have disable_login for this user_dict
+    #
+    if not 'disable_login' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing from user_dict'
+        error(f'{me}: disable_login is missing from user_dict')
+        return False
+
     # deny login if disable_login is true
     #
     if user_dict['disable_login']:
@@ -2350,6 +2414,20 @@ def user_allowed_to_login(user_dict):
         info(f'{me}: login not allowed for username: {username}')
         return False
 
+    # paranoia - must have disable_login for this user_dict
+    #
+    if not 'force_pw_change' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is missing from user_dict'
+        error(f'{me}: force_pw_change is missing from user_dict')
+        return False
+
+    # paranoia - must have disable_login for this user_dict
+    #
+    if not 'pw_change_by' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is missing from user_dict'
+        error(f'{me}: pw_change_by is missing from user_dict')
+        return False
+
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit
     #
     if user_dict['force_pw_change'] and user_dict['pw_change_by']:
@@ -2357,7 +2435,7 @@ def user_allowed_to_login(user_dict):
         # Convert pw_change_by into a datetime string
         #
         try:
-            pw_change_by = datetime.strptime(user_dict["pw_change_by"], DATETIME_FORMAT)
+            pw_change_by = datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
         except ValueError as errcode:
             ioccc_last_errmsg = (
                 f'ERROR: {me}: not in datetime format: '
@@ -2372,7 +2450,7 @@ def user_allowed_to_login(user_dict):
 
         # failed to change the password in time
         #
-        if now > pw_change_by:
+        if now.timestamp() > pw_change_by.timestamp():
             ioccc_last_errmsg = "ERROR: user failed to change the password in time"
             info(f'{me}: password not changed in time for username: {username}')
             return False
@@ -2381,6 +2459,9 @@ def user_allowed_to_login(user_dict):
     #
     debug(f'{me}: login allowed for username: {username}')
     return True
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
 
 
 def must_change_password(user_dict):
@@ -2407,9 +2488,13 @@ def must_change_password(user_dict):
         error(f'{me}: validate_user_dict failed')
         return False
 
+    # paranoia - must have force_pw_change in user_dict
+    #
+    if not 'force_pw_change' in user_dict:
+        error(f'{me}: force_pw_change is missing from user_dict')
+        return False
+
     return user_dict['force_pw_change']
-#
-# pylint: enable=too-many-return-statements
 
 
 def username_login_allowed(username):
@@ -2807,17 +2892,20 @@ def initialize_user_tree(username):
 
                 # sanity check slot no_comment
                 #
-                if not slots[slot_num]["no_comment"]:
-                    ioccc_last_errmsg = f'ERROR: {me}: missing no_comment for username: {username} slot_num: {slot_num}'
-                    error(f'{me}: missing no_comment for username: {username} slot_num: {slot_num}')
+                if not 'no_comment' in slots[slot_num]:
+                    ioccc_last_errmsg = (
+                        f'ERROR: {me}: no_comment is missing from '
+                        f'username: {username} slot_num: {slot_num}')
+                    error(f'{me}: no_comment is missing from '
+                          f'username: {username} slot_num: {slot_num}')
                     return None
-                if not isinstance(slots[slot_num]["no_comment"], str):
+                if not isinstance(slots[slot_num]['no_comment'], str):
                     ioccc_last_errmsg = (
                         f'ERROR: {me}: no_comment is not a string for '
                         f'username: {username} slot_num: {slot_num}')
                     error(f'{me}: no_comment not a string for username: {username} slot_num: {slot_num}')
                     return None
-                if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
+                if slots[slot_num]['no_comment'] != NO_COMMENT_VALUE:
                     ioccc_last_errmsg = (
                         f'ERROR: {me}: invalid JSON no_comment for '
                         f'username: {username} slot_num: {slot_num}')
@@ -2828,19 +2916,20 @@ def initialize_user_tree(username):
 
                 # sanity check slot slot_JSON_format_version
                 #
-                if not slots[slot_num]["slot_JSON_format_version"]:
+                if not 'slot_JSON_format_version' in slots[slot_num]:
                     ioccc_last_errmsg = (
-                        f'ERROR: {me}: missing slot_JSON_format_version for '
+                        f'ERROR: {me}: slot_JSON_format_version is missing from '
                         f'username: {username} slot_num: {slot_num}')
-                    error(f'{me}: missing slot_JSON_format_version for username: {username} slot_num: {slot_num}')
+                    error(f'{me}: slot_JSON_format_version is missing from '
+                          f'username: {username} slot_num: {slot_num}')
                     return None
-                if not isinstance(slots[slot_num]["slot_JSON_format_version"], str):
+                if not isinstance(slots[slot_num]['slot_JSON_format_version'], str):
                     ioccc_last_errmsg = (
                         f'ERROR: {me}: slot_JSON_format_version is not a string '
                         f'for username: {username} slot_num: {slot_num}')
                     error(f'{me}: slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                     return None
-                if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
+                if slots[slot_num]['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
                     ioccc_last_errmsg = f'ERROR: {me}: invalid JSON slot_JSON_format_version'
                     error(f'{me}: invalid slot_JSON_format_version for username: {username} '
                           f'slot_num: {slot_num} slot_JSON_format_version: '
@@ -2863,40 +2952,44 @@ def initialize_user_tree(username):
                                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE,
                                                          'slot_num': str(slot_num) } ))
 
-            # paranoia for slot no_comment
+            # paranoia - sanity check slot no_comment
             #
-            if not slots[slot_num]["no_comment"]:
-                ioccc_last_errmsg = f'ERROR: {me}: missing no_comment for username: {username} slot_num: {slot_num}'
-                error(f'{me}: missing new no_comment for username: {username} slot_num: {slot_num}')
+            if not 'no_comment' in slots[slot_num]:
+                ioccc_last_errmsg = (
+                    f'ERROR: {me}: no_comment is missing from '
+                    f'username: {username} slot_num: {slot_num}')
+                error(f'{me}: no_comment is missing from '
+                      f'username: {username} slot_num: {slot_num}')
                 return None
-            if not isinstance(slots[slot_num]["no_comment"], str):
+            if not isinstance(slots[slot_num]['no_comment'], str):
                 ioccc_last_errmsg = (
                     f'ERROR: {me}: no_comment is not a string for username: {username} '
                     f'slot_num: {slot_num}')
                 error(f'{me}: new no_comment not a string for username: {username} slot_num: {slot_num}')
                 return None
-            if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
+            if slots[slot_num]['no_comment'] != NO_COMMENT_VALUE:
                 ioccc_last_errmsg = f'ERROR: {me}: invalid JSON no_comment username: {username} slot_num: {slot_num}'
                 error(f'{me}: invalid new JSON no_comment for username: {username} slot_num: {slot_num} '
                       f'slots[slot_num]["no_comment"]: {slots[slot_num]["no_comment"]} != '
                       f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
                 return None
 
-            # paranoia for slot slot_JSON_format_version
+            # paranoia - sanity check slot slot_JSON_format_version
             #
-            if not slots[slot_num]["slot_JSON_format_version"]:
+            if not 'slot_JSON_format_version' in slots[slot_num]:
                 ioccc_last_errmsg = (
-                    f'ERROR: {me}: missing slot_JSON_format_version for username: {username} '
-                    f'slot_num: {slot_num}')
-                error(f'{me}: missing new slot_JSON_format_version for username: {username} slot_num: {slot_num}')
+                    f'ERROR: {me}: slot_JSON_format_version is missing from '
+                    f'username: {username} slot_num: {slot_num}')
+                error(f'{me}: slot_JSON_format_version is missing from '
+                      f'username: {username} slot_num: {slot_num}')
                 return None
-            if not isinstance(slots[slot_num]["slot_JSON_format_version"], str):
+            if not isinstance(slots[slot_num]['slot_JSON_format_version'], str):
                 ioccc_last_errmsg = (
                     f'ERROR: {me}: slot_JSON_format_version is not a string for '
                     f'username: {username} slot_num: {slot_num}')
                 error(f'{me}: new slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                 return None
-            if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
+            if slots[slot_num]['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
                 ioccc_last_errmsg = f'ERROR: {me}: invalid JSON slot_JSON_format_version'
                 error(f'{me}: invalid new slot_JSON_format_version for username: {username} '
                       f'slot_num: {slot_num} slot_JSON_format_version: '
@@ -3140,6 +3233,15 @@ def update_slot(username, slot_num, slot_file):
         unlock_slot()
         return False
 
+    # paranoia - must have filename
+    #
+    if not 'filename' in slot:
+        ioccc_last_errmsg = (
+            f'ERROR: {me}: filename is missing from '
+            f'username: {username} slot_num: {slot_num}')
+        error(f'{me}: filename is missing from username: {username} slot_num: {slot_num}')
+        return False
+
     # If the slot previously saved file that has a different name than the new file,
     # then remove the old file
     #
@@ -3173,9 +3275,8 @@ def update_slot(username, slot_num, slot_file):
     slot['status'] = 'Uploaded file into slot'
     slot['filename'] = os.path.basename(slot_file)
     slot['length'] = os.path.getsize(slot_file)
-    dt = datetime.now(timezone.utc).replace(tzinfo=None)
-    slot['date'] = re.sub(r'\.[0-9]{6}$', '', str(dt)) + ' UTC'
-    slot['sha256'] = result.hexdigest()
+    slot['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
+    slot['SHA256'] = result.hexdigest()
 
     # save JSON data for the slot
     #
@@ -3359,8 +3460,8 @@ def read_state():
                 state file missing the open date, or
                 open date string is not in a valid datetime format, or
                 state file missing the close date, or
-                close date string is not in a valid datetime in DATETIME_FORMAT format
-        != None, open_datetime, close_datetime in datetime in DATETIME_FORMAT format
+                close date string is not in a valid datetime in DATETIME_USEC_FORMAT format
+        != None, open_datetime, close_datetime in datetime in DATETIME_USEC_FORMAT format
     """
 
     # setup
@@ -3406,15 +3507,15 @@ def read_state():
 
     # sanity check state file no_comment
     #
-    if not state["no_comment"]:
-        ioccc_last_errmsg = f'ERROR: {me}: missing no_comment in state file'
-        error(f'{me}: missing no_comment for STATE_FILE: {STATE_FILE}')
+    if not 'no_comment' in state:
+        ioccc_last_errmsg = f'ERROR: {me}: username is missing from state file'
+        error(f'{me}: username is missing from state file')
         return None, None
-    if not isinstance(state["no_comment"], str):
+    if not isinstance(state['no_comment'], str):
         ioccc_last_errmsg = f'ERROR: {me}: no_comment is not a string in state file'
         error(f'{me}: no_comment not a string for STATE_FILE: {STATE_FILE}')
         return None, None
-    if state["no_comment"] != NO_COMMENT_VALUE:
+    if state['no_comment'] != NO_COMMENT_VALUE:
         ioccc_last_errmsg = f'ERROR: {me}: invalid JSON no_comment in state file'
         error(f'{me}: invalid JSON no_comment for STATE_FILE: {STATE_FILE} '
               f'state["no_comment"]: {state["no_comment"]} != '
@@ -3423,15 +3524,15 @@ def read_state():
 
     # sanity check state file state_JSON_format_version
     #
-    if not state["state_JSON_format_version"]:
-        ioccc_last_errmsg = f'ERROR: {me}: missing state_JSON_format_version in state file'
-        error(f'{me}: missing state_JSON_format_version for STATE_FILE: {STATE_FILE}')
+    if not 'state_JSON_format_version' in state:
+        ioccc_last_errmsg = f'ERROR: {me}: state_JSON_format_version is missing from state file'
+        error(f'{me}: state_JSON_format_version is missing from state file')
         return None, None
-    if not isinstance(state["state_JSON_format_version"], str):
+    if not isinstance(state['state_JSON_format_version'], str):
         ioccc_last_errmsg = f'ERROR: {me}: state_JSON_format_version is not a string in state file'
         error(f'{me}: state_JSON_format_version not a string for STATE_FILE: {STATE_FILE}')
         return None, None
-    if state["state_JSON_format_version"] != STATE_VERSION_VALUE:
+    if state['state_JSON_format_version'] != STATE_VERSION_VALUE:
         ioccc_last_errmsg = f'ERROR: {me}: invalid JSON state_JSON_format_version in state file'
         error(f'{me}: invalid state_JSON_format_version for '
               f'STATE_FILE: {STATE_FILE} state_JSON_format_version: <<{state["state_JSON_format_version"]}>> != '
@@ -3441,16 +3542,16 @@ def read_state():
 
     # convert open date string into a datetime value
     #
-    if not state['open_date']:
-        ioccc_last_errmsg = f'ERROR: {me}: state file missing open_date'
-        error(f'{me}: missing open_date for STATE_FILE: {STATE_FILE}')
+    if not 'open_date' in state:
+        ioccc_last_errmsg = f'ERROR: {me}: open_date is missing from state file'
+        error(f'{me}: open_date is missing from state file')
         return None, None
     if not isinstance(state['open_date'], str):
         ioccc_last_errmsg = f'ERROR: {me}: state file open_date is not a string'
         error(f'{me}: open_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
-        open_datetime = datetime.strptime(state['open_date'], DATETIME_FORMAT)
+        open_datetime = datetime.strptime(state['open_date'], DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: state file open_date is not in proper datetime '
@@ -3461,16 +3562,16 @@ def read_state():
 
     # convert close date string into a datetime value
     #
-    if not state['close_date']:
-        ioccc_last_errmsg = f'ERROR: {me}: state file missing close_date'
-        error(f'{me}: missing close_date for STATE_FILE: {STATE_FILE}')
+    if not 'close_date' in state:
+        ioccc_last_errmsg = f'ERROR: {me}: close_date is missing from state file'
+        error(f'{me}: close_date is missing from state file')
         return None, None
     if not isinstance(state['close_date'], str):
         ioccc_last_errmsg = f'ERROR: {me}: state file close_date is not a string'
         error(f'{me}: close_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
-        close_datetime = datetime.strptime(state['close_date'], DATETIME_FORMAT)
+        close_datetime = datetime.strptime(state['close_date'], DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: state file close_date is not in proper datetime '
@@ -3493,8 +3594,8 @@ def update_state(open_date, close_date):
     Update contest dates in the JSON state file
 
     Given:
-        open_date   IOCCC open date as a string in DATETIME_FORMAT format
-        close_date  IOCCC close date as a string in DATETIME_FORMAT format
+        open_date   IOCCC open date as a string in DATETIME_USEC_FORMAT format
+        close_date  IOCCC close date as a string in DATETIME_USEC_FORMAT format
 
     Return:
         True        json state file was successfully written
@@ -3509,7 +3610,7 @@ def update_state(open_date, close_date):
     debug(f'{me}: start')
     write_sucessful = True
 
-    # firewall - open_date must be a string in DATETIME_FORMAT format
+    # firewall - open_date must be a string in DATETIME_USEC_FORMAT format
     #
     if not isinstance(open_date, str):
         ioccc_last_errmsg = f'ERROR: {me}: open_date is not a string'
@@ -3517,16 +3618,16 @@ def update_state(open_date, close_date):
         return False
     try:
         # pylint: disable=unused-variable
-        open_datetime = datetime.strptime(open_date, DATETIME_FORMAT)
+        open_datetime = datetime.strptime(open_date, DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
-            f'ERROR: {me}: open_date arg not in proper datetime '
-            f'format: <<{open_date}>> failed: <<{errcode}>>')
-        error(f'{me}: datetime.strptime of open_date arg: {open_date} '
+            f'ERROR: {me}: open_date arg not in proper datetime format '
+            f'failed: <<{errcode}>>')
+        error(f'{me}: open_date arg not in proper datetime format '
               f'failed: <<{errcode}>>')
         return False
 
-    # firewall - close_date must be a string in DATETIME_FORMAT format
+    # firewall - close_date must be a string in DATETIME_USEC_FORMAT format
     #
     if not isinstance(close_date, str):
         ioccc_last_errmsg = f'ERROR: {me}: close_date is not a string'
@@ -3534,12 +3635,12 @@ def update_state(open_date, close_date):
         return False
     try:
         # pylint: disable=unused-variable
-        close_datetime = datetime.strptime(close_date, DATETIME_FORMAT)
+        close_datetime = datetime.strptime(close_date, DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
-            f'ERROR: {me}: state file close_date is not in proper datetime '
+            f'ERROR: {me}: state file close_date is not in proper datetime format '
             f'format: <<{close_date}>> failed: <<{errcode}>>')
-        error(f'{me}: datetime.strptime of close_date arg: {close_date} '
+        error(f'{me}: datetime.strptime of close_date arg: {close_date} format '
               f'failed: <<{errcode}>>')
         return False
 
@@ -3602,12 +3703,12 @@ def contest_is_open(user_dict):
 
     Return:
         != None     Contest is open,
-                    return close_datetime in datetime in DATETIME_FORMAT format
+                    return close_datetime in datetime in DATETIME_USEC_FORMAT format
         None        Contest is closed
 
-    NOTE: If the user is an admin, and we have a close date, then we will
+    NOTE: If the user may ignore the date, and we have a close date, then we will
           always assume the contest is open for that user.  This is to allow
-          admins to test the server before the contest opens for others.
+          the user to test the server before the contest opens for others.
     """
 
     # setup
@@ -3616,28 +3717,34 @@ def contest_is_open(user_dict):
     debug(f'{me}: start')
     now = datetime.now(timezone.utc)
 
-    # obtain open and close dates in datetime format
-    #
-    open_datetime, close_datetime = read_state()
-    if not open_datetime or not close_datetime:
-        return None
-
     # sanity check the user information
     #
     if not validate_user_dict(user_dict):
         error(f'{me}: validate_user_dict failed')
         return None
 
-    # For admin users, the contest is always open,
+    # paranoia - must have ignore_date in user_dict
+    #
+    if not 'ignore_date' in user_dict:
+        error(f'{me}: ignore_date is missing from user_dict')
+        return False
+
+    # obtain open and close dates as date strings
+    #
+    open_datetime, close_datetime = read_state()
+    if not open_datetime or not close_datetime:
+        return None
+
+    # For users that mayignore the date, the contest is always open,
     # even if we are outside the contest open-close internal.
     #
-    if user_dict['admin']:
+    if user_dict['ignore_date']:
         return close_datetime
 
     # determine if the contest is open now
     #
-    if now >= open_datetime:
-        if now < close_datetime:
+    if now.timestamp() >= open_datetime.timestamp():
+        if now.timestamp() < close_datetime.timestamp():
             return close_datetime
     return None
 
@@ -4133,165 +4240,6 @@ def sha256_file(filename):
 
 
 # pylint: disable=too-many-return-statements
-# pylint: disable=too-many-branches
-# pylint: disable=too-many-statements
-#
-def validate_slot_dict(slot_dict, username, slot_num):
-    """
-    Perform sanity checks on slot python dictionary.
-
-    Given:
-        slot_dict    slot information as a python dictionary
-        username    IOCCC submit server username
-        slot_num    slot number for a given username
-
-    Returns:
-        True ==> no error found in slot information
-        False ==> a problem was found in slot JSON information
-    """
-
-    # setup
-    #
-    # pylint: disable-next=global-statement
-    global ioccc_last_errmsg
-    me = inspect.currentframe().f_code.co_name
-    debug(f'{me}: start')
-
-    # sanity check slot_dict argument
-    #
-    if not isinstance(slot_dict, dict):
-        ioccc_last_errmsg = f'ERROR: {me}: slot_dict arg is not a python dictionary'
-        error(f'{me}: slot_dict arg is not a python dictionary')
-        return False
-
-    # paranoia - username arg is not a string
-    #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return False
-
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'ERROR: {me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'ERROR: {me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username value not POSIX safe'
-        info(f'{me}: username value not POSIX safe')
-        return False
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        ioccc_last_errmsg = f'{me}: slot_num arg is not an int'
-        error(f'{me}: slot_num arg is not an int')
-        return None
-
-    # paranoia - must be a valid slot number
-    #
-    if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
-        ioccc_last_errmsg = f'ERROR: {me}: invalid slot number: {slot_num} username: {username}'
-        error(f'{me}: invalid slot number for username: {username} slot_num: {slot_num}')
-        return None
-
-    # sanity check user no_comment
-    #
-    if not slot_dict['no_comment']:
-        ioccc_last_errmsg = f'ERROR: in {me}: missing no_comment for username {username} slot: {slot_num}'
-        error(f'{me}: missing no_comment for username: {username} slot_num: {slot_num}')
-        return False
-    if not isinstance(slot_dict['no_comment'], str):
-        ioccc_last_errmsg = f'ERROR: in {me}: missing no_comment for username {username} slot: {slot_num}'
-        error(f'{me}: no_comment not a string for username: {username} slot_num: {slot_num}')
-        return False
-    if slot_dict["no_comment"] != NO_COMMENT_VALUE:
-        ioccc_last_errmsg = f'ERROR: in {me}: invalid JSON no_comment username {username} slot: {slot_num}'
-        error(f'{me}: invalid JSON no_comment for username: {username} slot_num: {slot_num}'
-              f'slot_dict["no_comment"]: {slot_dict["no_comment"]} != '
-              f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-        return False
-
-    # sanity check user slot_JSON_format_version
-    #
-    if not slot_dict['slot_JSON_format_version']:
-        ioccc_last_errmsg = f'ERROR: {me}: missing slot_JSON_format_version for username: {username}'
-        error(f'{me}: missing slot_JSON_format_version for username: {username} slot_num: {slot_num}')
-        return False
-    if not isinstance(slot_dict['slot_JSON_format_version'], str):
-        ioccc_last_errmsg = f'ERROR: {me}: slot_JSON_format_version is not a string for username: {username}'
-        error(f'{me}: slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
-        return False
-    if slot_dict["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-        ioccc_last_errmsg = f'ERROR: {me}: invalid slot_JSON_format_version for username: {username}'
-        error(f'{me}: invalid slot_JSON_format_version for username: {username} '
-              f'slot_num: {slot_num} slot_JSON_format_version: <<{slot_dict["slot_JSON_format_version"]}>> != '
-              f'PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE}')
-        return False
-
-    # sanity check pwhash for user
-    #
-    if not slot_dict['pwhash']:
-        ioccc_last_errmsg = f'ERROR: {me}: missing pwhash for username: {username}'
-        error(f'{me}: missing pwhash for username: {username}')
-        return False
-    if not isinstance(slot_dict['pwhash'], str):
-        ioccc_last_errmsg = f'ERROR: {me}: pwhash is not a string for username: {username}'
-        error(f'{me}: pwhash not a string for username: {username}')
-        return False
-
-    # sanity check admin for user
-    #
-    if not isinstance(slot_dict['admin'], bool):
-        ioccc_last_errmsg = f'ERROR: {me}: admin is not a boolean for username: {username}'
-        error(f'{me}: admin not a boolean for username: {username}')
-        return False
-
-    # sanity check force_pw_change for user
-    #
-    if not isinstance(slot_dict['force_pw_change'], bool):
-        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is not a boolean for username: {username}'
-        error(f'{me}: force_pw_change not a boolean for username: {username}')
-        return False
-
-    # sanity check pw_change_by for user
-    #
-    if slot_dict['pw_change_by'] and not isinstance(slot_dict['pw_change_by'], str):
-        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is not null nor string for username: {username}'
-        error(f'{me}: pw_change_by not null nor string for for username: {username}')
-        return False
-
-    # sanity check disable_login for user
-    #
-    if not isinstance(slot_dict['disable_login'], bool):
-        ioccc_last_errmsg = f'ERROR: {me}: disable_login is not a boolean for username: {username}'
-        error(f'{me}: disable_login not a boolean for username: {username}')
-        return False
-
-    # user information passed the sanity checks
-    #
-    return True
-#
-# pylint: enable=too-many-return-statements
-# pylint: enable=too-many-branches
-# pylint: enable=too-many-statements
-
-
-# pylint: disable=too-many-return-statements
 #
 def get_json_slot_nolock(username, slot_num):
     """
@@ -4381,16 +4329,17 @@ def get_json_slot_nolock(username, slot_num):
               f'slot_json_file: {slot_json_file}')
         return None
 
-    # TO DO - add more code here - TO DO
-
     # return slot information as a python dictionary
     #
     return slot
 #
 # pylint: enable=too-many-return-statements
 
-
-def check_slot_error_nolock(username, slot_num):
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+#
+def validate_slot_nolock(username, slot_num, file_required):
     """
     Validate a slot.  We verify the JSON file for a slot.
 
@@ -4402,8 +4351,21 @@ def check_slot_error_nolock(username, slot_num):
     the hash in the JSON file for a slot.
 
     Given:
-        username    IOCCC submit server username
-        slot_num    slot number for a given username
+        username        IOCCC submit server username
+        slot_num        slot number for a given username
+        file_required   True ==> submit file must exist
+                        False ==> submit file may or may not exist
+
+        NOTE: A JSON null, as Python dictionary, has the python value of None.
+
+        NOTE: If filename is a string, then
+                   length MUST be an int,
+                   date MUST be a string,
+                   SHA256 MUST be a string.
+              Otherwise if filename is None (JSON null), then
+                   length MUST be None (JSON null),
+                   date MUST be None (JSON null),
+                   SHA256 MUST be None (JSON null).
 
     Returns:
         None ==> no errors detected with the slot
@@ -4421,11 +4383,163 @@ def check_slot_error_nolock(username, slot_num):
     #
     slot = get_json_slot_nolock(username, slot_num)
     if not slot:
-        return f'failed to get JSON data for username: {username} slot: {slot_num}'
+        return 'ERROR: invalid username and/or slot_num args'
+    if not isinstance(file_required, bool):
+        return 'ERROR: file_required arg is not a boolean'
 
-    # TO DO - add more code here - TO DO
+    # sanity check slot no_comment
+    #
+    if not 'no_comment' in slot:
+        return 'ERROR: missing slot no_comment string'
+    if not isinstance(slot['no_comment'], str):
+        return 'ERROR: slot no_comment is not a string'
+    if slot['no_comment'] != NO_COMMENT_VALUE:
+        return 'ERROR: invalid slot no_comment'
+
+    # sanity check slot_JSON_format_version
+    #
+    if not 'slot_JSON_format_version' in slot:
+        return 'ERROR: missing slot_JSON_format_version string'
+    if not isinstance(slot['slot_JSON_format_version'], str):
+        return 'ERROR: slot_JSON_format_version is not a string'
+    if slot['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
+        return 'ERROR: invalid slot_JSON_format_version'
+
+    # slot must have the correct slot number
+    #
+    if not 'slot' in slot:
+        return 'ERROR: missing slot number'
+    if not isinstance(slot['slot'], int):
+        return 'ERROR: slot number is not an int'
+    if slot['slot'] != slot_num:
+        return 'ERROR: wrong slot number'
+
+    # determine if the slot has a filename
+    #
+    if not 'filename' in slot:
+        return 'ERROR: missing slot filename'
+    filename_is_string = True
+    if not slot['filename']:
+        filename_is_string = False
+
+    # if we have a filename, then the filename must be a valid filename string
+    #
+    if filename_is_string:
+        if not isinstance(slot['filename'], str):
+            return 'ERROR: slot filename is not a string'
+        if not slot['filename'].startswith(f'submit.{username}-{slot_num}.'):
+            return 'ERROR: wrong slot filename beginning'
+        if not slot['filename'].endsswith('.txz'):
+            return 'ERROR: wrong slot filename extension'
+        if not re.match(f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$', slot['filename']):
+            return 'ERROR: invalid slot filename timestamp'
+
+    # if we have a filename, then slot must have a valid slot length
+    # otherwise we must not have a slot length
+    #
+    if not 'length' in slot:
+        return 'ERROR: missing slot length int'
+    if filename_is_string:
+        if not isinstance(slot['length'], int):
+            return 'ERROR: slot length is not an int'
+        if slot['length'] <= 0:
+            return 'ERROR: slot length not > 0'
+    elif slot['length']:
+        return 'ERROR: have length w/o filename'
+
+    # if we have a filename, then slot must have a valid slot date
+    # otherwise we must not have a slot date
+    #
+    if not 'date' in slot:
+        return 'ERROR: missing slot date string'
+    if filename_is_string:
+        if not isinstance(slot['date'], str):
+            return 'ERROR: slot date is not a string'
+        try:
+            # pylint: disable-next=unused-variable
+            dt = datetime.strptime(slot['date'], DATETIME_USEC_FORMAT)
+        # pylint: disable-next=unused-variable
+        except ValueError as errcode:
+            return 'ERROR: slot date format is invalid'
+    elif slot['date']:
+        return 'ERROR: have date w/o filename'
+
+    # if we have a filename, then slot must have a valid SHA256 hash
+    # otherwise we must not have a slot SHA256 hash
+    #
+    if not 'SHA256' in slot:
+        return 'ERROR: missing slot SHA256 string'
+    if filename_is_string:
+        if not isinstance(slot['SHA256'], str):
+            return 'ERROR: slot SHA256 is not a string'
+        if len(slot['SHA256']) != SHA256_HEXLEN:
+            return 'ERROR: slot SHA256 length is wrong'
+    elif slot['SHA256']:
+        return 'ERROR: have SHA256 w/o filename'
+
+    # slot must have a collected boolean
+    #
+    if not 'collected' in slot:
+        return 'ERROR: missing slot collected boolean'
+    if not isinstance(slot['collected'], bool):
+        return 'ERROR: slot collected is not a boolean'
+
+    # slot must have a status string
+    #
+    if not 'status' in slot:
+        return 'ERROR: missing slot status string'
+    if not isinstance(slot['status'], str):
+        return 'ERROR: slot status is not a string'
+
+    # case: filename is a string
+    #
+    if filename_is_string:
+
+        # determine full path of submit file
+        #
+        slot_dir = return_slot_dir_path(username, slot_num)
+        if not slot_dir:
+            return 'ERROR: return_slot_dir_path failed'
+        submit_path = f'{slot_dir}/{slot["filename"]}'
+
+        # case: submit file exists
+        #
+        if submit_path.exists():
+
+            # verify the submit file size
+            #
+            if os.path.getsize(submit_path) != slot['length']:
+                return 'ERROR: submit file length is wrong'
+
+            # verify the SHA256 hash of the submit file
+            #
+            sha256 = sha256_file(submit_path)
+            if not sha256:
+                return 'ERROR: submit file SHA256 hash failed'
+
+            # verify the contest of the file
+            #
+            if sha256 != slot['SHA256']:
+                return 'ERROR: submit file corrupted contents'
+
+        # case: submit file does not exist but is required to do so
+        #
+        elif file_required:
+
+            # if file is required, verify that submit file exists
+            #
+            return 'ERROR: submit file not found'
+
+    # case: filename is not a string, but a file is required
+    #
+    elif file_required:
+        return 'ERROR: submit file is not present in slot'
 
     # no slot errors found
     #
-    debug(f'{me}: no slot errors found for username: {username} slot: {slot_num}')
+    debug(f'{me}: no slot errors found')
     return None
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-statements

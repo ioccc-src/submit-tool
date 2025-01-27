@@ -15,7 +15,7 @@ from .ioccc_common import \
     ADM_FILE, \
     ADM_FILE_RELATIVE_PATH, \
     APPDIR, \
-    DATETIME_FORMAT, \
+    DATETIME_USEC_FORMAT, \
     DEFAULT_GRACE_PERIOD, \
     DEFAULT_JSON_STATE_TEMPLATE, \
     EMPTY_JSON_SLOT_TEMPLATE, \
@@ -55,7 +55,6 @@ from .ioccc_common import \
     USERS_DIR_RELATIVE_PATH, \
     VERSION_IOCCC_COMMON, \
     change_startup_appdir, \
-    check_slot_error_nolock, \
     contest_is_open, \
     dbg, \
     debug, \
@@ -95,6 +94,7 @@ from .ioccc_common import \
     update_username, \
     user_allowed_to_login, \
     username_login_allowed, \
+    validate_slot_nolock, \
     validate_user_dict, \
     verify_hashed_password, \
     verify_user_password, \

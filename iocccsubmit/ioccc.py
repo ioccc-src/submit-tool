@@ -82,7 +82,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.4 2025-01-24"
+VERSION_IOCCC = "2.5.0 2025-01-26"
 
 
 # Configure the application
@@ -288,8 +288,8 @@ def login():
         slots = initialize_user_tree(username)
         if not slots:
             error(f'{me}: {return_client_ip()}: '
-                  f'username: {username} initialize_user_tree failed: <<{return_last_errmsg()}>>')
-            flash(f'ERROR: in {me}: initialize_user_tree failed: <<{return_last_errmsg()}>>')
+                  f'username: {username} initialize_user_tree failed: {return_last_errmsg()}')
+            flash(f'ERROR: in {me}: initialize_user_tree failed: {return_last_errmsg()}')
             flask_login.logout_user()
             info(f'{me}: {return_client_ip()}: '
                  f'forced logout for username: {username}')
@@ -380,8 +380,8 @@ def submit():
     user_dir = return_user_dir_path(username)
     if not user_dir:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} return_user_dir_path failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: return_user_dir_path failed: <<{return_last_errmsg()}>>')
+              f'username: {username} return_user_dir_path failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: return_user_dir_path failed: {return_last_errmsg()}')
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for username: {username}')
@@ -392,8 +392,8 @@ def submit():
     slots = get_all_json_slots(username)
     if not slots:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
+              f'username: {username} get_all_json_slots failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: {return_last_errmsg()}')
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for username: {username}')
@@ -449,8 +449,8 @@ def submit():
     if not slot_dir:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} '
-              f'return_slot_dir_path failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: return_slot_dir_path failed: <<{return_last_errmsg()}>>')
+              f'return_slot_dir_path failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: return_slot_dir_path failed: {return_last_errmsg()}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -498,8 +498,8 @@ def submit():
     file.save(upload_file)
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} slot_num: {slot_num} update_slot failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: update_slot failed: <<{return_last_errmsg()}>>')
+              f'username: {username} slot_num: {slot_num} update_slot failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: update_slot failed: {return_last_errmsg()}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -558,8 +558,8 @@ def upload():
     slots = get_all_json_slots(username)
     if not slots:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
+              f'username: {username} get_all_json_slots failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: {return_last_errmsg()}')
         return redirect(url_for('login'))
 
     # setup for user
@@ -567,8 +567,8 @@ def upload():
     user_dir = return_user_dir_path(username)
     if not user_dir:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} return_user_dir_path failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: return_user_dir_path failed: <<{return_last_errmsg()}>>')
+              f'username: {username} return_user_dir_path failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: return_user_dir_path failed: {return_last_errmsg()}')
         return redirect(url_for('login'))
 
     # case: user is required to change password
@@ -621,8 +621,8 @@ def upload():
     if not slot_dir:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} '
-              f'return_slot_dir_path failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: return_slot_dir_path failed: <<{return_last_errmsg()}>>')
+              f'return_slot_dir_path failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: return_slot_dir_path failed: {return_last_errmsg()}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -670,8 +670,8 @@ def upload():
     file.save(upload_file)
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} slot_num: {slot_num} update_slot failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: update_slot failed: <<{return_last_errmsg()}>>')
+              f'username: {username} slot_num: {slot_num} update_slot failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: update_slot failed: {return_last_errmsg()}')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -760,8 +760,8 @@ def passwd():
     slots = get_all_json_slots(username)
     if not slots:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} get_all_json_slots failed: <<{return_last_errmsg()}>>')
-        flash(f'ERROR: in: {me}: get_all_json_slots failed: <<{return_last_errmsg()}>>')
+              f'username: {username} get_all_json_slots failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: get_all_json_slots failed: {return_last_errmsg()}')
         return redirect(url_for('login'))
 
     # case: process passwd POST
