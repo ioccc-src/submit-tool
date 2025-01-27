@@ -4517,10 +4517,15 @@ def validate_slot_nolock(username, slot_num, file_required):
             if not sha256:
                 return 'ERROR: submit file SHA256 hash failed'
 
-            # verify the contest of the file
+            # verify the contest of the submit file
             #
             if sha256 != slot['SHA256']:
                 return 'ERROR: submit file corrupted contents'
+
+            # verify that the submit file has not been collected
+            #
+            if slot['collected']:
+                return 'ERROR: submit file collected but still exists'
 
         # case: submit file does not exist but is required to do so
         #
@@ -4528,12 +4533,17 @@ def validate_slot_nolock(username, slot_num, file_required):
 
             # if file is required, verify that submit file exists
             #
-            return 'ERROR: submit file not found'
+            return 'ERROR: submit file is missing'
 
-    # case: filename is not a string, but a file is required
+    # case: filename is not a string, but a submit file is required
     #
     elif file_required:
-        return 'ERROR: submit file is not present in slot'
+        return 'ERROR: submit file is expected to exist but does not'
+
+    # case: filename is not a string, submit file is not required
+    #
+    elif slot['collected']:
+        return 'ERROR: submit file was collected w/o filename'
 
     # no slot errors found
     #
