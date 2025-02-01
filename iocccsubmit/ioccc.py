@@ -76,7 +76,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.5.1 2025-01-31"
+VERSION_IOCCC = "2.5.2 2025-01-31"
 
 
 # Configure the application
@@ -86,11 +86,8 @@ application = Flask(__name__,
             root_path=APPDIR)
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "iocccsubmit"
-#application.debug = True
 application.debug = False
-#application.config['FLASK_ENV'] = "development"
 application.config['FLASK_ENV'] = "production"
-#application.config['TEMPLATES_AUTO_RELOAD'] = True
 application.config['TEMPLATES_AUTO_RELOAD'] = False
 application.secret_key = return_secret()
 
@@ -313,7 +310,7 @@ def login():
         # case: contest is not open - both login and user setup are successful
         #
         info(f'{me}: {return_client_ip()}: '
-             f'IOCCC is not open')
+             f'IOCCC is not open for username: {username}')
         flash("The IOCCC is not open")
         return render_template('not-open.html',
                                flask_login = flask_login,
@@ -406,7 +403,7 @@ def submit():
     close_datetime = contest_is_open(current_user.user_dict)
     if not close_datetime:
         info(f'{me}: {return_client_ip()}: '
-             f'IOCCC is not open')
+             f'IOCCC is not open for username: {username}')
         flash("The IOCCC is not open.")
         return render_template('not-open.html',
                                flask_login = flask_login,
@@ -578,7 +575,7 @@ def upload():
     close_datetime = contest_is_open(current_user.user_dict)
     if not close_datetime:
         info(f'{me}: {return_client_ip()}: '
-             f'username: {username} IOCCC is not open')
+             f'IOCCC is not open for username: {username}')
         flash("The IOCCC is not open.")
         return render_template('not-open.html',
                                flask_login = flask_login,
