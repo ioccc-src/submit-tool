@@ -66,7 +66,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.4.0 2025-01-26"
+VERSION_IOCCC_COMMON = "2.4.1 2025-01-31"
 
 # force password change grace time
 #
@@ -492,6 +492,165 @@ def change_startup_appdir(topdir):
     return True
 
 
+def check_username_arg(username):
+    """
+    Determine if the username passes various sanity checks:
+
+        0) username arg must be a string
+        1) username cannot be too short
+        2) username cannot be too long
+        3) username must be a POSIX safe filename string
+
+    Given:
+        username    IOCCC submit server username
+
+    Returns:
+        True ==> username passes all of the canonical firewall checks
+        False ==> username fails at least one of the canonical firewall checks
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - username arg must be a string
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'ERROR: {me}: username arg is not a string'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: username arg is not a string')
+        return False
+
+    # firewall - username cannot be empty
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if len(username) == 0:
+        ioccc_last_errmsg = f'ERROR: {me}: username is missing'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: username is missing')
+        return False
+
+    # firewall - username cannot be too short
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'ERROR: {me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # firewall - username cannot be too long
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'ERROR: {me}: username arg is too long: {len(username)} > {MAX_USERNAME_LENGTH}'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: username arg is too long: {len(username)} > {MAX_USERNAME_LENGTH}')
+        return False
+
+    # firewall - username must be a POSIX safe filename string
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: username arg not POSIX safe')
+        return False
+
+    # username passes all of the canonical firewall checks
+    #
+    return True
+
+
+def check_slot_num_arg(slot_num):
+    """
+    Determine if the slot number passes various sanity checks:
+
+        0) slot_num arg must be an int
+        1) 0 <= slot_num <= MAX_SUBMIT_SLOT
+
+    Given:
+        slot_num        slot number
+
+    Returns:
+        True ==> slot_num passes all of the canonical firewall checks
+        False ==> slot_num fails at least one of the canonical firewall checks
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        ioccc_last_errmsg = f'ERROR: {me}: slot_num arg is not an int'
+        error(f'{me}: slot_num arg is not an int')
+        return False
+
+    # firewall - must be a valid slot number
+    #
+    if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
+        ioccc_last_errmsg = f'ERROR: {me}: invalid slot number: {slot_num}'
+        error(f'{me}: invalid slot number: {slot_num}')
+        return False
+
+    # username passes all of the canonical firewall checks
+    #
+    return True
+
+
 def return_user_dir_path(username):
     """
     Return the user directory path
@@ -503,49 +662,27 @@ def return_user_dir_path(username):
         None ==> username is not POSIX safe
         != None ==> user directory path (which may not yet exist) for a user (which not yet exist)
 
-    A useful side effect of this call is to verify that the username
-    string is sane.  However, the username may not be a valid user
-    nor may the user directory exist.  It is up to caller to check that.
+    NOTE: This function performs various canonical firewall checks on the username arg.
 
-    It is up the caller to create, if needed, the user directory.
+    NOTE: A useful side effect of this call is to verify that the username
+          string is sane.  However, the username may not be a valid user
+          nor may the user directory exist.  It is up to caller to check that.
+
+    NOTE: It is up the caller to create, if needed, the user directory.
     """
 
     # setup
     #
-    # pylint: disable-next=global-statement
-    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return None
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
     # return user directory path
@@ -560,6 +697,8 @@ def return_slot_dir_path(username, slot_num):
     """
     Return the slot directory path under a given user directory
 
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
     Given:
         username    IOCCC submit server username
         slot_num    slot number for a given username
@@ -568,66 +707,41 @@ def return_slot_dir_path(username, slot_num):
         None ==> invalid slot number or invalid user directory
         != None ==> slot directory path (may not yet exist)
 
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
     It is up the caller to create, if needed, the slot directory.
     """
 
     # setup
     #
-    # pylint: disable-next=global-statement
-    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
-    # paranoia - username cannot be too short
+    # firewall - canonical firewall checks on the slot_num arg
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
         return None
 
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return None
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        ioccc_last_errmsg = f'ERROR: {me}: slot_num arg is not an int'
-        error(f'{me}: slot_num arg is not an int')
-        return None
-
-    # paranoia - must make a user_dir value
+    # determine user directory path
     #
     user_dir = return_user_dir_path(username)
     if not user_dir:
         error(f'{me}: return_user_dir_path failed for username: {username}')
-        return None
-
-    # paranoia - must be a valid slot number
-    #
-    if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
-        ioccc_last_errmsg = f'ERROR: {me}: invalid slot number: {slot_num}: for username: {username}'
-        error(f'{me}: invalid slot number for username: {username} slot_num: {slot_num}')
         return None
 
     # return slot directory path under a given user directory
@@ -652,6 +766,10 @@ def return_slot_json_filename(username, slot_num):
         None ==> invalid slot number or invalid user directory
         != None ==> path of the JSON filename for this user's slot (may not yet exist)
 
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
     It is up the caller to create, if needed, the JSON filename.
     """
 
@@ -660,54 +778,108 @@ def return_slot_json_filename(username, slot_num):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        info(f'{me}: username arg is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
-    # paranoia - username cannot be too short
+    # firewall - canonical firewall checks on the slot_num arg
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
         return None
 
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        info(f'{me}: username arg not POSIX safe')
-        return None
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        error(f'{me}: slot_num arg is not an int')
-        return None
-
-    # determine slot directory name
+    # determine user directory path
     #
     user_dir = return_user_dir_path(username)
     if not user_dir:
         error(f'{me}: return_user_dir_path failed for username: {username}')
         return None
+
+    # determine slot directory name
+    #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
-        error(f'{me}: return_slot_dir_path failed for username: {username}')
+        error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
         return None
 
     # determine the JSON filename for this given slot
     #
     slot_json_file = f'{slot_dir}/slot.json'
     return slot_json_file
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def return_slot_lockfile(username, slot_num):
+    """
+    Return the JSON slot lockfile.
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        None ==> invalid slot number or invalid user directory
+        != None ==> path of the JSON lockfile for this user's slot (may not yet exist)
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
+    It is up the caller to create, if needed, the JSON lock file.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return None
+
+    # determine user directory path
+    #
+    user_dir = return_user_dir_path(username)
+    if not user_dir:
+        error(f'{me}: return_user_dir_path failed for username: {username}')
+        return None
+
+    # determine slot directory name
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
+        return None
+
+    # determine the JSON filename for this given slot
+    #
+    slot_lockfile = f'{slot_dir}/lock'
+    return slot_lockfile
 #
 # pylint: enable=too-many-return-statements
 
@@ -750,7 +922,9 @@ def ioccc_file_lock(file_lock):
         Path(file_lock).touch(mode=0o664, exist_ok=True)
 
     except OSError as errcode:
-        ioccc_last_errmsg = f'ERROR: {me}: failed touch (mode=0o664, exist_ok=True): {file_lock} failed: <<{errcode}>>'
+        ioccc_last_errmsg = (
+            f'ERROR: {me}: failed touch (mode=0o664, exist_ok=True): '
+            f'{file_lock} failed: <<{errcode}>>')
         error(f'{me}: touch file_lock: {file_lock} failed: <<{errcode}>>')
         return None
 
@@ -1020,9 +1194,9 @@ def replace_pwfile(pw_file_json):
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
 #
-def validate_user_dict(user_dict):
+def validate_user_dict_nolock(user_dict):
     """
-    Perform sanity checks on the user information as python dictionary for a
+    Perform firewall checks on the user information as python dictionary for a
     given username in the password file.
 
     Given:
@@ -1031,6 +1205,8 @@ def validate_user_dict(user_dict):
     Returns:
         True ==> no error found in in user information
         False ==> a problem was found in user JSON information
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
     """
 
     # setup
@@ -1040,7 +1216,7 @@ def validate_user_dict(user_dict):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # sanity check argument
+    # firewall - check argument
     #
     if not isinstance(user_dict, dict):
         ioccc_last_errmsg = f'ERROR: {me}: user_dict arg is not a python dictionary'
@@ -1059,38 +1235,16 @@ def validate_user_dict(user_dict):
         return False
     username = user_dict['username']
 
-    # paranoia - username value is not a string
+    # firewall - canonical firewall checks on the username string
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username value is not a string'
-        info(f'{me}: username value is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return False
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username value not POSIX safe'
-        info(f'{me}: username value not POSIX safe')
-        return False
-
-    # sanity check user no_comment
+    # firewall check user no_comment
     #
     if not 'no_comment' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: no_comment is missing from user_dict'
@@ -1107,7 +1261,7 @@ def validate_user_dict(user_dict):
               f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
         return False
 
-    # sanity check user iocccpasswd_format_version
+    # firewall check user iocccpasswd_format_version
     #
     if not 'iocccpasswd_format_version' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: iocccpasswd_format_version is missing from user_dict'
@@ -1123,7 +1277,7 @@ def validate_user_dict(user_dict):
               f'<<{user_dict["iocccpasswd_format_version"]}>> != PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE}')
         return False
 
-    # sanity check pwhash for user
+    # firewall check pwhash for user
     #
     if not 'pwhash' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: pwhash is missing from user_dict'
@@ -1134,7 +1288,7 @@ def validate_user_dict(user_dict):
         error(f'{me}: pwhash not a string for username: {username}')
         return False
 
-    # sanity check ignore_date for user
+    # firewall check ignore_date for user
     #
     if not 'ignore_date' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: ignore_date is missing from user_dict'
@@ -1145,7 +1299,7 @@ def validate_user_dict(user_dict):
         error(f'{me}: ignore_date not a boolean for username: {username}')
         return False
 
-    # sanity check force_pw_change for user
+    # firewall check force_pw_change for user
     #
     if not 'force_pw_change' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is missing from user_dict'
@@ -1156,7 +1310,7 @@ def validate_user_dict(user_dict):
         error(f'{me}: force_pw_change not a boolean for username: {username}')
         return False
 
-    # sanity check pw_change_by for user
+    # firewall check pw_change_by for user
     #
     if not 'pw_change_by' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is missing from user_dict'
@@ -1167,7 +1321,7 @@ def validate_user_dict(user_dict):
         error(f'{me}: pw_change_by not null nor string for for username: {username}')
         return False
 
-    # sanity check disable_login for user
+    # firewall check disable_login for user
     #
     if not 'disable_login' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing from user_dict'
@@ -1178,7 +1332,7 @@ def validate_user_dict(user_dict):
         error(f'{me}: disable_login not a boolean for username: {username}')
         return False
 
-    # user information passed the sanity checks
+    # user information passed the firewall checks
     #
     return True
 #
@@ -1201,6 +1355,8 @@ def lookup_username(username):
                  username does not match POSIX_SAFE_RE, or
                  bad password file
         != None ==> user information as a python dictionary
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -1210,44 +1366,13 @@ def lookup_username(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    # NOTE: From the iocccsubmit/ioccc.py web application, a non-string
-    #       username most likely comes from something like a system cracker
-    #       playing with the login page via bogus POST HTTP action.
-    #
-    if not isinstance(username, str):
-        info(f'{me}: username arg is not a string')
-        return None
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    # NOTE: From the iocccsubmit/ioccc.py web application, a too short / empty
-    #       username most likely comes from something like a system cracker
-    #       playing with the login page.
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    # NOTE: From the iocccsubmit/ioccc.py web application, a too long
-    #       username most likely comes from something like a system cracker
-    #       playing with the login page.
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
     # load JSON from the password file as a python dictionary
@@ -1269,9 +1394,9 @@ def lookup_username(username):
         debug(f'{me}: failed to find in password file for username: {username}')
         return None
 
-    # sanity check the user information for user
+    # firewall check the user information for user
     #
-    if not validate_user_dict(user_dict):
+    if not validate_user_dict_nolock(user_dict):
         error(f'{me}: invalid user information for username: {username}')
         return None
 
@@ -1306,6 +1431,8 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
         False ==> unable to update user in the password file
         True ==> user updated, or
                  added to the password file
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -1315,28 +1442,72 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
+
+    # firewall - username arg must be a string
     #
     if not isinstance(username, str):
         ioccc_last_errmsg = f'{me}: username arg is not a string'
         info(f'{me}: username arg is not a string')
-        return None
+        return False
 
-    # paranoia - username cannot be too short
+    # firewall - pwhash must be a string
+    #
+    if not isinstance(pwhash, str):
+        ioccc_last_errmsg = f'ERROR: {me}: pwhash arg is not a string for username: {username}'
+        error(f'{me}: pwhash arg is not a string')
+        return False
+
+    # firewall - ignore_date must be a boolean
+    #
+    if not isinstance(ignore_date, bool):
+        ioccc_last_errmsg = f'ERROR: {me}: ignore_date arg is not a boolean for username: {username}'
+        error(f'{me}: ignore_date arg is not a boolean')
+        return False
+
+    # firewall - force_pw_change must be a boolean
+    #
+    if not isinstance(force_pw_change, bool):
+        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change arg is not a boolean for username: {username}'
+        error(f'{me}: force_pw_change arg is not a boolean')
+        return False
+
+    # firewall - pw_change_by must None or must be be string
+    #
+    if not isinstance(pw_change_by, str) and pw_change_by is not None:
+        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by arg is not a string nor None for username: {username}'
+        error(f'{me}: pw_change_by arg is not a string')
+        return False
+
+    # firewall - disable_login must be a boolean
+    #
+    if not isinstance(disable_login, bool):
+        ioccc_last_errmsg = f'ERROR: {me}: disable_login arg is not a boolean for username: {username}'
+        error(f'{me}: disable_login arg is not a boolean')
+        return False
+
+    # firewall - username cannot be too short
     #
     if len(username) < MIN_USERNAME_LENGTH:
         ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
         info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
+        return False
 
-    # paranoia - username cannot be too long
+    # firewall - username cannot be too long
     #
     if len(username) > MAX_USERNAME_LENGTH:
         ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
         info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
+        return False
 
-    # paranoia - username must be a POSIX safe filename string
+    # firewall - username must be a POSIX safe filename string
     #
     # This also prevents username with /, and prevents it from being empty string,
     # thus one cannot create a username with system cracking "funny business".
@@ -1344,41 +1515,6 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     if not re.match(POSIX_SAFE_RE, username):
         ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
         info(f'{me}: username arg not POSIX safe')
-        return None
-
-    # paranoia - pwhash must be a string
-    #
-    if not isinstance(pwhash, str):
-        ioccc_last_errmsg = f'ERROR: {me}: pwhash arg is not a string for username: {username}'
-        error(f'{me}: pwhash arg is not a string')
-        return False
-
-    # paranoia - ignore_date must be a boolean
-    #
-    if not isinstance(ignore_date, bool):
-        ioccc_last_errmsg = f'ERROR: {me}: ignore_date arg is not a boolean for username: {username}'
-        error(f'{me}: ignore_date arg is not a boolean')
-        return False
-
-    # paranoia - force_pw_change must be a boolean
-    #
-    if not isinstance(force_pw_change, bool):
-        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change arg is not a boolean for username: {username}'
-        error(f'{me}: force_pw_change arg is not a boolean')
-        return False
-
-    # paranoia - pw_change_by must None or must be be string
-    #
-    if not isinstance(pw_change_by, str) and pw_change_by is not None:
-        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by arg is not a string nor None for username: {username}'
-        error(f'{me}: pw_change_by arg is not a string')
-        return False
-
-    # paranoia - disable_login must be a boolean
-    #
-    if not isinstance(disable_login, bool):
-        ioccc_last_errmsg = f'ERROR: {me}: disable_login arg is not a boolean for username: {username}'
-        error(f'{me}: disable_login arg is not a boolean')
         return False
 
     # Lock the password file
@@ -1519,6 +1655,8 @@ def delete_username(username):
                  username does not match POSIX_SAFE_RE, or
                  bad password file
         != None ==> removed user information as a python dictionary
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -1528,35 +1666,13 @@ def delete_username(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return None
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
     # Lock the password file
@@ -1668,7 +1784,7 @@ def generate_password():
     Generate a random password.
 
     Returns:
-        random password as a string
+        password string
     """
 
     # setup
@@ -1812,7 +1928,8 @@ def hash_password(password):
         password    password as a string
 
     Returns:
-        hashed password string
+        != None ==> hashed password string
+        None ==> invalid arg
     """
 
     # setup
@@ -1888,6 +2005,8 @@ def verify_user_password(username, password):
                   username is not in the password database, or
                   user is not allowed to login, or
                   a non-string args was found
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -1897,36 +2016,14 @@ def verify_user_password(username, password):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return None
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return None
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
 
     # firewall - password must be a string
     #
@@ -1935,6 +2032,8 @@ def verify_user_password(username, password):
         error(f'{me}: password arg is not a string')
         return False
 
+    # obtain the python dictionary for the username
+    #
     # fail if user login is disabled or missing from the password file
     #
     user_dict = lookup_username(username)
@@ -2195,6 +2294,8 @@ def update_password(username, old_password, new_password):
                   username is not in the password database, or
                   user is not allowed to login, or
                   new_password is not a valid password
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -2204,35 +2305,13 @@ def update_password(username, old_password, new_password):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return False
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return False
 
     # firewall - old_password must be a string
@@ -2255,6 +2334,8 @@ def update_password(username, old_password, new_password):
         debug(f'{me}: is_proper_password returned false for new_password')
         return False
 
+    # obtain the python dictionary for the username
+    #
     # fail if user login is disabled or missing from the password file
     #
     user_dict = lookup_username(username)
@@ -2337,7 +2418,7 @@ def user_allowed_to_login(user_dict):
     Returns:
         True ==> user is allowed to login
         False ==> login is not allowed for the user, or
-                  user_dict failed sanity checks, or
+                  user_dict failed firewall checks, or
                   user is not allowed to login, or
                   user did not change their password in time
     """
@@ -2349,53 +2430,12 @@ def user_allowed_to_login(user_dict):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # sanity check the user information
+    # firewall check the user information
     #
-    if not validate_user_dict(user_dict):
-        error(f'{me}: validate_user_dict failed')
+    if not validate_user_dict_nolock(user_dict):
+        error(f'{me}: validate_user_dict_nolock failed')
         return False
-
-    # paranoia - must have username for this user_dict
-    #
-    if not 'username' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: username is missing from user_dict'
-        error(f'{me}: username is missing from user_dict')
-        return False
-
-    # obtain username form user_doct
-    #
     username = user_dict['username']
-
-    # paranoia - username value is not a string
-    #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username value is not a string'
-        info(f'{me}: username arg is not a string')
-        return False
-
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username value not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return False
 
     # paranoia - must have disable_login for this user_dict
     #
@@ -2474,7 +2514,8 @@ def must_change_password(user_dict):
     Returns:
         True ==> user must change their password
         False ==> user is not requited to change their password, or
-                  invalid user_dict
+                  invalid user_dict, or
+                  force_pw_change is not a boolean
     """
 
     # setup
@@ -2482,16 +2523,22 @@ def must_change_password(user_dict):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # sanity check the user information
+    # firewall check the user information
     #
-    if not validate_user_dict(user_dict):
-        error(f'{me}: validate_user_dict failed')
+    if not validate_user_dict_nolock(user_dict):
+        error(f'{me}: validate_user_dict_nolock failed')
         return False
 
     # paranoia - must have force_pw_change in user_dict
     #
     if not 'force_pw_change' in user_dict:
         error(f'{me}: force_pw_change is missing from user_dict')
+        return False
+
+    # paranoia - force_pw_change must be a boolean
+    #
+    if not isinstance(user_dict['force_pw_change'], bool):
+        error(f'{me}: force_pw_change is not a boolean')
         return False
 
     return user_dict['force_pw_change']
@@ -2510,6 +2557,8 @@ def username_login_allowed(username):
                     username has been disabled in the password file, or
                     user did not change their password in time, or
                     username does not match POSIX_SAFE_RE
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -2519,37 +2568,24 @@ def username_login_allowed(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
+
+    # firewall - username arg must be a string
     #
     if not isinstance(username, str):
         ioccc_last_errmsg = f'{me}: username arg is not a string'
         info(f'{me}: username arg is not a string')
         return False
 
-    # paranoia - username cannot be too short
+    # obtain the python dictionary for the username
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return False
-
     # fail if user login is disabled or missing from the password file
     #
     user_dict = lookup_username(username)
@@ -2585,6 +2621,10 @@ def lock_slot(username, slot_num):
         None                    lock not successful, or
                                 invalid username, or
                                 invalid slot_num
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
     """
 
     # setup
@@ -2595,41 +2635,22 @@ def lock_slot(username, slot_num):
     debug(f'{me}: start')
     umask(0o022)
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
-    # paranoia - username cannot be too short
+    # firewall - canonical firewall checks on the slot_num arg
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
+    if not check_slot_num_arg(slot_num):
 
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return None
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        error(f'{me}: slot_num arg is not an int')
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
         return None
 
     # validate username and slot
@@ -2638,11 +2659,16 @@ def lock_slot(username, slot_num):
         ioccc_last_errmsg = f'Warning: {me}: lookup_username failed for username: {username}'
         warning(f'{me}: lookup_username failed for username: {username}')
         return None
+
+    # determine user directory path
+    #
     user_dir = return_user_dir_path(username)
     if not user_dir:
-        ioccc_last_errmsg = f'Warning: {me}: return_user_dir_path failed for username: {username}'
-        warning(f'{me}: return_user_dir_path failed for username: {username}')
+        error(f'{me}: return_user_dir_path failed for username: {username}')
         return None
+
+    # determine slot directory name
+    #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
         error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
@@ -2713,6 +2739,231 @@ def unlock_slot():
     return ioccc_file_unlock()
 
 
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+#
+def is_slot_setup(username, slot_num):
+    """
+    Determine of a user's slot has been setup or needs to be initialized.
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        True        user's slot has been setup
+        False       user's slot has not been setup, or
+                    user's slot needs to be rebuilt
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return False
+
+    #########################
+    # user directory checks #
+    #########################
+
+    # determine user directory path
+    #
+    user_dir = return_user_dir_path(username)
+    if not user_dir:
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'ERROR: {me}: return_user_dir_path failed'
+        return False
+
+    # user directory must exist
+    #
+    if not Path(user_dir).exists():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: user directory does not exist: {user_dir}'
+        return False
+
+    # user directory must be a directory
+    #
+    if not Path(user_dir).is_dir():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: user directory is not a directory: {user_dir}'
+        return False
+
+    # user directory must be readable
+    #
+    if not os.access(user_dir, os.R_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a readable user directory: {user_dir}'
+        return False
+
+    # user directory must be writable
+    #
+    if not os.access(user_dir, os.W_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a writable user directory: {user_dir}'
+        return False
+
+    #########################
+    # slot directory checks #
+    #########################
+
+    # determine slot directory path
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_dir_path failed'
+        return False
+
+    # slot directory must exist
+    #
+    if not Path(slot_dir).exists():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot directory does not exist: {slot_dir}'
+        return False
+
+    # slot directory must be a directory
+    #
+    if not Path(slot_dir).is_dir():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot directory is not a directory: {slot_dir}'
+        return False
+
+    # slot directory must be readable
+    #
+    if not os.access(slot_dir, os.R_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a readable slot directory: {slot_dir}'
+        return False
+
+    # slot directory must be writable
+    #
+    if not os.access(slot_dir, os.W_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a writable slot directory: {slot_dir}'
+        return False
+
+    #########################
+    # slot.json file checks #
+    #########################
+
+    # determine the slot JSON file path
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_json_filename failed'
+        return False
+
+    # slot JSON file must exist
+    #
+    if not Path(slot_json_file).exists():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot JSON file does not exist: {slot_json_file}'
+        return False
+
+    # slot JSON file must exist
+    #
+    if not Path(slot_json_file).is_file():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot JSON file is not a file: {slot_json_file}'
+        return False
+
+    # slot JSON file must be readable
+    #
+    if not os.access(slot_json_file, os.R_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a readable slot JSON file: {slot_json_file}'
+        return False
+
+    # slot JSON file must be writable
+    #
+    if not os.access(slot_json_file, os.W_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a writable slot JSON file: {slot_json_file}'
+        return False
+
+    # slot JSON file must NOT be empty
+    #
+    if os.path.getsize(slot_json_file) <= 0:
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: empty slot JSON file: {slot_json_file}'
+        return False
+
+    #########################
+    # slot lock file checks #
+    #########################
+
+    # determine the slot lock file path
+    #
+    slot_lock_file = return_slot_lockfile(username, slot_num)
+    if not slot_lock_file:
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_lockfile failed'
+        return False
+
+    # slot lock file must exist
+    #
+    if not Path(slot_lock_file).exists():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot lock file does not exist: {slot_lock_file}'
+        return False
+
+    # slot lock file must exist
+    #
+    if not Path(slot_lock_file).is_file():
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: slot lock file is not a file: {slot_lock_file}'
+        return False
+
+    # slot lock file must be readable
+    #
+    if not os.access(slot_lock_file, os.R_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a readable slot lock file: {slot_lock_file}'
+        return False
+
+    # slot lock file must be writable
+    #
+    if not os.access(slot_lock_file, os.W_OK):
+        # do not log errors, let the caller (re)initialize
+        ioccc_last_errmsg = f'Notice: {me}: not a writable slot lock file: {slot_lock_file}'
+        return False
+
+    ##########
+    # all OK #
+    ##########
+
+    # all is OK if we reach here
+    #
+    return True
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-statements
+
+
 def write_slot_json(slot_json_file, slot_json):
     """
     Write out an index of slots for the user.
@@ -2763,6 +3014,237 @@ def write_slot_json(slot_json_file, slot_json):
     return True
 
 
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+#
+def initialize_slot_nolock(username, slot_num):
+    """
+    Initialize a slot
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        True        user's slot has been initialized
+        False       user's slot has not been initialized
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return False
+
+    ########################
+    # user directory setup #
+    ########################
+
+    # determine user directory path
+    #
+    user_dir = return_user_dir_path(username)
+    if not user_dir:
+        ioccc_last_errmsg = f'ERROR: {me}: return_user_dir_path failed'
+        error(f'{me}: return_user_dir_path failed')
+        return False
+
+    # create user directory if needed
+    #
+    if not Path(user_dir).is_dir():
+
+        # attempt to create the user directory
+        #
+        try:
+            makedirs(user_dir, mode=0o2770, exist_ok=True)
+        except OSError as errcode:
+            ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
+            error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
+            return False
+
+    # ensure that the user directory is read/write
+    #
+    if not os.access(user_dir, os.R_OK) or not os.access(user_dir, os.W_OK):
+        try:
+            os.chmod(user_dir, mode=0o2770)
+        except OSError as errcode:
+            ioccc_last_errmsg = f'ERROR: {me}: failed to chmod 2770 {username} failed: <<{errcode}>>'
+            error(f'{me}: failed to chmod 2770 {username} failed: <<{errcode}>>')
+            return False
+
+    # firewall - user directory must be a read/write directory
+    #
+    if not Path(user_dir).exists() or not Path(user_dir).is_dir() or \
+       not os.access(user_dir, os.R_OK) or not os.access(user_dir, os.W_OK):
+        ioccc_last_errmsg = f'ERROR: {me}: user directory was not setup correctly'
+        error(f'{me}: user directory was not setup correctly')
+        return False
+
+    ########################
+    # slot directory setup #
+    ########################
+
+    # determine slot directory name
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_dir_path failed'
+        error(f'{me}: return_slot_dir_path failed')
+        return False
+
+    # create slot directory if needed
+    #
+    if not Path(slot_dir).is_dir():
+
+        # attempt to create the slot directory
+        #
+        try:
+            makedirs(slot_dir, mode=0o2770, exist_ok=True)
+        except OSError as errcode:
+            ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
+            error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
+            return False
+
+    # ensure that the slot directory is read/write
+    #
+    if not os.access(slot_dir, os.R_OK) or not os.access(slot_dir, os.W_OK):
+        try:
+            os.chmod(slot_dir, mode=0o2770)
+        except OSError as errcode:
+            ioccc_last_errmsg = f'ERROR: {me}: failed to chmod 2770 {username} failed: <<{errcode}>>'
+            error(f'{me}: failed to chmod 2770 {username} failed: <<{errcode}>>')
+            return False
+
+    # firewall - slot directory must be a read/write directory
+    #
+    if not Path(slot_dir).exists() or not Path(slot_dir).is_dir() or \
+       not os.access(slot_dir, os.R_OK) or not os.access(slot_dir, os.W_OK):
+        ioccc_last_errmsg = f'ERROR: {me}: slot directory was not setup correctly'
+        error(f'{me}: slot directory was not setup correctly')
+        return False
+
+    ########################
+    # slot.json file setup #
+    ########################
+
+    # determine the slot JSON file path
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_json_filename failed'
+        error(f'{me}: return_slot_json_filename failed')
+        return False
+
+    # setup the JSON slot using the template
+    #
+    t = Template(EMPTY_JSON_SLOT_TEMPLATE)
+
+    # initialize the slot JSON from the template
+    #
+    slot_json = json.loads(t.substitute( { 'NO_COMMENT_VALUE': NO_COMMENT_VALUE,
+                                           'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE,
+                                           'slot_num': str(slot_num) } ))
+
+    # write JSON file for slot
+    #
+    try:
+        with open(slot_json_file, mode="w", encoding="utf-8") as slot_file_fp:
+            slot_file_fp.write(json.dumps(slot_json, ensure_ascii=True, indent=4))
+            slot_file_fp.write('\n')
+
+            # close slot file
+            #
+            # NOTE: We explicitly manage the close because we just did a write
+            #       and we want to catch the case where a write buffer may have
+            #       not been fully flushed to the file.
+            #
+            try:
+                slot_file_fp.close()
+
+            except OSError as errcode:
+                ioccc_last_errmsg = f'ERROR: {me}: failed to close: {slot_json_file} failed: <<{errcode}>>'
+                error(f'{me}: close writing for slot_json_file: {slot_json_file} '
+                      f'failed: <<{errcode}>>')
+                return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: failed to write out slot file: {slot_json_file} failed: <<{errcode}>>'
+        error(f'{me}: open for slot_json_file: {slot_json_file} failed: <<{errcode}>>')
+        return False
+
+    # firewall - slot.json must be a non-empty read/write file
+    #
+    if not Path(slot_json_file).exists() or not Path(slot_json_file).is_file() or \
+       not os.access(slot_json_file, os.R_OK) or not os.access(slot_json_file, os.W_OK) or \
+       os.path.getsize(slot_json_file) <= 0:
+        ioccc_last_errmsg = f'ERROR: {me}: slot.json file was not setup correctly: {slot_json_file}'
+        error(f'{me}: slot.json file was not setup correctly: {slot_json_file}')
+        return False
+
+    ########################
+    # slot lock file setup #
+    ########################
+
+    # determine the slot lock file path
+    #
+    slot_lock_file = return_slot_lockfile(username, slot_num)
+    if not slot_lock_file:
+        ioccc_last_errmsg = f'ERROR: {me}: return_slot_lockfile failed'
+        error(f'{me}: return_slot_lockfile failed')
+        return False
+
+    # be sure the lock file exists
+    #
+    try:
+        Path(slot_lock_file).touch(mode=0o664, exist_ok=True)
+
+    except OSError as errcode:
+        ioccc_last_errmsg = (
+            f'ERROR: {me}: failed touch (mode=0o664, exist_ok=True): '
+            f'{slot_lock_file} failed: <<{errcode}>>')
+        error(f'{me}: touch file_lock: {slot_lock_file} failed: <<{errcode}>>')
+        return None
+
+    # firewall - slot lock must be a read/write file
+    #
+    if not Path(slot_json_file).exists() or not Path(slot_json_file).is_file() or \
+       not os.access(slot_json_file, os.R_OK) or not os.access(slot_json_file, os.W_OK):
+        ioccc_last_errmsg = f'ERROR: {me}: slot lock file file was not setup correctly: {slot_json_file}'
+        error(f'{me}: slot lock file was not setup correctly: {slot_json_file}')
+        return False
+
+    ##########
+    # all OK #
+    ##########
+
+    return True
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-statements
+
+
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
@@ -2785,6 +3267,8 @@ def initialize_user_tree(username):
     Returns:
         None ==> invalid slot number or invalid user directory
         != None ==> array of slot user data as a python dictionary
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -2794,35 +3278,13 @@ def initialize_user_tree(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
-        return None
+    if not check_username_arg(username):
 
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return None
 
     # setup
@@ -2833,7 +3295,7 @@ def initialize_user_tree(username):
     user_dir = return_user_dir_path(username)
     if not user_dir:
         debug(f'{me}: return_user_dir_path failed for username: {username}')
-        return False
+        return None
     umask(0o022)
 
     # be sure the user directory exists
@@ -2888,53 +3350,17 @@ def initialize_user_tree(username):
             return None
         try:
             with open(slot_json_file, "r", encoding="utf-8") as slot_file_fp:
+
+                # obtain slot JSON file as a python dictionary
+                #
                 slots[slot_num] = json.load(slot_file_fp)
 
-                # sanity check slot no_comment
+                # validate slot JSON file as a python dictionary
                 #
-                if not 'no_comment' in slots[slot_num]:
-                    ioccc_last_errmsg = (
-                        f'ERROR: {me}: no_comment is missing from '
-                        f'username: {username} slot_num: {slot_num}')
-                    error(f'{me}: no_comment is missing from '
-                          f'username: {username} slot_num: {slot_num}')
-                    return None
-                if not isinstance(slots[slot_num]['no_comment'], str):
-                    ioccc_last_errmsg = (
-                        f'ERROR: {me}: no_comment is not a string for '
-                        f'username: {username} slot_num: {slot_num}')
-                    error(f'{me}: no_comment not a string for username: {username} slot_num: {slot_num}')
-                    return None
-                if slots[slot_num]['no_comment'] != NO_COMMENT_VALUE:
-                    ioccc_last_errmsg = (
-                        f'ERROR: {me}: invalid JSON no_comment for '
-                        f'username: {username} slot_num: {slot_num}')
-                    error(f'{me}: invalid JSON no_comment for username: {username} slot_num: {slot_num} '
-                          f'slots[slot_num]["no_comment"]: {slots[slot_num]["no_comment"]} != '
-                          f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-                    return None
-
-                # sanity check slot slot_JSON_format_version
-                #
-                if not 'slot_JSON_format_version' in slots[slot_num]:
-                    ioccc_last_errmsg = (
-                        f'ERROR: {me}: slot_JSON_format_version is missing from '
-                        f'username: {username} slot_num: {slot_num}')
-                    error(f'{me}: slot_JSON_format_version is missing from '
-                          f'username: {username} slot_num: {slot_num}')
-                    return None
-                if not isinstance(slots[slot_num]['slot_JSON_format_version'], str):
-                    ioccc_last_errmsg = (
-                        f'ERROR: {me}: slot_JSON_format_version is not a string '
-                        f'for username: {username} slot_num: {slot_num}')
-                    error(f'{me}: slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
-                    return None
-                if slots[slot_num]['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
-                    ioccc_last_errmsg = f'ERROR: {me}: invalid JSON slot_JSON_format_version'
-                    error(f'{me}: invalid slot_JSON_format_version for username: {username} '
-                          f'slot_num: {slot_num} slot_JSON_format_version: '
-                          f'<<{slots[slot_num]["slot_JSON_format_version"]}>> != '
-                          f'SLOT_VERSION_VALUE: {SLOT_VERSION_VALUE}')
+                err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
+                if err_msg:
+                    error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
+                          f'ERROR: {err_msg}')
                     unlock_slot()
                     return None
 
@@ -2952,49 +3378,12 @@ def initialize_user_tree(username):
                                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE,
                                                          'slot_num': str(slot_num) } ))
 
-            # paranoia - sanity check slot no_comment
+            # validate slot JSON file as a python dictionary
             #
-            if not 'no_comment' in slots[slot_num]:
-                ioccc_last_errmsg = (
-                    f'ERROR: {me}: no_comment is missing from '
-                    f'username: {username} slot_num: {slot_num}')
-                error(f'{me}: no_comment is missing from '
-                      f'username: {username} slot_num: {slot_num}')
-                return None
-            if not isinstance(slots[slot_num]['no_comment'], str):
-                ioccc_last_errmsg = (
-                    f'ERROR: {me}: no_comment is not a string for username: {username} '
-                    f'slot_num: {slot_num}')
-                error(f'{me}: new no_comment not a string for username: {username} slot_num: {slot_num}')
-                return None
-            if slots[slot_num]['no_comment'] != NO_COMMENT_VALUE:
-                ioccc_last_errmsg = f'ERROR: {me}: invalid JSON no_comment username: {username} slot_num: {slot_num}'
-                error(f'{me}: invalid new JSON no_comment for username: {username} slot_num: {slot_num} '
-                      f'slots[slot_num]["no_comment"]: {slots[slot_num]["no_comment"]} != '
-                      f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-                return None
-
-            # paranoia - sanity check slot slot_JSON_format_version
-            #
-            if not 'slot_JSON_format_version' in slots[slot_num]:
-                ioccc_last_errmsg = (
-                    f'ERROR: {me}: slot_JSON_format_version is missing from '
-                    f'username: {username} slot_num: {slot_num}')
-                error(f'{me}: slot_JSON_format_version is missing from '
-                      f'username: {username} slot_num: {slot_num}')
-                return None
-            if not isinstance(slots[slot_num]['slot_JSON_format_version'], str):
-                ioccc_last_errmsg = (
-                    f'ERROR: {me}: slot_JSON_format_version is not a string for '
-                    f'username: {username} slot_num: {slot_num}')
-                error(f'{me}: new slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
-                return None
-            if slots[slot_num]['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
-                ioccc_last_errmsg = f'ERROR: {me}: invalid JSON slot_JSON_format_version'
-                error(f'{me}: invalid new slot_JSON_format_version for username: {username} '
-                      f'slot_num: {slot_num} slot_JSON_format_version: '
-                      f'<<{slots[slot_num]["slot_JSON_format_version"]}>> != '
-                      f'SLOT_VERSION_VALUE: {SLOT_VERSION_VALUE}')
+            err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
+            if err_msg:
+                error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
+                      f'ERROR: {err_msg}')
                 unlock_slot()
                 return None
 
@@ -3020,6 +3409,7 @@ def initialize_user_tree(username):
                             f'failed: <<{errcode}>>')
                         error(f'{me}: close writing for slot_json_file: {slot_json_file} '
                               f'failed: <<{errcode}>>')
+                        unlock_slot()
                         return None
 
             except OSError as errcode:
@@ -3056,6 +3446,8 @@ def get_all_json_slots(username):
     Returns:
         None ==> invalid slot number or invalid user directory
         != None ==> array of slot user data as a python dictionary
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -3063,35 +3455,23 @@ def get_all_json_slots(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
     # setup
     #
     umask(0o022)
 
-    # paranoia - username arg must be a string
+    # firewall - username arg must be a string
     #
     if not isinstance(username, str):
         info(f'{me}: username arg is not a string')
-        return None
-
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        info(f'{me}: username arg not POSIX safe')
         return None
 
     # validate username
@@ -3138,6 +3518,10 @@ def update_slot(username, slot_num, slot_file):
     Returns:
         True        recorded and reported the SHA256 hash of slot_file
         False       some error was detected
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
     """
 
     # setup
@@ -3147,49 +3531,37 @@ def update_slot(username, slot_num, slot_file):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return False
 
-    # paranoia - username cannot be too short
+    # firewall - canonical firewall checks on the slot_num arg
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
+    if not check_slot_num_arg(slot_num):
 
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
         return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
-        info(f'{me}: username arg not POSIX safe')
-        return False
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        ioccc_last_errmsg = f'{me}: slot_num arg is not an int'
-        error(f'{me}: slot_num arg is not an int')
-        return None
 
     # initialize user if needed
     #
     slots = initialize_user_tree(username)
     if not slots:
         error(f'{me}: initialize_user_tree failed for username: {username}')
+        return False
+
+    # determine the slot directory
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
+        unlock_slot()
         return False
 
     # open the file
@@ -3246,14 +3618,6 @@ def update_slot(username, slot_num, slot_file):
     # then remove the old file
     #
     if slot['filename']:
-
-        # determine the slot directory
-        #
-        slot_dir = return_slot_dir_path(username, slot_num)
-        if not slot_dir:
-            error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
-            unlock_slot()
-            return False
 
         # remove previously saved file
         #
@@ -3316,6 +3680,10 @@ def update_slot_status(username, slot_num, status):
     Returns:
         True        status updated
         False       some error was detected
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
     """
 
     # setup
@@ -3323,38 +3691,23 @@ def update_slot_status(username, slot_num, status):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username arg must be a string
+    # firewall - canonical firewall checks on the username arg
     #
-    if not isinstance(username, str):
-        info(f'{me}: username arg is not a string')
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
         return False
 
-    # paranoia - username cannot be too short
+    # firewall - canonical firewall checks on the slot_num arg
     #
-    if len(username) < MIN_USERNAME_LENGTH:
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return False
+    if not check_slot_num_arg(slot_num):
 
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
         return False
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        info(f'{me}: username arg not POSIX safe')
-        return False
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        error(f'{me}: slot_num arg is not an int')
-        return None
 
     # must be a valid user
     #
@@ -3505,7 +3858,7 @@ def read_state():
         warning(f'{me}: unable to read the state file: {STATE_FILE}')
         return None, None
 
-    # sanity check state file no_comment
+    # firewall check state file no_comment
     #
     if not 'no_comment' in state:
         ioccc_last_errmsg = f'ERROR: {me}: username is missing from state file'
@@ -3522,7 +3875,7 @@ def read_state():
               f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
         return None, None
 
-    # sanity check state file state_JSON_format_version
+    # firewall check state file state_JSON_format_version
     #
     if not 'state_JSON_format_version' in state:
         ioccc_last_errmsg = f'ERROR: {me}: state_JSON_format_version is missing from state file'
@@ -3717,10 +4070,10 @@ def contest_is_open(user_dict):
     debug(f'{me}: start')
     now = datetime.now(timezone.utc)
 
-    # sanity check the user information
+    # firewall check the user information
     #
-    if not validate_user_dict(user_dict):
-        error(f'{me}: validate_user_dict failed')
+    if not validate_user_dict_nolock(user_dict):
+        error(f'{me}: validate_user_dict_nolock failed')
         return None
 
     # paranoia - must have ignore_date in user_dict
@@ -3812,23 +4165,22 @@ def setup_logger(logtype, dbglvl) -> None:
     setup_logger - Setup the logging facility.
 
     Given:
+        logtype      "stdout" ==> log to stdout,
+                     "stderr" ==> log to stderr,
+                     "syslog" ==> log via syslog,
+                     "none" ==> do not log,
+                     None ==> do not change the log state,
+                     all other values ==> do not change the log state
 
-    logtype      "stdout" ==> log to stdout,
-                 "stderr" ==> log to stderr,
-                 "syslog" ==> log via syslog,
-                 "none" ==> do not log,
-                 None ==> do not change the log state,
-                 all other values ==> do not change the log state
-
-    dbglvl      "dbg" ==> use logging.DEBUG,
-                "debug" ==> use logging.DEBUG,
-                "info" ==> use logging.INFO,
-                "warn" ==> use logging.WARNING,
-                "warning" ==> use logging.WARNING,
-                "error" ==> use logging.ERROR,
-                "crit" ==> use logging.CRITICAL,
-                "critical" ==> use logging.CRITICAL,
-                 all other values ==> use logging.INFO
+        dbglvl      "dbg" ==> use logging.DEBUG,
+                    "debug" ==> use logging.DEBUG,
+                    "info" ==> use logging.INFO,
+                    "warn" ==> use logging.WARNING,
+                    "warning" ==> use logging.WARNING,
+                    "error" ==> use logging.ERROR,
+                    "crit" ==> use logging.CRITICAL,
+                    "critical" ==> use logging.CRITICAL,
+                     all other values ==> use logging.INFO
 
     NOTE: Until setup_logger(logtype) is called, ioccc_logger default None and no logging will occur.
 
@@ -4240,121 +4592,17 @@ def sha256_file(filename):
 
 
 # pylint: disable=too-many-return-statements
-#
-def get_json_slot_nolock(username, slot_num):
-    """
-    read JSON data for a given slot
-
-    Given:
-        username    IOCCC submit server username
-        slot_num    slot number for a given username
-
-    Returns:
-        None ==> invalid slot number or invalid user directory
-        != None ==> slot information as a python dictionary
-
-    WARNING: This function does NOT lock.  The caller should lock as needed.
-             For lock protection on a slot, consider using initialize_user_tree()
-             or get_all_json_slots() which calls initialize_user_tree().
-    """
-
-    # setup
-    #
-    me = inspect.currentframe().f_code.co_name
-    debug(f'{me}: start')
-
-    # paranoia - username arg must be a string
-    #
-    if not isinstance(username, str):
-        info(f'{me}: username arg is not a string')
-        return None
-
-    # paranoia - username cannot be too short
-    #
-    if len(username) < MIN_USERNAME_LENGTH:
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username cannot be too long
-    #
-    if len(username) > MAX_USERNAME_LENGTH:
-        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
-        return None
-
-    # paranoia - username must be a POSIX safe filename string
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        info(f'{me}: username arg not POSIX safe')
-        return None
-
-    # paranoia - slot_num arg must be an integer
-    #
-    if not isinstance(slot_num, int):
-        info(f'{me}: slot_num arg is not an int')
-        return None
-
-    # validate username
-    #
-    if not lookup_username(username):
-        debug(f'{me}: lookup_username failed for username: {username}')
-        return None
-    user_dir = return_user_dir_path(username)
-    if not user_dir:
-        debug(f'{me}: return_user_dir_path failed for username: {username}')
-        return None
-
-    # process this slot for this user
-    #
-    slot = None
-
-    # setup for the user's slot
-    #
-    slot_dir = return_slot_dir_path(username, slot_num)
-    if not slot_dir:
-        error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
-        return None
-    slot_json_file = return_slot_json_filename(username, slot_num)
-    if not slot_json_file:
-        error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
-        return None
-
-    # read the JSON file for the user's slot
-    #
-    slot = read_json_file_nolock(slot_json_file)
-    if not slot:
-        error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
-              f'slot_json_file: {slot_json_file}')
-        return None
-
-    # return slot information as a python dictionary
-    #
-    return slot
-#
-# pylint: enable=too-many-return-statements
-
-# pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
 #
-def validate_slot_nolock(username, slot_num, file_required):
+def validate_slot_dict_nolock(slot, username, slot_num):
     """
-    Validate a slot.  We verify the JSON file for a slot.
-
-    If the slot has ever used (something uploaded into it in the past
-    or present), we verify that the filename matches the username
-    and slot number being validated.
-
-    If the submit file exists, we verify that its SHA256 matches
-    the hash in the JSON file for a slot.
+    Validate a slot's python dictionary.
 
     Given:
+        slot            slot JSON content as a python dictionary
         username        IOCCC submit server username
         slot_num        slot number for a given username
-        file_required   True ==> submit file must exist
-                        False ==> submit file may or may not exist
 
         NOTE: A JSON null, as Python dictionary, has the python value of None.
 
@@ -4369,7 +4617,11 @@ def validate_slot_nolock(username, slot_num, file_required):
 
     Returns:
         None ==> no errors detected with the slot
-        != None ==> slot error string
+        != None ==> slot error message string
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
 
     WARNING: This function does NOT lock.  The caller should lock as needed.
     """
@@ -4379,45 +4631,72 @@ def validate_slot_nolock(username, slot_num, file_required):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # validate args and return slot information
+    # firewall - canonical firewall checks on the username arg
     #
-    slot = get_json_slot_nolock(username, slot_num)
-    if not slot:
-        return 'ERROR: invalid username and/or slot_num args'
-    if not isinstance(file_required, bool):
-        return 'ERROR: file_required arg is not a boolean'
+    if not check_username_arg(username):
 
-    # sanity check slot no_comment
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return 'invalid username arg'
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return 'invalid slot_num arg'
+
+    # validate args
+    #
+    if not isinstance(slot, dict):
+        return 'slot arg is not a python dictonary'
+
+    # determine user directory path
+    #
+    user_dir = return_user_dir_path(username)
+    if not user_dir:
+        return 'invalid username arg'
+
+    # determine slot directory name
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        return 'invalid slot_num arg'
+
+    # firewall check slot no_comment
     #
     if not 'no_comment' in slot:
-        return 'ERROR: missing slot no_comment string'
+        return 'missing slot no_comment string'
     if not isinstance(slot['no_comment'], str):
-        return 'ERROR: slot no_comment is not a string'
+        return 'slot no_comment is not a string'
     if slot['no_comment'] != NO_COMMENT_VALUE:
-        return 'ERROR: invalid slot no_comment'
+        return 'invalid slot no_comment'
 
-    # sanity check slot_JSON_format_version
+    # firewall check slot_JSON_format_version
     #
     if not 'slot_JSON_format_version' in slot:
-        return 'ERROR: missing slot_JSON_format_version string'
+        return 'missing slot_JSON_format_version string'
     if not isinstance(slot['slot_JSON_format_version'], str):
-        return 'ERROR: slot_JSON_format_version is not a string'
+        return 'slot_JSON_format_version is not a string'
     if slot['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
-        return 'ERROR: invalid slot_JSON_format_version'
+        return 'invalid slot_JSON_format_version'
 
     # slot must have the correct slot number
     #
     if not 'slot' in slot:
-        return 'ERROR: missing slot number'
+        return 'missing slot number'
     if not isinstance(slot['slot'], int):
-        return 'ERROR: slot number is not an int'
+        return 'slot number is not an int'
     if slot['slot'] != slot_num:
-        return 'ERROR: wrong slot number'
+        return 'wrong slot number'
 
     # determine if the slot has a filename
     #
     if not 'filename' in slot:
-        return 'ERROR: missing slot filename'
+        return 'missing slot filename'
     filename_is_string = True
     if not slot['filename']:
         filename_is_string = False
@@ -4426,70 +4705,70 @@ def validate_slot_nolock(username, slot_num, file_required):
     #
     if filename_is_string:
         if not isinstance(slot['filename'], str):
-            return 'ERROR: slot filename is not a string'
+            return 'slot filename is not a string'
         if not slot['filename'].startswith(f'submit.{username}-{slot_num}.'):
-            return 'ERROR: wrong slot filename beginning'
-        if not slot['filename'].endsswith('.txz'):
-            return 'ERROR: wrong slot filename extension'
+            return 'wrong slot filename beginning'
+        if not slot['filename'].endswith('.txz'):
+            return 'wrong slot filename extension'
         if not re.match(f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$', slot['filename']):
-            return 'ERROR: invalid slot filename timestamp'
+            return 'invalid slot filename timestamp'
 
     # if we have a filename, then slot must have a valid slot length
     # otherwise we must not have a slot length
     #
     if not 'length' in slot:
-        return 'ERROR: missing slot length int'
+        return 'missing slot length int'
     if filename_is_string:
         if not isinstance(slot['length'], int):
-            return 'ERROR: slot length is not an int'
+            return 'slot length is not an int'
         if slot['length'] <= 0:
-            return 'ERROR: slot length not > 0'
+            return 'slot length not > 0'
     elif slot['length']:
-        return 'ERROR: have length w/o filename'
+        return 'have length w/o filename'
 
     # if we have a filename, then slot must have a valid slot date
     # otherwise we must not have a slot date
     #
     if not 'date' in slot:
-        return 'ERROR: missing slot date string'
+        return 'missing slot date string'
     if filename_is_string:
         if not isinstance(slot['date'], str):
-            return 'ERROR: slot date is not a string'
+            return 'slot date is not a string'
         try:
             # pylint: disable-next=unused-variable
             dt = datetime.strptime(slot['date'], DATETIME_USEC_FORMAT)
         # pylint: disable-next=unused-variable
         except ValueError as errcode:
-            return 'ERROR: slot date format is invalid'
+            return 'slot date format is invalid'
     elif slot['date']:
-        return 'ERROR: have date w/o filename'
+        return 'have date w/o filename'
 
     # if we have a filename, then slot must have a valid SHA256 hash
     # otherwise we must not have a slot SHA256 hash
     #
     if not 'SHA256' in slot:
-        return 'ERROR: missing slot SHA256 string'
+        return 'missing slot SHA256 string'
     if filename_is_string:
         if not isinstance(slot['SHA256'], str):
-            return 'ERROR: slot SHA256 is not a string'
+            return 'slot SHA256 is not a string'
         if len(slot['SHA256']) != SHA256_HEXLEN:
-            return 'ERROR: slot SHA256 length is wrong'
+            return 'slot SHA256 length is wrong'
     elif slot['SHA256']:
-        return 'ERROR: have SHA256 w/o filename'
+        return 'have SHA256 w/o filename'
 
     # slot must have a collected boolean
     #
     if not 'collected' in slot:
-        return 'ERROR: missing slot collected boolean'
+        return 'missing slot collected boolean'
     if not isinstance(slot['collected'], bool):
-        return 'ERROR: slot collected is not a boolean'
+        return 'slot collected is not a boolean'
 
     # slot must have a status string
     #
     if not 'status' in slot:
-        return 'ERROR: missing slot status string'
+        return 'missing slot status string'
     if not isinstance(slot['status'], str):
-        return 'ERROR: slot status is not a string'
+        return 'slot status is not a string'
 
     # case: filename is a string
     #
@@ -4497,53 +4776,21 @@ def validate_slot_nolock(username, slot_num, file_required):
 
         # determine full path of submit file
         #
-        slot_dir = return_slot_dir_path(username, slot_num)
-        if not slot_dir:
-            return 'ERROR: return_slot_dir_path failed'
         submit_path = f'{slot_dir}/{slot["filename"]}'
 
         # case: submit file exists
         #
-        if submit_path.exists():
+        if Path(submit_path).exists():
 
             # verify the submit file size
             #
             if os.path.getsize(submit_path) != slot['length']:
-                return 'ERROR: submit file length is wrong'
-
-            # verify the SHA256 hash of the submit file
-            #
-            sha256 = sha256_file(submit_path)
-            if not sha256:
-                return 'ERROR: submit file SHA256 hash failed'
-
-            # verify the contest of the submit file
-            #
-            if sha256 != slot['SHA256']:
-                return 'ERROR: submit file corrupted contents'
-
-            # verify that the submit file has not been collected
-            #
-            if slot['collected']:
-                return 'ERROR: submit file collected but still exists'
-
-        # case: submit file does not exist but is required to do so
-        #
-        elif file_required:
-
-            # if file is required, verify that submit file exists
-            #
-            return 'ERROR: submit file is missing'
-
-    # case: filename is not a string, but a submit file is required
-    #
-    elif file_required:
-        return 'ERROR: submit file is expected to exist but does not'
+                return 'submit file length is wrong'
 
     # case: filename is not a string, submit file is not required
     #
     elif slot['collected']:
-        return 'ERROR: submit file was collected w/o filename'
+        return 'submit file was collected w/o filename'
 
     # no slot errors found
     #
@@ -4553,3 +4800,260 @@ def validate_slot_nolock(username, slot_num, file_required):
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def get_slot_dict_nolock(username, slot_num):
+    """
+    read JSON data for a given slot
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        None ==> invalid slot number or invalid user directory
+        != None ==> slot information as a python dictionary
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return None
+
+    # read the JSON file for the user's slot
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
+        return None
+    slot = read_json_file_nolock(slot_json_file)
+    if not slot:
+        error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
+              f'slot_json_file: {slot_json_file}')
+        return None
+
+    # firewall - validate the slot python dictionary
+    #
+    err_msg = validate_slot_dict_nolock(slot, username, slot_num)
+    if err_msg:
+        error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
+              f'ERROR: {err_msg}')
+        return None
+
+    # return slot information as a python dictionary
+    #
+    return slot
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
+#
+def validate_slot_nolock(username, slot_num, submit_required, check_hash):
+    """
+    Validate a slot.  After validating the function arguments,
+    we verify that the username is a valid user in the password database.
+
+    NOTE: This function does NOT attempt to determine if the username
+          is allowed to login or perform certain actions: only that
+          the username is a known username in the password database.
+
+    After determining the path to the slot directory, and we obtain the
+    slot python dictionary by reading the slot's JSON file.
+
+    NOTE: No locks are obtained while reading the slot's JSON file.
+          It is up to the caller to obtain any necessary locks.
+
+    We then validate the slot python dictionary, checking the dictionary
+    for the required values and their types.
+
+    NOTE: This slot python dictionary will include checking if a referenced
+          submit file, if it exists, has the proper length.
+
+    If the slot python dictionary refers to a submit file:
+
+        If the submit file exists, and we a checking the SHA256 hash, then
+        we verify the contents of the submit file by checking the SHA256 hash.
+
+        If the submit file not exist, we verify that a submit file is not required.
+
+        If the submit file not exist, we verify it was not previously collected.
+
+    If the slot python dictionary does not refer to a submit file:
+
+        We verify that a submit file is not required.
+
+        We verify that a previous submit file was not collected from this slot.
+
+    Given:
+        username        IOCCC submit server username
+        slot_num        slot number for a given username
+        submit_required   True ==> submit file must exist
+                          False ==> submit file may or may not exist
+        check_hash      True ==> check the SHA256 hash of the submit file, if it exists
+                        False ==> do not check the SHA256 hash
+
+    Returns:
+        None ==> no errors detected with the slot
+        != None ==> slot error string
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return 'invalid username arg'
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return 'invalid slot_num arg'
+
+    # validate boolean args
+    #
+    if not isinstance(submit_required, bool):
+        return 'submit_required arg is not a boolean'
+    if not isinstance(check_hash, bool):
+        return 'check_hash arg is not a boolean'
+
+    # validate username
+    #
+    if not lookup_username(username):
+        return 'lookup_username failed'
+
+    # determine slot directory name
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        return 'return_slot_dir_path failed'
+
+    # obtain the JSON slot file as a python dictionary
+    #
+    slot = get_slot_dict_nolock(username, slot_num)
+    if not slot:
+        return 'invalid slot number or invalid user directory'
+
+    # validate JSON slot contents
+    #
+    slot_error = validate_slot_dict_nolock(slot, username, slot_num)
+    if not slot_error:
+        return slot_error
+
+    # determine if the slot has a filename
+    #
+    if not 'filename' in slot:
+        return 'missing slot filename'
+    filename_is_string = True
+    if not slot['filename']:
+        filename_is_string = False
+
+    # case: filename is a string
+    #
+    if filename_is_string:
+
+        # determine full path of submit file
+        #
+        submit_path = f'{slot_dir}/{slot["filename"]}'
+
+        # case: submit file exists
+        #
+        if Path(submit_path).exists():
+
+            # if check_hash, also check the SHA256 hash
+            #
+            if check_hash:
+
+                # verify the SHA256 hash of the submit file
+                #
+                sha256 = sha256_file(submit_path)
+                if not sha256:
+                    return 'submit file SHA256 hash failed'
+
+                # verify the content of the submit file
+                #
+                if sha256 != slot['SHA256']:
+                    return 'submit file corrupted contents'
+
+            # verify that the submit file has not been collected
+            #
+            if slot['collected']:
+                return 'submit file collected but still exists'
+
+        # case: submit file does not exist but is required to do so
+        #
+        elif submit_required:
+
+            # if file is required, verify that submit file exists
+            #
+            return 'submit file is missing'
+
+        # case: submit file does not exist and was never collected
+        #
+        elif not slot['collected']:
+
+            # submit file is gone but was never collected
+            #
+            return 'submit file is gone but not collected'
+
+    # case: filename is not a string, but a submit file is required
+    #
+    elif submit_required:
+        return 'submit file is expected to exist but does not'
+
+    # case: filename is not a string, submit file is not required
+    #
+    elif slot['collected']:
+        return 'submit file was collected w/o filename'
+
+    # no slot errors found
+    #
+    debug(f'{me}: no slot errors found')
+    return None
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches

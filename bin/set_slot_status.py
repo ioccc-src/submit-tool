@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # set_slot_status.py - modify the status of a IOCCC submit server user's slot
 
@@ -33,7 +32,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.0 2025-01-26"
+VERSION = "2.3.1 2025-01-31"
 
 
 def main():

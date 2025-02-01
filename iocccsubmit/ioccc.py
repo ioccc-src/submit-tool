@@ -48,14 +48,10 @@ from flask_limiter.util import get_remote_address
 # pylint: disable-next=unused-import
 from iocccsubmit.ioccc_common import \
     APPDIR, \
-    IP_ADDRESS, \
     MAX_PASSWORD_LENGTH, \
     MAX_TARBALL_LEN, \
     MIN_PASSWORD_LENGTH, \
-    TCP_PORT, \
-    change_startup_appdir, \
     contest_is_open, \
-    dbg, \
     debug, \
     error, \
     get_all_json_slots, \
@@ -69,12 +65,10 @@ from iocccsubmit.ioccc_common import \
     return_secret, \
     return_slot_dir_path, \
     return_user_dir_path, \
-    setup_logger, \
     update_password, \
     update_slot, \
     user_allowed_to_login, \
     verify_hashed_password, \
-    warn, \
     warning
 
 
@@ -82,7 +76,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.5.0 2025-01-26"
+VERSION_IOCCC = "2.5.1 2025-01-31"
 
 
 # Configure the application
