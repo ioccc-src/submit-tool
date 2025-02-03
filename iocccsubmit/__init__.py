@@ -40,13 +40,14 @@ from .ioccc_common import \
         return_slot_json_filename, \
         return_user_dir_path, \
         setup_logger, \
+        stage_submit, \
         update_password, \
         update_slot, \
         update_slot_status, \
+        update_slot_status_if_submit, \
         update_state, \
         update_username, \
         user_allowed_to_login, \
-        verify_hashed_password, \
         warning
 
 

@@ -49,6 +49,7 @@ from flask import request
 #    https://pypi.org/project/filelock/
 #    https://py-filelock.readthedocs.io/en/latest/api.html
 #    https://snyk.io/advisor/python/filelock/example
+#    https://witve.com/codes/comprehensive-guide-to-filelock-mastering-apis-with-examples/
 #
 from filelock import Timeout, FileLock
 
@@ -66,7 +67,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.4.1 2025-01-31"
+VERSION_IOCCC_COMMON = "2.5 2025-02-02"
 
 # force password change grace time
 #
@@ -160,7 +161,7 @@ MIN_SECRET_LEN = 15
 #
 POSIX_SAFE_RE = "^[0-9A-Za-z][0-9A-Za-z._+-]*$"
 
-# slot related JSON values
+# slot dictionary for slot JSON file
 #
 NO_COMMENT_VALUE = "mandatory comment: because comments were removed from the original JSON spec"
 SLOT_VERSION_VALUE = "1.2 2025-01-26"
@@ -288,11 +289,13 @@ MAX_SUBMIT_SLOT = 9
 #
 MAX_TARBALL_LEN = 3999971
 
-# Lock timeout in seconds
+# where to stage submit files exporting (remote collection)
 #
-LOCK_TIMEOUT = 13
+STAGED_DIR = f'{APPDIR}/staged'
 
 # lock state - lock file descriptor or none
+#
+# NOTE: See the URLs listed under "For user locking" of the "from from filelock import" above.
 #
 # When ioccc_last_lock_fd is not none, flock is holding a lock on the file ioccc_last_lock_path.
 # When ioccc_last_lock_fd is none, no flock is currently being held.
@@ -317,6 +320,11 @@ ioccc_last_lock_path = None       # path of the file that is locked, or None
 ioccc_last_errmsg = ""            # recent error message or empty string
 # pylint: disable-next=global-statement,invalid-name
 ioccc_pw_words = []
+
+# Lock parameters
+#
+LOCK_TIMEOUT = 13                           # lock timeout in seconds
+LOCK_INTERVAL = random.uniform(0.8, 1.2)    # poll for lock at interval 0.8 <= seconds <= 1.2
 
 # IOCCC logger - how we log events
 #
@@ -450,6 +458,7 @@ def change_startup_appdir(topdir):
     global INIT_STATE_FILE
     global STATE_FILE_LOCK
     global PW_WORDS
+    global STAGED_DIR
     # pylint: enable=global-statement
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
@@ -484,11 +493,13 @@ def change_startup_appdir(topdir):
     INIT_STATE_FILE = f'{topdir}/{INIT_STATE_FILE_RELATIVE_PATH}'
     STATE_FILE_LOCK = f'{topdir}/{STATE_FILE_LOCK_RELATIVE_PATH}'
     PW_WORDS = f'{topdir}/{PW_WORDS_RELATIVE_PATH}'
+    STAGED_DIR = f'{APPDIR}/staged'
     #
     # pylint: enable=redefined-outer-name
 
     # assume all is well
     #
+    debug(f'{me}: end')
     return True
 
 
@@ -516,7 +527,8 @@ def check_username_arg(username):
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
-    debug(f'{me}: start')
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: start')
 
     # firewall - username arg must be a string
     #
@@ -605,6 +617,8 @@ def check_username_arg(username):
 
     # username passes all of the canonical firewall checks
     #
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: end: valid username: {username}')
     return True
 
 
@@ -616,7 +630,7 @@ def check_slot_num_arg(slot_num):
         1) 0 <= slot_num <= MAX_SUBMIT_SLOT
 
     Given:
-        slot_num        slot number
+        slot_num    slot number
 
     Returns:
         True ==> slot_num passes all of the canonical firewall checks
@@ -630,7 +644,8 @@ def check_slot_num_arg(slot_num):
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
-    debug(f'{me}: start')
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: start')
 
     # firewall - slot_num arg must be an integer
     #
@@ -648,6 +663,8 @@ def check_slot_num_arg(slot_num):
 
     # username passes all of the canonical firewall checks
     #
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: end: valid slot_num: {slot_num}')
     return True
 
 
@@ -688,6 +705,7 @@ def return_user_dir_path(username):
     # return user directory path
     #
     user_dir = f'{USERS_DIR}/{username}'
+    debug(f'{me}: end: returning user_dir: {user_dir}')
     return user_dir
 
 
@@ -747,6 +765,7 @@ def return_slot_dir_path(username, slot_num):
     # return slot directory path under a given user directory
     #
     slot_dir = f'{user_dir}/{slot_num}'
+    debug(f'{me}: end: returning slot_dir: {slot_dir}')
     return slot_dir
 #
 # pylint: enable=too-many-return-statements
@@ -803,7 +822,7 @@ def return_slot_json_filename(username, slot_num):
         error(f'{me}: return_user_dir_path failed for username: {username}')
         return None
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
@@ -813,6 +832,7 @@ def return_slot_json_filename(username, slot_num):
     # determine the JSON filename for this given slot
     #
     slot_json_file = f'{slot_dir}/slot.json'
+    debug(f'{me}: end: returning slot_json_file: {slot_json_file}')
     return slot_json_file
 #
 # pylint: enable=too-many-return-statements
@@ -822,7 +842,7 @@ def return_slot_json_filename(username, slot_num):
 #
 def return_slot_lockfile(username, slot_num):
     """
-    Return the JSON slot lockfile.
+    Return the JSON slot lock file.
 
     Given:
         username    IOCCC submit server username
@@ -830,7 +850,7 @@ def return_slot_lockfile(username, slot_num):
 
     Returns:
         None ==> invalid slot number or invalid user directory
-        != None ==> path of the JSON lockfile for this user's slot (may not yet exist)
+        != None ==> path of the JSON lock file for this user's slot (may not yet exist)
 
     NOTE: This function performs various canonical firewall checks on the username arg.
 
@@ -869,17 +889,175 @@ def return_slot_lockfile(username, slot_num):
         error(f'{me}: return_user_dir_path failed for username: {username}')
         return None
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
         error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
         return None
 
-    # determine the JSON filename for this given slot
+    # determine the lock file for this given slot
     #
     slot_lockfile = f'{slot_dir}/lock'
+    debug(f'{me}: end: returning slot_lockfile: {slot_lockfile}')
     return slot_lockfile
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def return_submit_filename(slot_dict, username, slot_num):
+    """
+    Return the filename of the submit file as found in the JSON slot file.
+
+    Given:
+        slot_dict   slot JSON content as a python dictionary
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        != None ==> filename of the submit file in a slot
+        None ==> no such submit file, or
+                 bad args, or
+                 no filename in slot JSON file
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
+    NOTE: The slot is not validated by this function.  The caller should validate the slot as needed.
+
+    It is up the caller to create, if needed, the JSON lock file.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return None
+
+    # validate args
+    #
+    if not isinstance(slot_dict, dict):
+        return 'slot_dict arg is not a python dictionary'
+
+    # obtain path of the submit filename
+    #
+    if not 'filename' in slot_dict:
+        error(f'{me}: submit filename missing from slot JSON file for username: {username} slot_num: {slot_num}')
+        return None
+    if not slot_dict['filename']:
+        # no submit file has ever been uploaded to this slot
+        return None
+    if not isinstance(slot_dict['filename'], str):
+        error(f'{me}: submit filename is not a string for username: {username} slot_num: {slot_num}')
+        return None
+
+    # return submit filename
+    #
+    submit_file = slot_dict["filename"]
+    debug(f'{me}: end: returning submit_file: {submit_file}')
+    return submit_file
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def return_submit_path(slot_dict, username, slot_num):
+    """
+    Return the path of the submit file.
+
+    Given:
+        slot_dict   slot JSON content as a python dictionary
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+
+    Returns:
+        != None ==> path of the submit file in a slot
+        None ==> no such submit file, or
+                 bad args, or
+                 no filename in slot JSON file
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
+    NOTE: The slot is not validated by this function.  The caller should validate the slot as needed.
+
+    It is up the caller to create, if needed, the JSON lock file.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return None
+
+    # validate args
+    #
+    if not isinstance(slot_dict, dict):
+        return 'slot_dict arg is not a python dictionary'
+
+    # determine JSON slot directory path
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        error(f'{me}: return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
+        return None
+
+    # obtain path of the submit filename
+    #
+    if not 'filename' in slot_dict:
+        error(f'{me}: submit filename missing from slot JSON file for username: {username} slot_num: {slot_num}')
+        return None
+    if not slot_dict['filename']:
+        # no submit file has ever been uploaded to this slot
+        return None
+    if not isinstance(slot_dict['filename'], str):
+        error(f'{me}: submit filename is not a string for username: {username} slot_num: {slot_num}')
+        return None
+
+    # return submit filename
+    #
+    submit_path = f'{slot_dir}/{slot_dict["filename"]}'
+    debug(f'{me}: end: returning submit_path: {submit_path}')
+    return submit_path
 #
 # pylint: enable=too-many-return-statements
 
@@ -916,7 +1094,14 @@ def ioccc_file_lock(file_lock):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # be sure the lock file exists
+    # firewall - check arg
+    #
+    if not isinstance(file_lock, str):
+        ioccc_last_errmsg = f'ERROR: {me}: file_lock arg not a string'
+        error(f'{me}: file_lock arg not a string')
+        return None
+
+    # firewall - be sure the lock file exists
     #
     try:
         Path(file_lock).touch(mode=0o664, exist_ok=True)
@@ -928,77 +1113,87 @@ def ioccc_file_lock(file_lock):
         error(f'{me}: touch file_lock: {file_lock} failed: <<{errcode}>>')
         return None
 
+    # firewall - must be writable
+    #
+    if not os.access(file_lock, os.W_OK):
+        ioccc_last_errmsg = f'ERROR: {me}: file lock not writable: {file_lock}'
+        error(f'{me}: file lock not writable: {file_lock}')
+        return None
+
+    # firewall - deal with a case where we have a lock fd without a lock path
+    #
+    if ioccc_last_lock_fd and not ioccc_last_lock_path:
+        ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
+        warning(f'{me}: file lock w/o lock path, forcing path to be: {ioccc_last_lock_path}')
+        # fall thru
+
     # Force any stale lock to become unlocked
     #
     if ioccc_last_lock_fd:
 
-        # Carp
+        # case: previous lock is still locked
         #
-        if not ioccc_last_lock_path:
-            ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
-            # fall thru
-        ioccc_last_errmsg = f'Warning: {me}: forcing stale unlock: {ioccc_last_lock_path}'
-        warning(f'{me}: forcing stale unlock: ioccc_last_lock_path: {ioccc_last_lock_path}')
+        if ioccc_last_lock_fd.is_locked:
 
-        # Force previous stale lock to become unlocked
-        #
-        try:
-            ioccc_last_lock_fd.release(force=True)
-
-        except OSError as errcode:
-            # We give up as we cannot force the unlock
+            # force unlock
             #
-            ioccc_last_errmsg = (
-                f'Warning: {me}: failed to force stale '
-                f'unlock: {ioccc_last_lock_path} failed: <<{errcode}>>')
-            warning(f'{me}: stale unlock ioccc_last_lock_path failed: <<{errcode}>>')
-            # fall thru
+            ioccc_last_errmsg = f'Warning: {me}: forcing unlock of old lock for: {ioccc_last_lock_path}'
+            warning(f'{me}: forcing unlock of old lock for: {ioccc_last_lock_path}')
+            ioccc_last_lock_fd.release()
 
-        # clear the past lock
+        # case: previous lock is unlocked
+        #
+        else:
+            ioccc_last_errmsg = f'Warning: {me}: old lock state is unlocked: {ioccc_last_lock_path}'
+            warning(f'{me}: old lock state is unlocked: {ioccc_last_lock_path}')
+
+        # clear the lock record
         #
         ioccc_last_lock_fd = None
         ioccc_last_lock_path = None
-        # fall thru
 
-    # Lock the file
+    # prepare the lock
+    #
+    ioccc_last_lock_fd = FileLock(file_lock, timeout=LOCK_TIMEOUT, blocking=True, is_singleton=True)
+    ioccc_last_lock_path = file_lock
+
+    # attempt to obtain the lock
     #
     try:
-        with FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True) as lock_fd:
-
-            # note our new lock
-            #
-            ioccc_last_lock_fd = lock_fd
-            ioccc_last_lock_path = file_lock
+        ioccc_last_lock_fd.acquire(poll_interval=LOCK_INTERVAL)
 
     except Timeout:
 
         # too too long to get the lock
         #
-        ioccc_last_errmsg = f'Warning: {me}: timeout on lock for: {ioccc_last_lock_path}'
+        ioccc_last_errmsg = f'Warning: {me}: lock timeout after {LOCK_TIMEOUT} secs for: {ioccc_last_lock_path}'
         warning(f'{me}: lock timeout file_lock: {file_lock}')
         return None
 
-    except OSError as errcode:
-        ioccc_last_errmsg = f'ERROR: {me}: failed to FileLock: {file_lock} failed: <<{errcode}>>'
-        error(f'{me}: lock of file_lock {file_lock} failed: <<{errcode}>>')
+    # firewall - verify the lock
+    #
+    if not ioccc_last_lock_fd.is_locked:
+        ioccc_last_errmsg = f'Warning: {me}: failed to keep lock for: {ioccc_last_lock_path}'
+        warning(f'{me}: failed to keep lock for: {ioccc_last_lock_path}')
+        ioccc_last_lock_fd = None
+        ioccc_last_lock_path = None
         return None
+
+    # record lock path
+    #
+    ioccc_last_lock_path = file_lock
 
     # return the lock success
     #
-    debug(f'{me}: locked file_lock: {file_lock}')
-    return lock_fd
+    debug(f'{me}: end: locked: {ioccc_last_lock_path}')
+    return ioccc_last_lock_fd
 
 
-def ioccc_file_unlock():
+def ioccc_file_unlock() -> None:
     """
     unlock a previously locked file
 
     A file locked via ioccc_file_lock(file_lock) is unlocked using the last registered lock.
-
-    Returns:
-        True     previously locked file has been unlocked
-        False    failed to unlock the previously locked file, or
-                 no file was previously locked
     """
 
     # setup
@@ -1016,41 +1211,35 @@ def ioccc_file_unlock():
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # case: no file was previously unlocked
+    # firewall - deal no lock path
     #
-    sucess = False
     if not ioccc_last_lock_path:
         ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
+        warning(f'{me}: no lock path, forcing lock path to be: {ioccc_last_lock_path}')
+        # fall thru
+
+    # case: no lock, nothing to do
+    #
     if not ioccc_last_lock_fd:
-        ioccc_last_errmsg = f'Warning: {me}: no lock for: {ioccc_last_lock_path}'
-        warning(f'{me}: no lock for ioccc_last_lock_path: {ioccc_last_lock_path}')
+        ioccc_last_errmsg = f'Notice: no lock to unlock for: {ioccc_last_lock_path}'
+        info(f'{me}: no lock to unlock for: {ioccc_last_lock_path}')
+        ioccc_last_lock_path = None
+        return
 
-    # Unlock the file
+    # release the lock
     #
-    else:
-        try:
-            ioccc_last_lock_fd.release(force=True)
-            sucess = True
-
-        except OSError as errcode:
-            # We give up as we cannot force the unlock
-            #
-            ioccc_last_errmsg = f'Warning: {me}: failed to unlock: {ioccc_last_lock_path} failed: <<{errcode}>>'
-            warning(f'{me}: failed to unlock ioccc_last_lock_path: {ioccc_last_lock_path}')
-            # fall thru
-
-    # Clear any previous lock
-    #
+    ioccc_last_lock_fd.release()
+    saved_ioccc_last_lock_path = ioccc_last_lock_path
     ioccc_last_lock_fd = None
     ioccc_last_lock_path = None
 
     # Return the unlock success or failure
     #
-    debug(f'{me}: unlocked ioccc_last_lock_path: {ioccc_last_lock_path}')
-    return sucess
+    debug(f'{me}: end: unlocked: {saved_ioccc_last_lock_path}')
+    return
 
 
-def load_pwfile():
+def load_pwfile_nolock():
     """
     Return the JSON contents of the password file as a python dictionary
 
@@ -1069,13 +1258,6 @@ def load_pwfile():
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # Lock the password file
-    #
-    pw_lock_fd = ioccc_file_lock(PW_LOCK)
-    if not pw_lock_fd:
-        error(f'{me}: failed to lock file for PW_LOCK: {PW_LOCK}')
-        return None
-
     # If there is no password file, or if the password file is empty, copy it from the initial password file
     #
     if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
@@ -1084,7 +1266,6 @@ def load_pwfile():
         except OSError as errcode:
             ioccc_last_errmsg = f'ERROR: {me}: #0: cannot cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{errcode}>>'
             error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{errcode}>>')
-            ioccc_file_unlock()
             return None
 
     # load the password file and unlock
@@ -1104,7 +1285,6 @@ def load_pwfile():
                 #
                 ioccc_last_errmsg = f'ERROR: {me}: failed to read password file: {PW_FILE} failed: <<{errcode}>>'
                 error(f'{me}: read {PW_FILE} failed: <<{errcode}>>')
-                ioccc_file_unlock()
                 return None
 
     except OSError as errcode:
@@ -1113,13 +1293,11 @@ def load_pwfile():
 
         # we have no JSON to return
         #
-        ioccc_file_unlock()
         return None
 
     # return the password JSON data as a python dictionary
     #
-    ioccc_file_unlock()
-    debug(f'{me}: loaded password file: {PW_FILE}')
+    debug(f'{me}: end: loaded password file: {PW_FILE}')
     return pw_file_json
 
 
@@ -1186,7 +1364,7 @@ def replace_pwfile(pw_file_json):
     # password file updated
     #
     ioccc_file_unlock()
-    debug(f'{me}: updated password file: {PW_FILE}')
+    debug(f'{me}: end: updated password file: {PW_FILE}')
     return True
 
 
@@ -1334,6 +1512,7 @@ def validate_user_dict_nolock(user_dict):
 
     # user information passed the firewall checks
     #
+    debug(f'{me}: end: passed all firewall checks for username: {username}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -1377,9 +1556,9 @@ def lookup_username(username):
 
     # load JSON from the password file as a python dictionary
     #
-    pw_file_json = load_pwfile()
+    pw_file_json = load_pwfile_nolock()
     if not pw_file_json:
-        error(f'{me}: load_pwfile failed for username: {username}')
+        error(f'{me}: load_pwfile_nolock failed for username: {username}')
         return None
 
     # search the password file for the user
@@ -1402,6 +1581,7 @@ def lookup_username(username):
 
     # return user information for user in the form of a python dictionary
     #
+    debug(f'{me}: end: returning python dictionary for username: {username}')
     return user_dict
 #
 # pylint: enable=too-many-return-statements
@@ -1628,7 +1808,7 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
 
     # password updated with new username information
     #
-    debug(f'{me}: password file updated for username: {username}')
+    debug(f'{me}: end: password file updated for username: {username}')
     ioccc_file_unlock()
     return True
 #
@@ -1771,6 +1951,7 @@ def delete_username(username):
 
     # return the user that was deleted, if they were found
     #
+    debug(f'{me}: end: deleted username: {username}')
     ioccc_file_unlock()
     return deleted_user
 #
@@ -1917,6 +2098,7 @@ def generate_password():
     password = (
         f'{secrets.choice(ioccc_pw_words)}{random.choice(punct)}{secrets.choice(ioccc_pw_words)}'
         f'{random.choice(punct)}{randrange(1000)}.{randrange(1000)}')
+    debug(f'{me}: end: returning generated password: {password}')
     return password
 
 
@@ -1946,7 +2128,9 @@ def hash_password(password):
         error(f'{me}: password arg is not a string')
         return None
 
-    return generate_password_hash(password)
+    hashed_password = generate_password_hash(password)
+    debug(f'{me}: end: returning hashed password: {hashed_password}')
+    return hashed_password
 
 
 def verify_hashed_password(password, pwhash):
@@ -1986,7 +2170,9 @@ def verify_hashed_password(password, pwhash):
 
     # return if the pwhash matches the password
     #
-    return check_password_hash(pwhash, password)
+    match = check_password_hash(pwhash, password)
+    debug(f'{me}: end: check_password_hash: {match}')
+    return match
 
 
 # pylint: disable=too-many-return-statements
@@ -2061,7 +2247,9 @@ def verify_user_password(username, password):
 
     # return the result of the hashed password check for this user
     #
-    return verify_hashed_password(password, user_dict['pwhash'])
+    verify = verify_hashed_password(password, user_dict['pwhash'])
+    debug(f'{me}: end: verify_hashed_password: {verify}')
+    return verify
 #
 # pylint: enable=too-many-return-statements
 
@@ -2205,7 +2393,7 @@ def is_pw_pwned(password):
 
     # We presume that the password is not Pwned
     #
-    debug(f'{me}: password appears to not have (yet) been Pwned')
+    debug(f'{me}: end: password appears to not have (yet) been Pwned')
     return False
 #
 # pylint: enable=too-many-return-statements
@@ -2267,7 +2455,7 @@ def is_proper_password(password):
 
     # until we have password rules, allow any string
     #
-    debug(f'{me}: password is allowed')
+    debug(f'{me}: end: password is allowed')
     return True
 
 
@@ -2398,7 +2586,7 @@ def update_password(username, old_password, new_password):
 
     # password successfully updated
     #
-    info(f'{me}: updated password for username: {username}')
+    debug(f'{me}: end: updated password for username: {username}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -2497,7 +2685,7 @@ def user_allowed_to_login(user_dict):
 
     # user login attempt is allowed
     #
-    debug(f'{me}: login allowed for username: {username}')
+    debug(f'{me}: end: login allowed for username: {username}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -2541,7 +2729,9 @@ def must_change_password(user_dict):
         error(f'{me}: force_pw_change is not a boolean')
         return False
 
-    return user_dict['force_pw_change']
+    force_pw_change = user_dict['force_pw_change']
+    debug(f'{me}: end: force_pw_change: {force_pw_change}')
+    return force_pw_change
 
 
 def username_login_allowed(username):
@@ -2598,7 +2788,9 @@ def username_login_allowed(username):
 
     # determine, based on the user information, if the user is allowed to login
     #
-    return user_allowed_to_login(user_dict)
+    allowed = user_allowed_to_login(user_dict)
+    debug(f'{me}: end: user_allowed_to_login: {allowed}')
+    return allowed
 
 
 # pylint: disable=too-many-return-statements
@@ -2653,13 +2845,6 @@ def lock_slot(username, slot_num):
         #
         return None
 
-    # validate username and slot
-    #
-    if not lookup_username(username):
-        ioccc_last_errmsg = f'Warning: {me}: lookup_username failed for username: {username}'
-        warning(f'{me}: lookup_username failed for username: {username}')
-        return None
-
     # determine user directory path
     #
     user_dir = return_user_dir_path(username)
@@ -2667,7 +2852,7 @@ def lock_slot(username, slot_num):
         error(f'{me}: return_user_dir_path failed for username: {username}')
         return None
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
@@ -2711,13 +2896,13 @@ def lock_slot(username, slot_num):
 
     # return the slot lock success or None
     #
-    debug(f'{me}: slot locked for username: {username} slot_num: {slot_num}')
+    debug(f'{me}: end: slot locked for username: {username} slot_num: {slot_num}')
     return slot_lock_fd
 #
 # pylint: enable=too-many-return-statements
 
 
-def unlock_slot():
+def unlock_slot() -> None:
     """
     unlock a previously locked slot
 
@@ -2736,7 +2921,8 @@ def unlock_slot():
 
     # clear any previous lock
     #
-    return ioccc_file_unlock()
+    ioccc_file_unlock()
+    debug(f'{me}: end')
 
 
 # pylint: disable=too-many-return-statements
@@ -2957,6 +3143,7 @@ def is_slot_setup(username, slot_num):
 
     # all is OK if we reach here
     #
+    debug(f'{me}: end: is_slot_setup is OK')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -2964,7 +3151,7 @@ def is_slot_setup(username, slot_num):
 # pylint: enable=too-many-statements
 
 
-def write_slot_json(slot_json_file, slot_json):
+def write_slot_json_nolock(slot_json_file, slot_json):
     """
     Write out an index of slots for the user.
 
@@ -2975,6 +3162,8 @@ def write_slot_json(slot_json_file, slot_json):
     Returns:
         True    slot JSON file updated
         False   failed to update slot JSON file
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
     """
 
     # setup
@@ -3011,6 +3200,7 @@ def write_slot_json(slot_json_file, slot_json):
         error(f'{me}: open for slot_json_file: {slot_json_file} failed: <<{errcode}>>')
         return False
 
+    debug(f'{me}: end: updated slot_json_file: {slot_json_file}')
     return True
 
 
@@ -3105,7 +3295,7 @@ def initialize_slot_nolock(username, slot_num):
     # slot directory setup #
     ########################
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
@@ -3238,6 +3428,7 @@ def initialize_slot_nolock(username, slot_num):
     # all OK #
     ##########
 
+    debug(f'{me}: end: initialized username: {username} slot_num: {slot_num}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -3359,8 +3550,7 @@ def initialize_user_tree(username):
                 #
                 err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
                 if err_msg:
-                    error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
-                          f'ERROR: {err_msg}')
+                    error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num}')
                     unlock_slot()
                     return None
 
@@ -3382,8 +3572,7 @@ def initialize_user_tree(username):
             #
             err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
             if err_msg:
-                error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
-                      f'ERROR: {err_msg}')
+                error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num}')
                 unlock_slot()
                 return None
 
@@ -3426,7 +3615,7 @@ def initialize_user_tree(username):
 
     # Return success
     #
-    debug(f'{me}: directory tree ready for username: {username}')
+    debug(f'{me}: end: directory tree ready for username: {username}')
     return slots
 #
 # pylint: enable=too-many-statements
@@ -3496,6 +3685,7 @@ def get_all_json_slots(username):
 
     # return slot information as a python dictionary
     #
+    debug(f'{me}: end: returning all slots for username: {username}')
     return slots
 #
 # pylint: enable=too-many-return-statements
@@ -3506,17 +3696,17 @@ def get_all_json_slots(username):
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 #
-def update_slot(username, slot_num, slot_file):
+def update_slot(username, slot_num, submit_file):
     """
     Update a given slot for a given user with a new file
 
     Given:
-        username    IOCCC submit server username
-        slot_num    slot number for a given username
-        slot_file   filename stored under a given slot
+        username      IOCCC submit server username
+        slot_num      slot number for a given username
+        submit_file   filename stored under a given slot
 
     Returns:
-        True        recorded and reported the SHA256 hash of slot_file
+        True        recorded and reported the SHA256 hash of submit_file
         False       some error was detected
 
     NOTE: This function performs various canonical firewall checks on the username arg.
@@ -3567,7 +3757,7 @@ def update_slot(username, slot_num, slot_file):
     # open the file
     #
     try:
-        with open(slot_file, "rb") as file_fp:
+        with open(submit_file, "rb") as file_fp:
             result = hashlib.sha256(file_fp.read())
 
             # paranoia
@@ -3579,8 +3769,8 @@ def update_slot(username, slot_num, slot_file):
     except OSError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: failed to open for username: {username} '
-            f'slot_file: {slot_file} failed: <<{errcode}>>')
-        error(f'{me}: open for username: {username} slot_num: {slot_num} slot_file: {slot_file} '
+            f'submit_file: {submit_file} failed: <<{errcode}>>')
+        error(f'{me}: open for username: {username} slot_num: {slot_num} submit_file: {submit_file} '
               f'failed: <<{errcode}>>')
         return False
 
@@ -3598,31 +3788,22 @@ def update_slot(username, slot_num, slot_file):
         error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
         unlock_slot()
         return False
-    slot = read_json_file_nolock(slot_json_file)
-    if not slot:
+    slot_dict = read_json_file_nolock(slot_json_file)
+    if not slot_dict:
         error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
               f'slot_json_file: {slot_json_file}')
         unlock_slot()
         return False
 
-    # paranoia - must have filename
-    #
-    if not 'filename' in slot:
-        ioccc_last_errmsg = (
-            f'ERROR: {me}: filename is missing from '
-            f'username: {username} slot_num: {slot_num}')
-        error(f'{me}: filename is missing from username: {username} slot_num: {slot_num}')
-        return False
-
     # If the slot previously saved file that has a different name than the new file,
     # then remove the old file
     #
-    if slot['filename']:
+    old_file = return_submit_path(slot_dict, username, slot_num)
+    if old_file:
 
         # remove previously saved file
         #
-        old_file = f'{slot_dir}/{slot["filename"]}'
-        if slot_file != old_file and os.path.isfile(old_file):
+        if submit_file != old_file and os.path.isfile(old_file):
             try:
                 os.remove(old_file)
             except OSError as errcode:
@@ -3636,11 +3817,11 @@ def update_slot(username, slot_num, slot_file):
 
     # record and report SHA256 hash of file
     #
-    slot['status'] = 'Uploaded file into slot'
-    slot['filename'] = os.path.basename(slot_file)
-    slot['length'] = os.path.getsize(slot_file)
-    slot['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
-    slot['SHA256'] = result.hexdigest()
+    slot_dict['status'] = 'Uploaded file into slot'
+    slot_dict['filename'] = os.path.basename(submit_file)
+    slot_dict['length'] = os.path.getsize(submit_file)
+    slot_dict['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
+    slot_dict['SHA256'] = result.hexdigest()
 
     # save JSON data for the slot
     #
@@ -3649,15 +3830,15 @@ def update_slot(username, slot_num, slot_file):
         error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
         unlock_slot()
         return False
-    if not write_slot_json(slot_json_file, slot):
-        error(f'{me}: write_slot_json failed for username: {username} slot_num: {slot_num}')
+    if not write_slot_json_nolock(slot_json_file, slot_dict):
+        error(f'{me}: write_slot_json_nolock failed for username: {username} slot_num: {slot_num}')
         unlock_slot()
         return False
 
     # unlock the slot and report success
     #
     unlock_slot()
-    info(f'{me}: updated slot for username: {username} slot_num: {slot_num}')
+    debug(f'{me}: end: updated slot for username: {username} slot_num: {slot_num}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -3709,6 +3890,12 @@ def update_slot_status(username, slot_num, status):
         #
         return False
 
+    # firewall - check args
+    #
+    if not isinstance(status, str):
+        error(f'{me}: status arg is not a string')
+        return False
+
     # must be a valid user
     #
     if not lookup_username(username):
@@ -3728,8 +3915,8 @@ def update_slot_status(username, slot_num, status):
 
     # read the JSON file for the user's slot
     #
-    slot = read_json_file_nolock(slot_json_file)
-    if not slot:
+    slot_dict = read_json_file_nolock(slot_json_file)
+    if not slot_dict:
         error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
               f'slot_json_file: {slot_json_file}')
         unlock_slot()
@@ -3737,7 +3924,7 @@ def update_slot_status(username, slot_num, status):
 
     # update the status
     #
-    slot['status'] = status
+    slot_dict['status'] = status
 
     # save JSON data for the slot
     #
@@ -3746,15 +3933,136 @@ def update_slot_status(username, slot_num, status):
         error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
         unlock_slot()
         return False
-    if not write_slot_json(slot_json_file, slot):
-        error(f'{me}: write_slot_json failed for username: {username} slot_num: {slot_num}')
+    if not write_slot_json_nolock(slot_json_file, slot_dict):
+        error(f'{me}: write_slot_json_nolock failed for username: {username} slot_num: {slot_num}')
         unlock_slot()
         return False
 
     # unlock the slot and report success
     #
     unlock_slot()
-    info(f'{me}: updated slot status for username: {username} slot_num: {slot_num}')
+    debug(f'{me}: end: updated slot status for username: {username} slot_num: {slot_num}')
+    return True
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def update_slot_status_if_submit(username, slot_num, status, submit_file):
+    """
+    Update the status comment for a given user's slot, if and only if
+    the submit_file matches the slot's filename.
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+        status      the new status string for the slot
+        submit_file   filename stored under a given slot
+
+    Returns:
+        True        status updated
+        False       some error was detected
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return False
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        return False
+
+    # firewall - check args
+    #
+    if not isinstance(status, str):
+        error(f'{me}: status arg is not a string')
+        return False
+    if not isinstance(submit_file, str):
+        error(f'{me}: submit_file arg is not a string')
+        return False
+
+    # must be a valid user
+    #
+    if not lookup_username(username):
+        debug(f'{me}: lookup_username failed for username: {username}')
+        return False
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        debug(f'{me}: return_slot_json_filename failed')
+        return False
+
+    # lock the slot because we are about to change it
+    #
+    slot_lock_fd = lock_slot(username, slot_num)
+    if not slot_lock_fd:
+        debug(f'{me}: lock_slot failed')
+        return False
+
+    # read the JSON file for the user's slot
+    #
+    slot_dict = read_json_file_nolock(slot_json_file)
+    if not slot_dict:
+        error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
+              f'slot_json_file: {slot_json_file}')
+        unlock_slot()
+        return False
+
+    # check the slot filename for a match against submit_file
+    #
+    if not 'filename' in slot_dict:
+        error(f'{me}: missing filename for username: {username} slot_num: {slot_num} '
+              f'slot_json_file: {slot_json_file}')
+        unlock_slot()
+        return False
+    if submit_file != slot_dict['filename']:
+
+        # slot was updated before we could change the status.  The status arg applies to
+        # a different (previous submit file), so we simply and silently drop this status change
+        # without any error reporting.
+        #
+        unlock_slot()
+        return True
+
+    # update the status
+    #
+    slot_dict['status'] = status
+
+    # save JSON data for the slot
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
+        unlock_slot()
+        return False
+    if not write_slot_json_nolock(slot_json_file, slot_dict):
+        error(f'{me}: write_slot_json_nolock failed for username: {username} slot_num: {slot_num}')
+        unlock_slot()
+        return False
+
+    # unlock the slot and report success
+    #
+    unlock_slot()
+    debug(f'{me}: end: updated slot status username: {username} slot_num: {slot_num} for submit file: {submit_file}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -3788,7 +4096,18 @@ def read_json_file_nolock(json_file):
 
             # return slot information as a python dictionary
             #
-            return json.load(j_fp)
+            try:
+                slot_dict = json.load(j_fp)
+            except json.JSONDecodeError:
+                ioccc_last_errmsg = f'ERROR: {me}: invalid JSON in file: {json_file}'
+                error(f'{me}:  invalid JSON in file: {json_file}')
+                return []
+            except UnicodeDecodeError:
+                ioccc_last_errmsg = f'ERROR: {me}: invalid Unicode data in file: {json_file}'
+                error(f'{me}:  invalid Unicode data in file: {json_file}')
+                return []
+            debug(f'{me}: end: return python dictionary for JSON file: {json_file}')
+            return slot_dict
 
     except OSError as errcode:
         ioccc_last_errmsg = f'ERROR: {me}: cannot open JSON in: {json_file} failed: <<{errcode}>>'
@@ -3935,6 +4254,7 @@ def read_state():
 
     # return open and close dates
     #
+    debug(f'{me}: end: returning open and close dates')
     return open_datetime, close_datetime
 #
 # pylint: enable=too-many-statements
@@ -4044,6 +4364,7 @@ def update_state(open_date, close_date):
 
     # return success
     #
+    debug(f'{me}: end: update_state: {write_sucessful}')
     return write_sucessful
 
 
@@ -4086,19 +4407,23 @@ def contest_is_open(user_dict):
     #
     open_datetime, close_datetime = read_state()
     if not open_datetime or not close_datetime:
+        debug(f'{me}: end: no open and close dates')
         return None
 
     # For users that mayignore the date, the contest is always open,
     # even if we are outside the contest open-close internal.
     #
     if user_dict['ignore_date']:
+        debug(f'{me}: end: ignoring close date for username: {user_dict["username"]}')
         return close_datetime
 
     # determine if the contest is open now
     #
     if now.timestamp() >= open_datetime.timestamp():
         if now.timestamp() < close_datetime.timestamp():
+            debug(f'{me}: end: contest is open')
             return close_datetime
+    debug(f'{me}: end: contest is closed')
     return None
 
 
@@ -4154,6 +4479,7 @@ def return_secret():
 
     # return secret key
     #
+    debug(f'{me}: end: returning secret key')
     return secret_key
 
 
@@ -4192,8 +4518,8 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     # pylint: disable-next=global-statement
     global ioccc_logger
+    me = inspect.currentframe().f_code.co_name
     # We do NOT want to call debug start from this function because this function does the debug setup
-    #no# me = inspect.currentframe().f_code.co_name
     #no# debug(f'{me}: start')
     logging_level = logging.INFO
 
@@ -4371,6 +4697,7 @@ def setup_logger(logtype, dbglvl) -> None:
 
     # save the newly configured logger
     #
+    debug(f'{me}: end: configured logger')
     ioccc_logger = my_logger
 #
 # pylint: enable=too-many-branches
@@ -4588,19 +4915,21 @@ def sha256_file(filename):
 
     # return SHA256 hash ASCII HEX digest string
     #
-    return h.hexdigest()
+    hexdigest = h.hexdigest()
+    debug(f'{me}: end: SHA256: {hexdigest}')
+    return hexdigest
 
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
 #
-def validate_slot_dict_nolock(slot, username, slot_num):
+def validate_slot_dict_nolock(slot_dict, username, slot_num):
     """
     Validate a slot's python dictionary.
 
     Given:
-        slot            slot JSON content as a python dictionary
+        slot_dict       slot JSON content as a python dictionary
         username        IOCCC submit server username
         slot_num        slot number for a given username
 
@@ -4651,8 +4980,8 @@ def validate_slot_dict_nolock(slot, username, slot_num):
 
     # validate args
     #
-    if not isinstance(slot, dict):
-        return 'slot arg is not a python dictonary'
+    if not isinstance(slot_dict, dict):
+        return 'slot_dict arg is not a python dictionary'
 
     # determine user directory path
     #
@@ -4660,7 +4989,7 @@ def validate_slot_dict_nolock(slot, username, slot_num):
     if not user_dir:
         return 'invalid username arg'
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
@@ -4668,106 +4997,100 @@ def validate_slot_dict_nolock(slot, username, slot_num):
 
     # firewall check slot no_comment
     #
-    if not 'no_comment' in slot:
+    if not 'no_comment' in slot_dict:
         return 'missing slot no_comment string'
-    if not isinstance(slot['no_comment'], str):
+    if not isinstance(slot_dict['no_comment'], str):
         return 'slot no_comment is not a string'
-    if slot['no_comment'] != NO_COMMENT_VALUE:
+    if slot_dict['no_comment'] != NO_COMMENT_VALUE:
         return 'invalid slot no_comment'
 
     # firewall check slot_JSON_format_version
     #
-    if not 'slot_JSON_format_version' in slot:
+    if not 'slot_JSON_format_version' in slot_dict:
         return 'missing slot_JSON_format_version string'
-    if not isinstance(slot['slot_JSON_format_version'], str):
+    if not isinstance(slot_dict['slot_JSON_format_version'], str):
         return 'slot_JSON_format_version is not a string'
-    if slot['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
+    if slot_dict['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
         return 'invalid slot_JSON_format_version'
 
     # slot must have the correct slot number
     #
-    if not 'slot' in slot:
+    if not 'slot' in slot_dict:
         return 'missing slot number'
-    if not isinstance(slot['slot'], int):
+    if not isinstance(slot_dict['slot'], int):
         return 'slot number is not an int'
-    if slot['slot'] != slot_num:
+    if slot_dict['slot'] != slot_num:
         return 'wrong slot number'
-
-    # determine if the slot has a filename
-    #
-    if not 'filename' in slot:
-        return 'missing slot filename'
-    filename_is_string = True
-    if not slot['filename']:
-        filename_is_string = False
 
     # if we have a filename, then the filename must be a valid filename string
     #
+    submit_file = return_submit_filename(slot_dict, username, slot_num)
+    filename_is_string = True
+    if not submit_file:
+        filename_is_string = False
     if filename_is_string:
-        if not isinstance(slot['filename'], str):
-            return 'slot filename is not a string'
-        if not slot['filename'].startswith(f'submit.{username}-{slot_num}.'):
+        if not submit_file.startswith(f'submit.{username}-{slot_num}.'):
             return 'wrong slot filename beginning'
-        if not slot['filename'].endswith('.txz'):
+        if not submit_file.endswith('.txz'):
             return 'wrong slot filename extension'
-        if not re.match(f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$', slot['filename']):
+        if not re.match(f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$', submit_file):
             return 'invalid slot filename timestamp'
 
     # if we have a filename, then slot must have a valid slot length
     # otherwise we must not have a slot length
     #
-    if not 'length' in slot:
+    if not 'length' in slot_dict:
         return 'missing slot length int'
     if filename_is_string:
-        if not isinstance(slot['length'], int):
+        if not isinstance(slot_dict['length'], int):
             return 'slot length is not an int'
-        if slot['length'] <= 0:
+        if slot_dict['length'] <= 0:
             return 'slot length not > 0'
-    elif slot['length']:
+    elif slot_dict['length']:
         return 'have length w/o filename'
 
     # if we have a filename, then slot must have a valid slot date
     # otherwise we must not have a slot date
     #
-    if not 'date' in slot:
+    if not 'date' in slot_dict:
         return 'missing slot date string'
     if filename_is_string:
-        if not isinstance(slot['date'], str):
+        if not isinstance(slot_dict['date'], str):
             return 'slot date is not a string'
         try:
             # pylint: disable-next=unused-variable
-            dt = datetime.strptime(slot['date'], DATETIME_USEC_FORMAT)
+            dt = datetime.strptime(slot_dict['date'], DATETIME_USEC_FORMAT)
         # pylint: disable-next=unused-variable
         except ValueError as errcode:
             return 'slot date format is invalid'
-    elif slot['date']:
+    elif slot_dict['date']:
         return 'have date w/o filename'
 
     # if we have a filename, then slot must have a valid SHA256 hash
     # otherwise we must not have a slot SHA256 hash
     #
-    if not 'SHA256' in slot:
+    if not 'SHA256' in slot_dict:
         return 'missing slot SHA256 string'
     if filename_is_string:
-        if not isinstance(slot['SHA256'], str):
+        if not isinstance(slot_dict['SHA256'], str):
             return 'slot SHA256 is not a string'
-        if len(slot['SHA256']) != SHA256_HEXLEN:
+        if len(slot_dict['SHA256']) != SHA256_HEXLEN:
             return 'slot SHA256 length is wrong'
-    elif slot['SHA256']:
+    elif slot_dict['SHA256']:
         return 'have SHA256 w/o filename'
 
     # slot must have a collected boolean
     #
-    if not 'collected' in slot:
+    if not 'collected' in slot_dict:
         return 'missing slot collected boolean'
-    if not isinstance(slot['collected'], bool):
+    if not isinstance(slot_dict['collected'], bool):
         return 'slot collected is not a boolean'
 
     # slot must have a status string
     #
-    if not 'status' in slot:
+    if not 'status' in slot_dict:
         return 'missing slot status string'
-    if not isinstance(slot['status'], str):
+    if not isinstance(slot_dict['status'], str):
         return 'slot status is not a string'
 
     # case: filename is a string
@@ -4776,7 +5099,7 @@ def validate_slot_dict_nolock(slot, username, slot_num):
 
         # determine full path of submit file
         #
-        submit_path = f'{slot_dir}/{slot["filename"]}'
+        submit_path = f'{slot_dir}/{slot_dict["filename"]}'
 
         # case: submit file exists
         #
@@ -4784,17 +5107,17 @@ def validate_slot_dict_nolock(slot, username, slot_num):
 
             # verify the submit file size
             #
-            if os.path.getsize(submit_path) != slot['length']:
+            if os.path.getsize(submit_path) != slot_dict['length']:
                 return 'submit file length is wrong'
 
     # case: filename is not a string, submit file is not required
     #
-    elif slot['collected']:
+    elif slot_dict['collected']:
         return 'submit file was collected w/o filename'
 
     # no slot errors found
     #
-    debug(f'{me}: no slot errors found')
+    debug(f'{me}: end: no slot errors found for username: {username} slot_num: {slot_num}')
     return None
 #
 # pylint: enable=too-many-return-statements
@@ -4818,9 +5141,9 @@ def get_slot_dict_nolock(username, slot_num):
 
     NOTE: This function performs various canonical firewall checks on the username arg.
 
-    WARNING: This function does NOT lock.  The caller should lock as needed.
-
     NOTE: This function performs various canonical firewall checks on the slot_num arg.
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
     """
 
     # setup
@@ -4852,23 +5175,23 @@ def get_slot_dict_nolock(username, slot_num):
     if not slot_json_file:
         error(f'{me}: return_slot_json_filename failed for username: {username} slot_num: {slot_num}')
         return None
-    slot = read_json_file_nolock(slot_json_file)
-    if not slot:
+    slot_dict = read_json_file_nolock(slot_json_file)
+    if not slot_dict:
         error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
               f'slot_json_file: {slot_json_file}')
         return None
 
     # firewall - validate the slot python dictionary
     #
-    err_msg = validate_slot_dict_nolock(slot, username, slot_num)
+    err_msg = validate_slot_dict_nolock(slot_dict, username, slot_num)
     if err_msg:
-        error(f'{me}: invalid slot info for: username: {username} slot_num: {slot_num} '
-              f'ERROR: {err_msg}')
+        error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num} ')
         return None
 
     # return slot information as a python dictionary
     #
-    return slot
+    debug(f'{me}: end: returning slot information')
+    return slot_dict
 #
 # pylint: enable=too-many-return-statements
 
@@ -4876,7 +5199,7 @@ def get_slot_dict_nolock(username, slot_num):
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
 #
-def validate_slot_nolock(username, slot_num, submit_required, check_hash):
+def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_hash):
     """
     Validate a slot.  After validating the function arguments,
     we verify that the username is a valid user in the password database.
@@ -4913,6 +5236,7 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
         We verify that a previous submit file was not collected from this slot.
 
     Given:
+        slot_dict       slot JSON content as a python dictionary
         username        IOCCC submit server username
         slot_num        slot number for a given username
         submit_required   True ==> submit file must exist
@@ -4956,6 +5280,8 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
 
     # validate boolean args
     #
+    if not isinstance(slot_dict, dict):
+        return 'slot_dict arg is not a python dictionary'
     if not isinstance(submit_required, bool):
         return 'submit_required arg is not a boolean'
     if not isinstance(check_hash, bool):
@@ -4966,39 +5292,25 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
     if not lookup_username(username):
         return 'lookup_username failed'
 
-    # determine slot directory name
+    # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
         return 'return_slot_dir_path failed'
 
-    # obtain the JSON slot file as a python dictionary
-    #
-    slot = get_slot_dict_nolock(username, slot_num)
-    if not slot:
-        return 'invalid slot number or invalid user directory'
-
     # validate JSON slot contents
     #
-    slot_error = validate_slot_dict_nolock(slot, username, slot_num)
+    slot_error = validate_slot_dict_nolock(slot_dict, username, slot_num)
     if not slot_error:
         return slot_error
 
-    # determine if the slot has a filename
+    # determine full path of submit file
     #
-    if not 'filename' in slot:
-        return 'missing slot filename'
-    filename_is_string = True
-    if not slot['filename']:
-        filename_is_string = False
+    submit_path = return_submit_path(slot_dict, username, slot_num)
 
     # case: filename is a string
     #
-    if filename_is_string:
-
-        # determine full path of submit file
-        #
-        submit_path = f'{slot_dir}/{slot["filename"]}'
+    if submit_path:
 
         # case: submit file exists
         #
@@ -5016,12 +5328,12 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
 
                 # verify the content of the submit file
                 #
-                if sha256 != slot['SHA256']:
+                if sha256 != slot_dict['SHA256']:
                     return 'submit file corrupted contents'
 
             # verify that the submit file has not been collected
             #
-            if slot['collected']:
+            if slot_dict['collected']:
                 return 'submit file collected but still exists'
 
         # case: submit file does not exist but is required to do so
@@ -5034,7 +5346,7 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
 
         # case: submit file does not exist and was never collected
         #
-        elif not slot['collected']:
+        elif not slot_dict['collected']:
 
             # submit file is gone but was never collected
             #
@@ -5047,13 +5359,150 @@ def validate_slot_nolock(username, slot_num, submit_required, check_hash):
 
     # case: filename is not a string, submit file is not required
     #
-    elif slot['collected']:
+    elif slot_dict['collected']:
         return 'submit file was collected w/o filename'
 
     # no slot errors found
     #
-    debug(f'{me}: no slot errors found')
+    debug(f'{me}: end: no slot errors found')
     return None
+#
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-branches
+
+
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-branches
+#
+def stage_submit(username, slot_num):
+    """
+    Move a submit file in a slot into either the good or bad staging area.
+    Update the JSON slot file to both indicate that the submit file was
+    collected AND to update the slot status comment.
+
+    Given:
+        username        IOCCC submit server username
+        slot_num        slot number for a given username
+
+    Returns:
+        != None ==> SHA256 hash of file moved into the staging area
+        None ==> unable to move submit file into staging area
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+
+    NOTE: This function performs various canonical firewall checks on the slot_num arg.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        error(f'{me} invalid username arg')
+        return None
+
+    # firewall - canonical firewall checks on the slot_num arg
+    #
+    if not check_slot_num_arg(slot_num):
+
+        # The check_slot_num_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a slot_num firewall check failure.
+        #
+        error(f'{me} invalid slot_num arg')
+        return None
+
+    # look up username to be sure it is in the password database
+    #
+    if not lookup_username(username):
+        error(f'{me} unknown username: {username}')
+        return None
+
+    # Lock the slot
+    #
+    # This will create the lock file if needed.
+    #
+    slot_lock_fd = lock_slot(username, slot_num)
+    if not slot_lock_fd:
+        error(f'{me} lock_slot failed for username: {username} slot_num: {slot_num}')
+        return None
+
+    # determine slot directory path
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        error(f'{me} return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
+        unlock_slot()
+        return None
+
+    # obtain path of the submit filename
+    #
+    slot_dict = get_slot_dict_nolock(username, slot_num)
+    if not slot_dict:
+        # caller will log the error
+        unlock_slot()
+        return None
+    if not 'filename' in slot_dict or not slot_dict['filename']:
+        error(f'submit filename is missing from slot for username: {username} slot_num: {slot_num}')
+        unlock_slot()
+        return None
+    submit_path = f'{slot_dir}/{slot_dict["filename"]}'
+
+    # validate the slot, submit file required, and check the SHA256 hash
+    #
+    slot_err = validate_slot_nolock(slot_dict, username, slot_num, True, True)
+    if slot_err:
+
+        # tell the user to try loading again
+        #
+        error(f'{me}: corrupted slot for for username: {username} slot_num: {slot_num} '
+              f'slot error: {slot_err}')
+        unlock_slot()
+        return None
+
+    # move the submit file to the good directory
+    #
+    try:
+        os.replace(submit_path, f'{STAGED_DIR}/{slot_dict["filename"]}')
+    except OSError as errcode:
+        error(f'{me}: replace {submit_path} {STAGED_DIR}/{slot_dict["filename"]} for'
+              f'username: {username} slot_num: {slot_num} failed: <<{errcode}>>')
+        unlock_slot()
+        return None
+
+    # mark slot file as having been collected
+    #
+    slot_dict['collected'] = True
+    slot_dict['status'] = 'successfully moved submit file into the staging area'
+
+    # update the slot JSON file
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        # caller will log the error
+        unlock_slot()
+        return None
+    if not write_slot_json_nolock(slot_json_file, slot_dict):
+        # caller will log the error
+        unlock_slot()
+        return None
+
+    # all is well, return the SHA256 hash
+    #
+    # NOTE: The above call to validate_slot_nolock(), called validate_slot_dict_nolock()
+    #       which in turn validated that we have a valid SHA256 hash string that matches
+    #       the file that we just moved.
+    #
+    hexdigest = slot_dict['SHA256']
+    debug(f'{me}: end: returning SHA256: {hexdigest} for username: {username} slot_num: {slot_num}')
+    unlock_slot()
+    return hexdigest
 #
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-branches
