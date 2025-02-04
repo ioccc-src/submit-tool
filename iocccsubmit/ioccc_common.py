@@ -26,6 +26,7 @@ import string
 import secrets
 import random
 import shutil
+import glob
 import hashlib
 import uuid
 import logging
@@ -67,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.1 2025-02-03"
+VERSION_IOCCC_COMMON = "2.5.2 2025-02-04"
 
 # force password change grace time
 #
@@ -293,6 +294,10 @@ MAX_TARBALL_LEN = 3999971
 #
 STAGED_DIR = f'{APPDIR}/staged'
 
+# where to move submit files from slots with errors (remote collection)
+#
+UNEXPECTED_DIR = f'{APPDIR}/unexpected'
+
 # lock state - lock file descriptor or none
 #
 # NOTE: See the URLs listed under "For user locking" of the "from from filelock import" above.
@@ -459,6 +464,7 @@ def change_startup_appdir(topdir):
     global STATE_FILE_LOCK
     global PW_WORDS
     global STAGED_DIR
+    global UNEXPECTED_DIR
     # pylint: enable=global-statement
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
@@ -494,6 +500,7 @@ def change_startup_appdir(topdir):
     STATE_FILE_LOCK = f'{topdir}/{STATE_FILE_LOCK_RELATIVE_PATH}'
     PW_WORDS = f'{topdir}/{PW_WORDS_RELATIVE_PATH}'
     STAGED_DIR = f'{APPDIR}/staged'
+    UNEXPECTED_DIR = f'{APPDIR}/unexpected'
     #
     # pylint: enable=redefined-outer-name
 
@@ -5404,6 +5411,54 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 # pylint: enable=too-many-branches
 
 
+def move_unexpected_nolock(slot_dir):
+    """
+    Move any remaining submit.*.txz files into UNEXPECTED_DIR.
+
+    After stage_submit() attempts to move the slot's filename
+    into STAGED_DIR, any submit.*.txz files that remain are
+    moved by this function into the UNEXPECTED_DIR.
+
+    An unexpected file can occur if the slot is corrupt for
+    some reason, or for some reason an extra submit.*.txz
+    file or file(s) are left behind.  This function helps
+    ensure that no submit.*.txz file remains behind in the slot.
+
+    Given:
+        slot_dir        slot directory to move submit.*.txz files out of
+
+    Returns:
+        number of files moved, 0 ==> no files moved
+
+    WARNING: This function does NOT lock.  The caller should lock as needed.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - slot_dir arg must be a string
+    #
+    if not isinstance(slot_dir, str):
+        error(f'{me}: topdir arg is not a string')
+        return 0
+
+    # move submit.*.txz files into UNEXPECTED_DIR
+    #
+    count = 0
+    for file in glob.glob(f'{slot_dir}/submit.*.txz'):
+        count += 1
+        warning(f'{me}: moving unexpected submit file: mv {file} {UNEXPECTED_DIR}')
+        try:
+            shutil.move(file, UNEXPECTED_DIR)
+        except OSError as errcode:
+            error(f'{me}: unexpected submit file: mv {file} {UNEXPECTED_DIR} failed: <<{errcode}>>')
+
+    debug(f'{me}: end: moved {count} unexpected files')
+    return count
+
+
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
 #
@@ -5457,6 +5512,13 @@ def stage_submit(username, slot_num):
         error(f'{me} unknown username: {username}')
         return None
 
+    # determine slot directory path
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        error(f'{me} return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
+        return None
+
     # Lock the slot
     #
     # This will create the lock file if needed.
@@ -5466,23 +5528,17 @@ def stage_submit(username, slot_num):
         error(f'{me} lock_slot failed for username: {username} slot_num: {slot_num}')
         return None
 
-    # determine slot directory path
-    #
-    slot_dir = return_slot_dir_path(username, slot_num)
-    if not slot_dir:
-        error(f'{me} return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
-        unlock_slot()
-        return None
-
     # obtain path of the submit filename
     #
     slot_dict = get_slot_dict_nolock(username, slot_num)
     if not slot_dict:
         # caller will log the error
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
     if not 'filename' in slot_dict or not slot_dict['filename']:
         error(f'submit filename is missing from slot for username: {username} slot_num: {slot_num}')
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
     submit_path = f'{slot_dir}/{slot_dict["filename"]}'
@@ -5496,6 +5552,7 @@ def stage_submit(username, slot_num):
         #
         error(f'{me}: corrupted slot for for username: {username} slot_num: {slot_num} '
               f'slot error: {slot_err}')
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
 
@@ -5506,6 +5563,7 @@ def stage_submit(username, slot_num):
     except OSError as errcode:
         error(f'{me}: replace {submit_path} {STAGED_DIR}/{slot_dict["filename"]} for'
               f'username: {username} slot_num: {slot_num} failed: <<{errcode}>>')
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
 
@@ -5519,10 +5577,12 @@ def stage_submit(username, slot_num):
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
         # caller will log the error
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
     if not write_slot_json_nolock(slot_json_file, slot_dict):
         # caller will log the error
+        move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None
 
@@ -5534,6 +5594,7 @@ def stage_submit(username, slot_num):
     #
     hexdigest = slot_dict['SHA256']
     debug(f'{me}: end: returning SHA256: {hexdigest} for username: {username} slot_num: {slot_num}')
+    move_unexpected_nolock(slot_dir)
     unlock_slot()
     return hexdigest
 #

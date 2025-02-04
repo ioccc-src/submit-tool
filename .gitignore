@@ -16,6 +16,7 @@ __pycache__
 setup.cfg
 staged/
 .*.sw[a-zA-Z]
+unexpected/
 users/
 venv/
 .vim/
