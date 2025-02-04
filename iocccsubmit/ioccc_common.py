@@ -67,7 +67,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5 2025-02-02"
+VERSION_IOCCC_COMMON = "2.5.1 2025-02-03"
 
 # force password change grace time
 #
@@ -1239,7 +1239,7 @@ def ioccc_file_unlock() -> None:
     return
 
 
-def load_pwfile_nolock():
+def read_pwfile():
     """
     Return the JSON contents of the password file as a python dictionary
 
@@ -1268,31 +1268,64 @@ def load_pwfile_nolock():
             error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{errcode}>>')
             return None
 
-    # load the password file and unlock
+    # prepare the lock the password file
+    #
+    lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, blocking=True)
+
+    # attempt to obtain the lock
     #
     try:
-        with open(PW_FILE, 'r', encoding='utf-8') as j_pw:
 
-            # read the JSON of the password file
-            #
-            pw_file_json = json.load(j_pw)
-
-            # firewall
-            #
-            if not pw_file_json:
-
-                # we have no JSON to return
-                #
-                ioccc_last_errmsg = f'ERROR: {me}: failed to read password file: {PW_FILE} failed: <<{errcode}>>'
-                error(f'{me}: read {PW_FILE} failed: <<{errcode}>>')
-                return None
-
-    except OSError as errcode:
-        ioccc_last_errmsg = f'ERROR: {me}: cannot read password file: {PW_FILE} failed: <<{errcode}>>'
-        error(f'{me}: open for reading {PW_FILE} failed: <<{errcode}>>')
-
-        # we have no JSON to return
+        # acquire the lock of the password file
         #
+        debug(f'{me}: about to lock: {PW_LOCK}')
+        lock_fd.acquire(poll_interval=LOCK_INTERVAL)
+
+        # open, temporarily lock, load the password file and unlock
+        #
+        try:
+            with open(PW_FILE, 'r', encoding='utf-8') as j_pw:
+
+                # read the JSON of the password file
+                #
+                pw_file_json = json.load(j_pw)
+
+                # release the lock of the password file
+                #
+                lock_fd.release()
+                debug(f'{me}: unlocked: {PW_LOCK}')
+
+                # firewall
+                #
+                if not pw_file_json:
+
+                    # we have no JSON to return
+                    #
+                    ioccc_last_errmsg = (f'ERROR: {me}: failed to read password '
+                                         f'file: {PW_FILE} failed: <<{errcode}>>')
+                    error(f'{me}: read {PW_FILE} failed: <<{errcode}>>')
+                    return None
+
+        except OSError as errcode:
+            ioccc_last_errmsg = f'ERROR: {me}: cannot read password file: {PW_FILE} failed: <<{errcode}>>'
+            error(f'{me}: open for reading {PW_FILE} failed: <<{errcode}>>')
+
+            # release the lock of the password file
+            #
+            lock_fd.release()
+            debug(f'{me}: unlocked: {PW_LOCK}')
+
+            # we have no JSON to return
+            #
+            return None
+
+    except Timeout:
+
+        # password file lock timeout
+        #
+        debug(f'{me}: failed to lock: {PW_LOCK}')
+        ioccc_last_errmsg = f'Warning: {me}: lock timeout after {LOCK_TIMEOUT} secs for: {PW_LOCK}'
+        warning(f'{me}: lock timeout file_lock: {PW_LOCK}')
         return None
 
     # return the password JSON data as a python dictionary
@@ -1556,9 +1589,9 @@ def lookup_username(username):
 
     # load JSON from the password file as a python dictionary
     #
-    pw_file_json = load_pwfile_nolock()
+    pw_file_json = read_pwfile()
     if not pw_file_json:
-        error(f'{me}: load_pwfile_nolock failed for username: {username}')
+        error(f'{me}: read_pwfile failed for username: {username}')
         return None
 
     # search the password file for the user
