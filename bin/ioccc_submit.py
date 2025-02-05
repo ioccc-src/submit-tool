@@ -90,7 +90,7 @@ def main():
     #
     setup_logger(args.log, args.level)
 
-    # -t topdir - set the path to the top level application direcory
+    # -t topdir - set the path to the top level application directory
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir):
