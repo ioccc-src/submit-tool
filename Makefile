@@ -360,11 +360,15 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
-# as root: after root_setup, setup ${DOCROOT} for SELinux
+# as root: after root_setup, setup ${DOCROOT} under for SELinux
+#
+# NOTE: ${DOCROOT} must be a directory before this rule can function.
+# 	This is a "firewall" against installing on the wrong system.
 #
 root_install: ${SELINUX_SET} root_setup
 	${V} echo DEBUG =-= $@ start =-=
-	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
+	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	@echo
 	@echo About to setup ${DOCROOT} for SELinux
 	@echo
@@ -376,9 +380,13 @@ root_install: ${SELINUX_SET} root_setup
 
 # as root: setup directories and permissions
 #
+# NOTE: ${DOCROOT} must be a directory before this rule can function.
+# 	This is a "firewall" against installing on the wrong system.
+#
 root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
-	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
+	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT} to make $@" 1>&2; exit 1; fi
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	# was: python3 setup.py install
 	${PYTHON} -m pip install --force-reinstall .
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}
