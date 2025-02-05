@@ -20,6 +20,8 @@ from .ioccc_common import \
         MIN_PASSWORD_LENGTH, \
         TCP_PORT, \
         change_startup_appdir, \
+        check_slot_num_arg, \
+        check_username_arg, \
         contest_is_open, \
         debug, \
         delete_username, \
@@ -32,6 +34,7 @@ from .ioccc_common import \
         is_proper_password, \
         lookup_username, \
         must_change_password, \
+        prerr, \
         read_state, \
         return_client_ip, \
         return_last_errmsg, \

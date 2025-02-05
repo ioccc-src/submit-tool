@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.2 2025-02-04"
+VERSION_IOCCC_COMMON = "2.5.3 2025-02-04"
 
 # force password change grace time
 #
@@ -508,6 +508,13 @@ def change_startup_appdir(topdir):
     #
     debug(f'{me}: end')
     return True
+
+
+def prerr(*args, **kwargs):
+    """
+    Print to stderr.
+    """
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def check_username_arg(username):
@@ -1000,8 +1007,7 @@ def return_submit_path(slot_dict, username, slot_num):
 
     Returns:
         != None ==> path of the submit file in a slot
-        None ==> no such submit file, or
-                 bad args, or
+        None ==> bad args, or
                  no filename in slot JSON file
 
     NOTE: This function performs various canonical firewall checks on the username arg.
@@ -1009,8 +1015,6 @@ def return_submit_path(slot_dict, username, slot_num):
     NOTE: This function performs various canonical firewall checks on the slot_num arg.
 
     NOTE: The slot is not validated by this function.  The caller should validate the slot as needed.
-
-    It is up the caller to create, if needed, the JSON lock file.
     """
 
     # setup
@@ -1039,7 +1043,7 @@ def return_submit_path(slot_dict, username, slot_num):
     # validate args
     #
     if not isinstance(slot_dict, dict):
-        return 'slot_dict arg is not a python dictionary'
+        error(f'{me}: slot_dict arg is not a python dictionary')
 
     # determine JSON slot directory path
     #
@@ -3588,8 +3592,12 @@ def initialize_user_tree(username):
 
                 # validate slot JSON file as a python dictionary
                 #
+                # NOTE: This call to validate_slot_dict_nolock(), if does NOT return an error
+                #       indicates we can expect the python dictionary for the slot to have
+                #       values that may be freely tested in this function below.
+                #
                 err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
-                if err_msg:
+                if isinstance(err_msg, str):
                     error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num}')
                     unlock_slot()
                     return None
@@ -3610,8 +3618,12 @@ def initialize_user_tree(username):
 
             # validate slot JSON file as a python dictionary
             #
+            # NOTE: This call to validate_slot_dict_nolock(), if does NOT return an error
+            #       indicates we can expect the python dictionary for the slot to have
+            #       values that may be freely tested in this function below.
+            #
             err_msg = validate_slot_dict_nolock(slots[slot_num], username, slot_num)
-            if err_msg:
+            if isinstance(err_msg, str):
                 error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num}')
                 unlock_slot()
                 return None
@@ -3839,7 +3851,7 @@ def update_slot(username, slot_num, submit_file):
     # then remove the old file
     #
     old_file = return_submit_path(slot_dict, username, slot_num)
-    if old_file:
+    if isinstance(old_file, str):
 
         # remove previously saved file
         #
@@ -3857,7 +3869,7 @@ def update_slot(username, slot_num, submit_file):
 
     # record and report SHA256 hash of file
     #
-    slot_dict['status'] = 'Uploaded file into slot'
+    slot_dict['status'] = 'uploaded file into slot'
     slot_dict['filename'] = os.path.basename(submit_file)
     slot_dict['length'] = os.path.getsize(submit_file)
     slot_dict['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
@@ -4928,7 +4940,7 @@ def sha256_file(filename):
 
     # paranoia - if we don't have an ip address string
     #
-    if not isinstance(str, filename):
+    if not isinstance(filename, str):
         error(f'{me}: filename value is not a string')
         return None
 
@@ -5007,6 +5019,7 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
         #
+        debug(f'{me}: end: invalid username arg')
         return 'invalid username arg'
 
     # firewall - canonical firewall checks on the slot_num arg
@@ -5016,50 +5029,63 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
         # The check_slot_num_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a slot_num firewall check failure.
         #
+        debug(f'{me}: end: invalid slot_num arg')
         return 'invalid slot_num arg'
 
     # validate args
     #
     if not isinstance(slot_dict, dict):
+        debug(f'{me}: end: slot_dict arg is not a python dictionary')
         return 'slot_dict arg is not a python dictionary'
 
     # determine user directory path
     #
     user_dir = return_user_dir_path(username)
     if not user_dir:
+        debug(f'{me}: end: invalid username arg')
         return 'invalid username arg'
 
     # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
+        debug(f'{me}: end: invalid slot_num arg')
         return 'invalid slot_num arg'
 
     # firewall check slot no_comment
     #
     if not 'no_comment' in slot_dict:
+        debug(f'{me}: end: missing slot no_comment string')
         return 'missing slot no_comment string'
     if not isinstance(slot_dict['no_comment'], str):
+        debug(f'{me}: end: slot no_comment is not a string')
         return 'slot no_comment is not a string'
     if slot_dict['no_comment'] != NO_COMMENT_VALUE:
+        debug(f'{me}: end: invalid slot no_comment')
         return 'invalid slot no_comment'
 
     # firewall check slot_JSON_format_version
     #
     if not 'slot_JSON_format_version' in slot_dict:
+        debug(f'{me}: end: missing slot_JSON_format_version string')
         return 'missing slot_JSON_format_version string'
     if not isinstance(slot_dict['slot_JSON_format_version'], str):
+        debug(f'{me}: end: slot_JSON_format_version is not a string')
         return 'slot_JSON_format_version is not a string'
     if slot_dict['slot_JSON_format_version'] != SLOT_VERSION_VALUE:
+        debug(f'{me}: end: invalid slot_JSON_format_version')
         return 'invalid slot_JSON_format_version'
 
     # slot must have the correct slot number
     #
     if not 'slot' in slot_dict:
+        debug(f'{me}: end: missing slot number')
         return 'missing slot number'
     if not isinstance(slot_dict['slot'], int):
+        debug(f'{me}: end: slot number is not an int')
         return 'slot number is not an int'
     if slot_dict['slot'] != slot_num:
+        debug(f'{me}: end: wrong slot number')
         return 'wrong slot number'
 
     # if we have a filename, then the filename must be a valid filename string
@@ -5069,90 +5095,96 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
     if not submit_file:
         filename_is_string = False
     if filename_is_string:
+        if not submit_file.startswith(f'submit.'):
+            debug(f'{me}: end: slot filename does not begin with submit.')
+            return f'slot filename does not begin with submit.'
         if not submit_file.startswith(f'submit.{username}-{slot_num}.'):
-            return 'wrong slot filename beginning'
+            debug(f'{me}: end: slot filename does not begin with submit.{username}-{slot_num}.')
+            return f'slot filename does not begin with submit.{username}-{slot_num}.'
         if not submit_file.endswith('.txz'):
-            return 'wrong slot filename extension'
+            debug(f'{me}: end: slot filename does not end with .txz')
+            return 'slot filename does not end with .txz'
         if not re.match(f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$', submit_file):
+            debug(f'{me}: end: invalid slot filename timestamp')
             return 'invalid slot filename timestamp'
 
     # if we have a filename, then slot must have a valid slot length
     # otherwise we must not have a slot length
     #
     if not 'length' in slot_dict:
+        debug(f'{me}: end: missing slot length int')
         return 'missing slot length int'
     if filename_is_string:
         if not isinstance(slot_dict['length'], int):
+            debug(f'{me}: end: slot length is not an int')
             return 'slot length is not an int'
         if slot_dict['length'] <= 0:
+            debug(f'{me}: end: slot length not > 0')
             return 'slot length not > 0'
     elif slot_dict['length']:
+        debug(f'{me}: end: have length w/o filename')
         return 'have length w/o filename'
 
     # if we have a filename, then slot must have a valid slot date
     # otherwise we must not have a slot date
     #
     if not 'date' in slot_dict:
+        debug(f'{me}: end: missing slot date string')
         return 'missing slot date string'
     if filename_is_string:
         if not isinstance(slot_dict['date'], str):
+            debug(f'{me}: end: slot date is not a string')
             return 'slot date is not a string'
         try:
             # pylint: disable-next=unused-variable
             dt = datetime.strptime(slot_dict['date'], DATETIME_USEC_FORMAT)
         # pylint: disable-next=unused-variable
         except ValueError as errcode:
+            debug(f'{me}: end: slot date format is invalid')
             return 'slot date format is invalid'
     elif slot_dict['date']:
+        debug(f'{me}: end: have date w/o filename')
         return 'have date w/o filename'
 
     # if we have a filename, then slot must have a valid SHA256 hash
     # otherwise we must not have a slot SHA256 hash
     #
     if not 'SHA256' in slot_dict:
+        debug(f'{me}: end: missing slot SHA256 string')
         return 'missing slot SHA256 string'
     if filename_is_string:
         if not isinstance(slot_dict['SHA256'], str):
+            debug(f'{me}: end: slot SHA256 is not a string')
             return 'slot SHA256 is not a string'
         if len(slot_dict['SHA256']) != SHA256_HEXLEN:
+            debug(f'{me}: end: slot SHA256 length is wrong')
             return 'slot SHA256 length is wrong'
     elif slot_dict['SHA256']:
+        debug(f'{me}: end: have SHA256 w/o filename')
         return 'have SHA256 w/o filename'
 
     # slot must have a collected boolean
     #
     if not 'collected' in slot_dict:
+        debug(f'{me}: end: missing slot collected boolean')
         return 'missing slot collected boolean'
     if not isinstance(slot_dict['collected'], bool):
+        debug(f'{me}: end: slot collected is not a boolean')
         return 'slot collected is not a boolean'
 
     # slot must have a status string
     #
     if not 'status' in slot_dict:
+        debug(f'{me}: end: missing slot status string')
         return 'missing slot status string'
     if not isinstance(slot_dict['status'], str):
+        debug(f'{me}: end: slot status is not a string')
         return 'slot status is not a string'
 
-    # case: filename is a string
+    # collected requires a filename to be string (what was previously collected)
     #
-    if filename_is_string:
-
-        # determine full path of submit file
-        #
-        submit_path = f'{slot_dir}/{slot_dict["filename"]}'
-
-        # case: submit file exists
-        #
-        if Path(submit_path).exists():
-
-            # verify the submit file size
-            #
-            if os.path.getsize(submit_path) != slot_dict['length']:
-                return 'submit file length is wrong'
-
-    # case: filename is not a string, submit file is not required
-    #
-    elif slot_dict['collected']:
+    if not filename_is_string and slot_dict['collected']:
+        debug(f'{me}: end: submit file was collected w/o filename')
         return 'submit file was collected w/o filename'
 
     # no slot errors found
@@ -5219,13 +5251,6 @@ def get_slot_dict_nolock(username, slot_num):
     if not slot_dict:
         error(f'{me}: read_json_file_nolock failed for username: {username} slot_num: {slot_num} '
               f'slot_json_file: {slot_json_file}')
-        return None
-
-    # firewall - validate the slot python dictionary
-    #
-    err_msg = validate_slot_dict_nolock(slot_dict, username, slot_num)
-    if err_msg:
-        error(f'{me}: {err_msg} for: username: {username} slot_num: {slot_num} ')
         return None
 
     # return slot information as a python dictionary
@@ -5307,6 +5332,7 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
         #
+        debug(f'{me}: end: invalid username arg')
         return 'invalid username arg'
 
     # firewall - canonical firewall checks on the slot_num arg
@@ -5316,32 +5342,43 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
         # The check_slot_num_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a slot_num firewall check failure.
         #
+        debug(f'{me}: end: invalid slot_num arg')
         return 'invalid slot_num arg'
 
     # validate boolean args
     #
     if not isinstance(slot_dict, dict):
+        debug(f'{me}: end: slot_dict arg is not a python dictionary')
         return 'slot_dict arg is not a python dictionary'
     if not isinstance(submit_required, bool):
+        debug(f'{me}: end: submit_required arg is not a boolean')
         return 'submit_required arg is not a boolean'
     if not isinstance(check_hash, bool):
+        debug(f'{me}: end: submit_required arg is not a boolean')
         return 'check_hash arg is not a boolean'
 
     # validate username
     #
     if not lookup_username(username):
+        debug(f'{me}: end: lookup_username failed')
         return 'lookup_username failed'
 
     # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
+        debug(f'{me}: end: return_slot_dir_path failed')
         return 'return_slot_dir_path failed'
 
     # validate JSON slot contents
     #
+    # NOTE: This call to validate_slot_dict_nolock(), if does NOT return an error
+    #       indicates we can expect the python dictionary for the slot to have
+    #       values that may be freely tested in this function below.
+    #
     slot_error = validate_slot_dict_nolock(slot_dict, username, slot_num)
-    if not slot_error:
+    if isinstance(slot_error, str):
+        debug(f'{me}: end: slot_error: <<{slot_error}>>')
         return slot_error
 
     # determine full path of submit file
@@ -5350,11 +5387,11 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 
     # case: filename is a string
     #
-    if submit_path:
+    if isinstance(submit_path, str):
 
-        # case: submit file exists
+        # case: submit file is a file
         #
-        if Path(submit_path).exists():
+        if Path(submit_path).is_file():
 
             # if check_hash, also check the SHA256 hash
             #
@@ -5364,17 +5401,26 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
                 #
                 sha256 = sha256_file(submit_path)
                 if not sha256:
+                    debug(f'{me}: end: submit file SHA256 hash failed')
                     return 'submit file SHA256 hash failed'
 
                 # verify the content of the submit file
                 #
                 if sha256 != slot_dict['SHA256']:
+                    debug(f'{me}: end: submit file corrupted contents')
                     return 'submit file corrupted contents'
 
             # verify that the submit file has not been collected
             #
             if slot_dict['collected']:
+                debug(f'{me}: end: submit file collected but still exists')
                 return 'submit file collected but still exists'
+
+            # verify that the submit file length matches the length
+            #
+            if os.path.getsize(submit_path) != slot_dict['length']:
+                debug(f'{me}: end: submit file length is wrong')
+                return 'submit file length is wrong'
 
         # case: submit file does not exist but is required to do so
         #
@@ -5382,6 +5428,7 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 
             # if file is required, verify that submit file exists
             #
+            debug(f'{me}: end: submit file is missing')
             return 'submit file is missing'
 
         # case: submit file does not exist and was never collected
@@ -5390,16 +5437,19 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 
             # submit file is gone but was never collected
             #
+            debug(f'{me}: end: submit file is gone but not collected')
             return 'submit file is gone but not collected'
 
     # case: filename is not a string, but a submit file is required
     #
     elif submit_required:
+        debug(f'{me}: end: submit file is expected to exist but does not')
         return 'submit file is expected to exist but does not'
 
     # case: filename is not a string, submit file is not required
     #
     elif slot_dict['collected']:
+        debug(f'{me}: end: submit file was collected w/o filename')
         return 'submit file was collected w/o filename'
 
     # no slot errors found
@@ -5435,12 +5485,15 @@ def move_unexpected_nolock(slot_dir):
 
     # setup
     #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
     # firewall - slot_dir arg must be a string
     #
     if not isinstance(slot_dir, str):
+        ioccc_last_errmsg = f'ERROR: {me}: topdir arg is not a string'
         error(f'{me}: topdir arg is not a string')
         return 0
 
@@ -5449,11 +5502,13 @@ def move_unexpected_nolock(slot_dir):
     count = 0
     for file in glob.glob(f'{slot_dir}/submit.*.txz'):
         count += 1
-        warning(f'{me}: moving unexpected submit file: mv {file} {UNEXPECTED_DIR}')
         try:
             shutil.move(file, UNEXPECTED_DIR)
+            warning(f'{me}: moved unexpected submit file: mv {file} {UNEXPECTED_DIR}')
         except OSError as errcode:
-            error(f'{me}: unexpected submit file: mv {file} {UNEXPECTED_DIR} failed: <<{errcode}>>')
+            ioccc_last_errmsg = f'ERROR: {me}: {file} {UNEXPECTED_DIR} failed: <<{errcode}>>'
+            error(f'{me}: mv {file} {UNEXPECTED_DIR} failed: <<{errcode}>>')
+            return 0
 
     debug(f'{me}: end: moved {count} unexpected files')
     return count
@@ -5461,6 +5516,7 @@ def move_unexpected_nolock(slot_dir):
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
 #
 def stage_submit(username, slot_num):
     """
@@ -5479,8 +5535,12 @@ def stage_submit(username, slot_num):
         slot_num        slot number for a given username
 
     Returns:
-        != None ==> SHA256 hash of file moved under the staged directory
-        None ==> unable to move submit file under the staged directory
+        hexdigest, count
+            hexdigest - SHA256 hash of file moved under the staged directory
+            count - number of files also moved into the unexpected directory
+        None, count
+            unable to move submit file under the staged directory
+            count - number of files also moved into the unexpected directory
 
     NOTE: In either return case, some submit.*.tgz files may be moved under the staged directory.
 
@@ -5491,6 +5551,8 @@ def stage_submit(username, slot_num):
 
     # setup
     #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
@@ -5501,8 +5563,9 @@ def stage_submit(username, slot_num):
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
         #
+        ioccc_last_errmsg = f'ERROR: {me} invalid username arg'
         error(f'{me} invalid username arg')
-        return None
+        return None, 0
 
     # firewall - canonical firewall checks on the slot_num arg
     #
@@ -5511,21 +5574,25 @@ def stage_submit(username, slot_num):
         # The check_slot_num_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a slot_num firewall check failure.
         #
+        ioccc_last_errmsg = f'ERROR: {me} invalid slot_num arg'
         error(f'{me} invalid slot_num arg')
-        return None
+        return None, 0
 
     # look up username to be sure it is in the password database
     #
     if not lookup_username(username):
+        ioccc_last_errmsg = f'ERROR: {me} unknown username: {username}'
         error(f'{me} unknown username: {username}')
-        return None
+        return None, 0
 
     # determine slot directory path
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
+        ioccc_last_errmsg = (f'ERROR: {me} return_slot_dir_path failed for '
+                             f'username: {username} slot_num: {slot_num}')
         error(f'{me} return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
-        return None
+        return None, 0
 
     # Lock the slot
     #
@@ -5533,47 +5600,53 @@ def stage_submit(username, slot_num):
     #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
+        ioccc_last_errmsg = f'ERROR: {me} lock_slot failed for username: {username} slot_num: {slot_num}'
         error(f'{me} lock_slot failed for username: {username} slot_num: {slot_num}')
-        return None
+        return None, 0
 
     # obtain path of the submit filename
     #
     slot_dict = get_slot_dict_nolock(username, slot_num)
     if not slot_dict:
         # caller will log the error
-        move_unexpected_nolock(slot_dir)
+        unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None
-    if not 'filename' in slot_dict or not slot_dict['filename']:
-        error(f'submit filename is missing from slot for username: {username} slot_num: {slot_num}')
-        move_unexpected_nolock(slot_dir)
-        unlock_slot()
-        return None
-    submit_path = f'{slot_dir}/{slot_dict["filename"]}'
+        return None, unexpected_count
 
-    # validate the slot, submit file required, and check the SHA256 hash
+    # validate the slot
     #
     slot_err = validate_slot_nolock(slot_dict, username, slot_num, True, True)
-    if slot_err:
-
-        # tell the user to try loading again
-        #
-        error(f'{me}: corrupted slot for for username: {username} slot_num: {slot_num} '
+    if isinstance(slot_err, str):
+        ioccc_last_errmsg = (f'ERROR: {me}: slot invalid for username: {username} slot_num: {slot_num} '
+                             f'slot error: {slot_err}')
+        error(f'{me}: slot invalid for username: {username} slot_num: {slot_num} '
               f'slot error: {slot_err}')
-        move_unexpected_nolock(slot_dir)
+        unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None
+        return None, unexpected_count
+
+    # determine full path of submit file and the basename of the submit file
+    #
+    submit_path = return_submit_path(slot_dict, username, slot_num)
+    if not isinstance(submit_path, str):
+        # caller will log the error
+        unexpected_count = move_unexpected_nolock(slot_dir)
+        unlock_slot()
+        return None, unexpected_count
+    submit_file = os.path.basename(submit_path)
 
     # move the submit file to the good directory
     #
     try:
-        os.replace(submit_path, f'{STAGED_DIR}/{slot_dict["filename"]}')
+        os.replace(submit_path, f'{STAGED_DIR}/{submit_file}')
     except OSError as errcode:
-        error(f'{me}: replace {submit_path} {STAGED_DIR}/{slot_dict["filename"]} for'
-              f'username: {username} slot_num: {slot_num} failed: <<{errcode}>>')
-        move_unexpected_nolock(slot_dir)
+        ioccc_last_errmsg = (f'ERROR: {me}: replace {submit_path} {STAGED_DIR}/{submit_file} for '
+                             f'failed: <<{errcode}>>')
+        error(f'{me}: replace {submit_path} {STAGED_DIR}/{submit_file} for '
+              f'failed: <<{errcode}>>')
+        unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None
+        return None, unexpected_count
 
     # mark slot file as having been collected
     #
@@ -5585,26 +5658,24 @@ def stage_submit(username, slot_num):
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
         # caller will log the error
-        move_unexpected_nolock(slot_dir)
+        unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None
+        return None, unexpected_count
     if not write_slot_json_nolock(slot_json_file, slot_dict):
         # caller will log the error
-        move_unexpected_nolock(slot_dir)
+        unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None
+        return None, unexpected_count
 
     # all is well, return the SHA256 hash
     #
-    # NOTE: The above call to validate_slot_nolock(), called validate_slot_dict_nolock()
-    #       which in turn validated that we have a valid SHA256 hash string that matches
-    #       the file that we just moved.
-    #
     hexdigest = slot_dict['SHA256']
-    debug(f'{me}: end: returning SHA256: {hexdigest} for username: {username} slot_num: {slot_num}')
-    move_unexpected_nolock(slot_dir)
+    unexpected_count = move_unexpected_nolock(slot_dir)
+    debug(f'{me}: end: returning SHA256: {hexdigest} unexpected_count: {unexpected_count} '
+          f'for username: {username} slot_num: {slot_num}')
     unlock_slot()
-    return hexdigest
+    return hexdigest, unexpected_count
 #
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-branches
+# pylint: enable=too-many-statements

@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.2.0 2024-12-22"
+export VERSION="2.2.1 2024-02-04"
 NAME=$(basename "$0")
 export NAME
 export TOPDIR="."
@@ -195,7 +195,8 @@ done
 
 # pylint critical bin files
 #
-for i in bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
+for i in bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py \
+	 bin/set_slot_status.py ; do
 
     # announce
     #
