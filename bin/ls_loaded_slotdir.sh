@@ -67,8 +67,8 @@ Exit codes:
      1	       some internal tool is missing or exited non-zero
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       cannot find topdir
-     5	       cannot topdir/users
+     4	       topdir is not a directory
+     5	       topdir/users is not a directory
  >= 10         internal error
 
 $NAME version: $VERSION"

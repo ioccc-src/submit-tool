@@ -5464,7 +5464,13 @@ def move_unexpected_nolock(slot_dir):
 #
 def stage_submit(username, slot_num):
     """
-    Move a submit file in a slot into either the good or bad staging area.
+    Stage a slot's submit file into a staging directory.
+
+    Move a submit file in a slot into either the staged or unexpected staging area.
+    If the slot has no errors, the submit.*.tgz file is moved under the staged directory.
+    If the slot has errors, or there are extra unexpected submit.*.tgz file in the slot,
+    then those files are also moved moved under the unexpected directory.
+
     Update the JSON slot file to both indicate that the submit file was
     collected AND to update the slot status comment.
 
@@ -5473,8 +5479,10 @@ def stage_submit(username, slot_num):
         slot_num        slot number for a given username
 
     Returns:
-        != None ==> SHA256 hash of file moved into the staging area
-        None ==> unable to move submit file into staging area
+        != None ==> SHA256 hash of file moved under the staged directory
+        None ==> unable to move submit file under the staged directory
+
+    NOTE: In either return case, some submit.*.tgz files may be moved under the staged directory.
 
     NOTE: This function performs various canonical firewall checks on the username arg.
 
