@@ -5095,9 +5095,9 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
     if not submit_file:
         filename_is_string = False
     if filename_is_string:
-        if not submit_file.startswith(f'submit.'):
+        if not submit_file.startswith('submit.'):
             debug(f'{me}: end: slot filename does not begin with submit.')
-            return f'slot filename does not begin with submit.'
+            return 'slot filename does not begin with submit.'
         if not submit_file.startswith(f'submit.{username}-{slot_num}.'):
             debug(f'{me}: end: slot filename does not begin with submit.{username}-{slot_num}.')
             return f'slot filename does not begin with submit.{username}-{slot_num}.'
