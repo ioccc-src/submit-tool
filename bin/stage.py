@@ -23,6 +23,7 @@ from pathlib import Path
 # Sort the import list with: sort -d -u
 #
 from iocccsubmit import \
+        cd_appdir, \
         change_startup_appdir, \
         check_slot_num_arg, \
         check_username_arg, \
@@ -94,6 +95,12 @@ def main():
             prerr(f'{program}: change_startup_appdir failed: <<{return_last_errmsg()}>>')
             print('exit.3 0')
             sys.exit(3)
+
+    # cd the APPDIR directory
+    #
+    # This is usually /var/ioccc, but could be '.' or whatever -t topdir set
+    #
+    cd_appdir()
 
     # parse slot path into username and slot number#
     #

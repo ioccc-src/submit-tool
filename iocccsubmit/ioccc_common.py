@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.3 2025-02-04"
+VERSION_IOCCC_COMMON = "2.5.4 2025-02-05"
 
 # force password change grace time
 #
@@ -510,11 +510,49 @@ def change_startup_appdir(topdir):
     return True
 
 
+def cd_appdir() -> None:
+    """
+    Change the current working directory to the APPDIR directory.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # cd to APPDIR
+    #
+    try:
+        os.chdir(APPDIR)
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: {me}: cd {APPDIR} failed: <<{errcode}>>'
+        error(f'{me}: cd {APPDIR} failed: <<{errcode}>>')
+        return
+
+    # return the password JSON data as a python dictionary
+    #
+    debug(f'{me}: end: cd {APPDIR}')
+    return
+
+
 def prerr(*args, **kwargs):
     """
     Print to stderr.
     """
+
+    # setup
+    #
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: start')
+
+    # print to stderr
+    #
     print(*args, file=sys.stderr, **kwargs)
+
+    # We do NOT want to call debug from this function because we call this code too frequently
+    #no#debug(f'{me}: end')
 
 
 def check_username_arg(username):

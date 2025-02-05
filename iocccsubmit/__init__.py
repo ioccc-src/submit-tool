@@ -19,6 +19,7 @@ from .ioccc_common import \
         MAX_TARBALL_LEN, \
         MIN_PASSWORD_LENGTH, \
         TCP_PORT, \
+        cd_appdir, \
         change_startup_appdir, \
         check_slot_num_arg, \
         check_username_arg, \
