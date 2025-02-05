@@ -40,7 +40,7 @@
 
 # setup
 #
-export VERSION="1.0.0 2025-01-17"
+export VERSION="1.0.1 2025-02-04"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -76,7 +76,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:V flag; do
+while getopts :hv:Vt: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
