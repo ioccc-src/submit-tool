@@ -5,14 +5,6 @@
 # We list, relative to topdir, those user/USERNAME/SLOT directories
 # that have a submit.*.txz file in them.
 #
-# IMPORTANT: You MUST generate the secret key once and then
-#	     copy/paste the value into your application or store it as an
-#	     environment variable. Do NOT regenerate the secret key within
-#	     the application, or you will get a new value for each instance
-#	     of the application, which can cause issues when you deploy to
-#	     production since each instance of the application has a
-#	     different SECRET_KEY value.
-#
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
