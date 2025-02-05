@@ -47,7 +47,7 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="Manage IOCCC submit server password file and state file",
+                description="Manage the IOCCC start and/or end dates",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
                         help="app directory path",

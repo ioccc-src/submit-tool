@@ -1,8 +1,8 @@
 #
-# set_slot_status.py - modify the status of a IOCCC submit server user's slot
+# set_slot_status.py - Modify the status comment of a user's slot
 
 """
-set_slot_status.py - modify the status of a IOCCC submit server user's slot
+set_slot_status.py - Modify the status comment of a user's slot
 """
 
 # system imports
@@ -47,7 +47,7 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="Manage IOCCC submit server password file and state file",
+                description="Modify the status comment of a user's slot",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
                         help="app directory path",

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 #
-# ioccc_submit.py - IOCCC submit tool simulator
+# ioccc_submit.py - IOCCC submit server simulator
 
 """
-ioccc_submit.py - IOCCC submit tool command line interface
+ioccc_submit.py - IOCCC submit server simulator
 
 This tool simulates the IOCCC submit tool web application
 from the command line.
@@ -54,7 +54,7 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="IOCCC submit server tool",
+                description="IOCCC submit server simulator",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-i', '--ip',
                         help=f'IP address to connect (def: {IP_ADDRESS})',

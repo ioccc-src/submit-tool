@@ -71,7 +71,7 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="Manage IOCCC submit server password file and state file",
+                description="Manage IOCCC submit server accounts",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
                         help="app directory path",
