@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.4 2025-02-05"
+VERSION_IOCCC_COMMON = "2.5.5 2025-02-05"
 
 # force password change grace time
 #
@@ -3239,7 +3239,7 @@ def write_slot_json_nolock(slot_json_file, slot_json):
 
     Given:
         slot_json_file     JSON filename for a given slot
-        slot_json           content for a given slot as a python dictionary
+        slot_json          content for a given slot as a python dictionary
 
     Returns:
         True    slot JSON file updated
@@ -3254,6 +3254,20 @@ def write_slot_json_nolock(slot_json_file, slot_json):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
+
+    # firewall - username arg must be a string
+    #
+    if not isinstance(slot_json_file, str):
+        ioccc_last_errmsg = f'ERROR: {me}: slot_json_file arg is not a string'
+        error(f'{me}: slot_json_file arg is not a string')
+        return None
+
+    # validate args
+    #
+    if not isinstance(slot_json, dict):
+        ioccc_last_errmsg = f'ERROR: {me}: slot_json arg is not a python dictionary'
+        error(f'{me}: end: slot_json arg is not a python dictionary')
+        return False
 
     # write JSON file for slot
     #
@@ -5573,11 +5587,13 @@ def stage_submit(username, slot_num):
         slot_num        slot number for a given username
 
     Returns:
-        hexdigest, count
+        hexdigest, staged_path, count
             hexdigest - SHA256 hash of file moved under the staged directory
+            staged_path - path of the file just moved under the staged directory
             count - number of files also moved into the unexpected directory
-        None, count
-            unable to move submit file under the staged directory
+        None, None, count
+            None - unable to move submit file under the staged directory
+            '.' - no file just moved under the staged directory
             count - number of files also moved into the unexpected directory
 
     NOTE: In either return case, some submit.*.tgz files may be moved under the staged directory.
@@ -5603,7 +5619,7 @@ def stage_submit(username, slot_num):
         #
         ioccc_last_errmsg = f'ERROR: {me} invalid username arg'
         error(f'{me} invalid username arg')
-        return None, 0
+        return None, '.', 0
 
     # firewall - canonical firewall checks on the slot_num arg
     #
@@ -5614,14 +5630,14 @@ def stage_submit(username, slot_num):
         #
         ioccc_last_errmsg = f'ERROR: {me} invalid slot_num arg'
         error(f'{me} invalid slot_num arg')
-        return None, 0
+        return None, '.', 0
 
     # look up username to be sure it is in the password database
     #
     if not lookup_username(username):
         ioccc_last_errmsg = f'ERROR: {me} unknown username: {username}'
         error(f'{me} unknown username: {username}')
-        return None, 0
+        return None, '.', 0
 
     # determine slot directory path
     #
@@ -5630,7 +5646,7 @@ def stage_submit(username, slot_num):
         ioccc_last_errmsg = (f'ERROR: {me} return_slot_dir_path failed for '
                              f'username: {username} slot_num: {slot_num}')
         error(f'{me} return_slot_dir_path failed for username: {username} slot_num: {slot_num}')
-        return None, 0
+        return None, '.', 0
 
     # Lock the slot
     #
@@ -5640,7 +5656,7 @@ def stage_submit(username, slot_num):
     if not slot_lock_fd:
         ioccc_last_errmsg = f'ERROR: {me} lock_slot failed for username: {username} slot_num: {slot_num}'
         error(f'{me} lock_slot failed for username: {username} slot_num: {slot_num}')
-        return None, 0
+        return None, '.', 0
 
     # obtain path of the submit filename
     #
@@ -5649,7 +5665,7 @@ def stage_submit(username, slot_num):
         # caller will log the error
         unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None, unexpected_count
+        return None, '.', unexpected_count
 
     # validate the slot
     #
@@ -5661,7 +5677,7 @@ def stage_submit(username, slot_num):
               f'slot error: {slot_err}')
         unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None, unexpected_count
+        return None, '.', unexpected_count
 
     # determine full path of submit file and the basename of the submit file
     #
@@ -5670,21 +5686,22 @@ def stage_submit(username, slot_num):
         # caller will log the error
         unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None, unexpected_count
+        return None, '.', unexpected_count
     submit_file = os.path.basename(submit_path)
 
     # move the submit file to the good directory
     #
+    staged_path = f'{STAGED_DIR}/{submit_file}'
     try:
-        os.replace(submit_path, f'{STAGED_DIR}/{submit_file}')
+        os.replace(submit_path, staged_path)
     except OSError as errcode:
-        ioccc_last_errmsg = (f'ERROR: {me}: replace {submit_path} {STAGED_DIR}/{submit_file} for '
+        ioccc_last_errmsg = (f'ERROR: {me}: replace {submit_path} {staged_path} for '
                              f'failed: <<{errcode}>>')
-        error(f'{me}: replace {submit_path} {STAGED_DIR}/{submit_file} for '
+        error(f'{me}: replace {submit_path} {staged_path} for '
               f'failed: <<{errcode}>>')
         unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
-        return None, unexpected_count
+        return None, '.', unexpected_count
 
     # mark slot file as having been collected
     #
@@ -5693,26 +5710,20 @@ def stage_submit(username, slot_num):
 
     # update the slot JSON file
     #
+    # this call to return_slot_json_filename() will log an error if there is a problem
     slot_json_file = return_slot_json_filename(username, slot_num)
-    if not slot_json_file:
-        # caller will log the error
-        unexpected_count = move_unexpected_nolock(slot_dir)
-        unlock_slot()
-        return None, unexpected_count
-    if not write_slot_json_nolock(slot_json_file, slot_dict):
-        # caller will log the error
-        unexpected_count = move_unexpected_nolock(slot_dir)
-        unlock_slot()
-        return None, unexpected_count
+    if isinstance(slot_json_file, str):
+        # this call to write_slot_json_nolock() will log an error if there is a problem
+        write_slot_json_nolock(slot_json_file, slot_dict)
 
     # all is well, return the SHA256 hash
     #
     hexdigest = slot_dict['SHA256']
     unexpected_count = move_unexpected_nolock(slot_dir)
-    debug(f'{me}: end: returning SHA256: {hexdigest} unexpected_count: {unexpected_count} '
-          f'for username: {username} slot_num: {slot_num}')
+    debug(f'{me}: end: returning SHA256: {hexdigest} staged_path: {staged_path} '
+          f'unexpected_count: {unexpected_count} for username: {username} slot_num: {slot_num}')
     unlock_slot()
-    return hexdigest, unexpected_count
+    return hexdigest, staged_path, unexpected_count
 #
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-branches

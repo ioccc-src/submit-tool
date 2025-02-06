@@ -56,7 +56,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.11.4
+VERSION= 0.11.5
 
 # Python package name
 #
@@ -140,7 +140,7 @@ DOCROOT= /var/ioccc
 SELINUX_SET= bin/selinux.set.sh
 SELINUX_UNSET= bin/selinux.unset.sh
 
-# executable scripts that are not part of the python module.
+# executable scripts that are not part of the python module
 #
 # Executable files to install under ${DESTDIR}.
 #
@@ -149,6 +149,10 @@ SELINUX_UNSET= bin/selinux.unset.sh
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
 	 bin/ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh bin/stage.py \
 	 ${SELINUX_SET} ${SELINUX_UNSET}
+
+# scripts that are not run, nor installed on the submit server
+#
+SBIN_SRC = sbin/collect.sh sbin/submitted_slots.sh
 
 # tool to generate the secret Flask key
 #
@@ -359,6 +363,14 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@echo '    make root_install'
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
+
+sbin_install: ${SBIN_SRC}
+	${V} echo DEBUG =-= $@ start =-=
+	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
+	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
+	${INSTALL} -o root -g root -m 0555 ${SBIN_SRC} ${DESTDIR}
+	${V} echo DEBUG =-= $@ start =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
 #
