@@ -17,6 +17,7 @@ pwned.pw.tree
 __pycache__
 setup.cfg
 staged/
+submit/
 .*.sw[a-zA-Z]
 unexpected/
 users/

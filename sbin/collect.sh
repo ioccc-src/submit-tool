@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.1.0 2025-02-05"
+export VERSION="2.1.1 2025-02-06"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -146,6 +146,12 @@ if [[ -z "$CHKENTRY_TOOL" ]]; then
     echo "$0: FATAL: chkentry tool is not installed or not in \$PATH" 1>&2
     exit 5
 fi
+XZ_TOOL=$(type -P xz)
+export XZ_TOOL
+if [[ -z "$XZ_TOOL" ]]; then
+    echo "$0: FATAL: xz tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
 export WORKDIR="."
 
 
@@ -153,7 +159,7 @@ export WORKDIR="."
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
 	[-p rmt_port] [-u rmt_user] [-s rmt_host]
-	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root]
+	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz]
 	[-z txzchk] [-y chkenry]
 	[-S rmt_stage] [-C slot_comment] [-w workdir]
 	rmt_slot_path
@@ -178,6 +184,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
 	-r rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
+	-x xz		use local xz tool to compress (def: $XZ_TOOL)
 
 	-z txzchk	use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
 	-y chkenry	use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
@@ -209,7 +216,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:s:T:c:2:r:z:y:S:C:w: flag; do
+while getopts :hv:VnNi:Ip:u:s:T:c:2:r:x:z:y:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -240,6 +247,8 @@ while getopts :hv:VnNi:Ip:u:s:T:c:2:r:z:y:S:C:w: flag; do
     2) SHA256_TOOL="$OPTARG"
 	;;
     r) RSYNC_TOOL="$OPTARG"
+	;;
+    x) XZ_TOOL="$OPTARG"
 	;;
     z) TXZCHK_TOOL="$OPTARG"
 	;;
@@ -343,6 +352,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: SHA256_TOOL=$SHA256_TOOL" 1>&2
     echo "$0: debug[3]: RSYNC_TOOL=$RSYNC_TOOL" 1>&2
+    echo "$0: debug[3]: XZ_TOOL=$XZ_TOOL" 1>&2
     echo "$0: debug[3]: TXZCHK_TOOL=$TXZCHK_TOOL" 1>&2
     echo "$0: debug[3]: CHKENTRY_TOOL=$CHKENTRY_TOOL" 1>&2
     echo "$0: debug[3]: RMT_STAGE_PY=$RMT_STAGE_PY" 1>&2
@@ -382,6 +392,14 @@ fi
 #
 if [[ ! -x $RSYNC_TOOL ]]; then
     echo "$0: ERROR: rsync tool not executable: $RSYNC_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - XZ_TOOL must be executable
+#
+if [[ ! -x $XZ_TOOL ]]; then
+    echo "$0: ERROR: xz tool not executable: $XZ_TOOL" 1>&2
     exit 5
 fi
 
@@ -551,6 +569,8 @@ fi
 #
 STAGED_FILENAME=$(basename "$STAGED_PATH")
 export STAGED_FILENAME
+STAGED_FILENAME_NOTXZ=$(basename "$STAGED_PATH" .txz)
+export STAGED_FILENAME_NOTXZ
 DEST="$INBOUND/$STAGED_FILENAME"
 export DEST
 SUBMIT_TIME=${STAGED_FILENAME##submit.}
@@ -560,6 +580,15 @@ SUBMIT_TIME=${SUBMIT_FILENAME##*.}
 export SUBMIT_TIME
 SUBMIT_USERSLOT=${SUBMIT_FILENAME%%."$SUBMIT_TIME"}
 export SUBMIT_USERSLOT
+if [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: STAGED_FILENAME=$STAGED_FILENAME" 1>&2
+    echo "$0: debug[3]: STAGED_FILENAME_NOTXZ=$STAGED_FILENAME_NOTXZ" 1>&2
+    echo "$0: debug[3]: DEST=$DEST" 1>&2
+    echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME" 1>&2
+    echo "$0: debug[3]: SUBMIT_FILENAME=$SUBMIT_FILENAME" 1>&2
+    echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME" 1>&2
+    echo "$0: debug[3]: SUBMIT_USERSLOT=$SUBMIT_USERSLOT" 1>&2
+fi
 
 
 # remote copy of staged path into the inbound directory
@@ -688,7 +717,24 @@ if [[ -z $NOOP ]]; then
 	exit 6
     fi
 
-    # create a new unpack directory
+    # create tarball holding directory
+    #
+    export SUBMIT_TARBALL_DIR="$SUBMIT/$SUBMIT_USERSLOT/txz"
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_TARBALL_DIR" 1>&2
+    fi
+    mkdir -p "$SUBMIT_TARBALL_DIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR failed, error: $status" 1>&2
+	exit 6
+    fi
+    if [[ ! -d $SUBMIT_TARBALL_DIR ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR did not create the directory" 1>&2
+	exit 6
+    fi
+
+    # create a new temporary unpack directory
     #
     export SUBMIT_UNPACK_DIR="$SUBMIT_PARENT_DIR/tmp.$$"
     trap 'rm -rf $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
@@ -706,7 +752,7 @@ if [[ -z $NOOP ]]; then
 	exit 6
     fi
 
-    # untar the submit file under the new unpack directory
+    # untar the submit file under the new temporary directory
     #
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST"
@@ -749,9 +795,29 @@ if [[ -z $NOOP ]]; then
 	exit 9
     fi
 
-    # move the unpacked tree into place
+    # find a brand new place into which to move the temporary tree
     #
     export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+    if [[ -e $SUBMIT_DIR ]]; then
+
+	# we already have SUBMIT_DIR, find a different directory that does NOT already exist
+	#
+	((i=0))
+	SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
+	while [[ -e $SUBMIT_DIR ]]; do
+	    ((i=i+1))
+	    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
+	done
+    fi
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
+    fi
+
+    # move the temporary unpacked tree into place
+    #
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: will move unpacked into: $SUBMIT_DIR" 1>&2
+    fi
     SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d)
     export SRC_DIR
     if [[ $V_FLAG -ge 1 ]]; then
@@ -768,7 +834,37 @@ if [[ -z $NOOP ]]; then
 	exit 6
     fi
 
-    # cleanup unpacked tree
+    # find a destination tarball under the SUBMIT_TARBALL_DIR directory
+    #
+    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME"
+    if [[ -e $DEST_TARBALL ]]; then
+
+	# we already have a DEST_TARBALL, find a different filename that does NOT already exist
+	#
+	((i=0))
+	DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+	while [[ -e $DEST_TARBALL ]]; do
+	    ((i=i+1))
+	    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+	done
+    fi
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
+    fi
+
+    # move the inbound tarball under the SUBMIT_TARBALL_DIR
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
+    fi
+    mv -f "$DEST" "$DEST_TARBALL"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
+	exit 6
+    fi
+
+    # cleanup temporary tree
     #
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
@@ -796,7 +892,7 @@ if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON" 1>&2
     fi
-    "CHKENTRY_TOOL" -q "$AUTH_JSON" "$INFO_JSON"
+    "$CHKENTRY_TOOL" -q "$AUTH_JSON" "$INFO_JSON"
     status="$?"
     if [[ $status -ne 0 ]]; then
 
@@ -832,6 +928,18 @@ if [[ -z $NOOP ]]; then
 	# exit non-zero due to txzchk failure
 	#
 	exit 9
+    fi
+
+    # as an "gram of protection", compress the .auth.json file
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $XZ_TOOL -z -f $AUTH_JSON" 1>&2
+    fi
+    "$XZ_TOOL" -z -f "$AUTH_JSON"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: $XZ_TOOL -z -f $AUTH_JSON failed, error: $status" 1>&2
+	exit 6
     fi
 
     # report submission success
