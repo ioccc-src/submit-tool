@@ -34,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.2 2025-02-05"
+VERSION = "2.3.3 2025-02-05"
 
 
 def main():
@@ -109,7 +109,7 @@ def main():
     # no option selected
     #
     info(f'{program}: username: {username} slot_num: {slot_num} status: {status}')
-    print('{program}: username: {username} slot_num: {slot_num} status: {status}')
+    print(f'{program}: username: {username} slot_num: {slot_num} status: {status}')
     sys.exit(0)
 
 

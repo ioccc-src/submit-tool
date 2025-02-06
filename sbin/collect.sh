@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-05"
+export VERSION="2.1.0 2025-02-05"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -99,12 +99,12 @@ export IOCCC_RC="$HOME/.ioccc.rc"
 export CAP_I_FLAG=
 export REMOTE_PORT=22
 export REMOTE_USER="nobody"
-if [[ -n $USER ]]; then
-    REMOTE_USER="$USER"
+if [[ -n $USER_NAME ]]; then
+    REMOTE_USER="$USER_NAME"
 else
-    USERNAME=$(id -u -n)
-    if [[ -n $USERNAME ]]; then
-	REMOTE_USER="$USERNAME"
+    USER_NAME=$(id -u -n)
+    if [[ -n $USER_NAME ]]; then
+	REMOTE_USER="$USER_NAME"
     fi
 fi
 export SERVER="unknown.example.org"
@@ -128,13 +128,34 @@ if [[ -z "$SHA256_TOOL" ]]; then
     echo "$0: FATAL: sha256sum tool is not installed or not in \$PATH" 1>&2
     exit 5
 fi
+RSYNC_TOOL=$(type -P rsync)
+export RSYNC_TOOL
+if [[ -z "$RSYNC_TOOL" ]]; then
+    echo "$0: FATAL: rsync tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+TXZCHK_TOOL=$(type -P txzchk)
+export TXZCHK_TOOL
+if [[ -z "$TXZCHK_TOOL" ]]; then
+    echo "$0: FATAL: txzchk tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+CHKENTRY_TOOL=$(type -P chkentry)
+export CHKENTRY_TOOL
+if [[ -z "$CHKENTRY_TOOL" ]]; then
+    echo "$0: FATAL: chkentry tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
 export WORKDIR="."
 
 
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-s rmt_host] [-T ssh_tool] [-S rmt_stage] [-C slot_comment] [-w workdir]
+	[-p rmt_port] [-u rmt_user] [-s rmt_host]
+	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root]
+	[-z txzchk] [-y chkenry]
+	[-S rmt_stage] [-C slot_comment] [-w workdir]
 	rmt_slot_path
 
 	-h		print help message and exit
@@ -152,9 +173,14 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-p rmt_port	use ssh TCP port (def: $REMOTE_PORT)
 	-u rmt_user	ssh into this user (def: $REMOTE_USER)
 	-s rmt_host	ssh host to use (def: $SERVER)
+
 	-T ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
+	-r rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
+
+	-z txzchk	use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
+	-y chkenry	use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
 
 	-S rmt_stage	path to stage.py on the remote server (def: $RMT_STAGE_PY)
 	-C slot_comment	path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
@@ -174,7 +200,8 @@ Exit codes:
      5	       some critical local executable tool not found
      6	       remote execution of a tool failed, returned an exit code, or returned a malformed response
      7	       inbound and/or error are not writable directories, or workdir is not a directory
-     8	       scp of remote file(s) failed
+     8	       scp of remote file(s) or ssh rm -f of file(s) failed
+     9	       downloaded file failed local tests
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -182,7 +209,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:s:T:c:2:S:C:w: flag; do
+while getopts :hv:VnNi:Ip:u:s:T:c:2:r:z:y:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -209,6 +236,14 @@ while getopts :hv:VnNi:Ip:u:s:T:c:2:S:C:w: flag; do
     T) SSH_TOOL="$OPTARG"
 	;;
     c) SCP_TOOL="$OPTARG"
+	;;
+    2) SHA256_TOOL="$OPTARG"
+	;;
+    r) RSYNC_TOOL="$OPTARG"
+	;;
+    z) TXZCHK_TOOL="$OPTARG"
+	;;
+    y) CHKENTRY_TOOL="$OPTARG"
 	;;
     S) RMT_STAGE_PY="$OPTARG"
 	;;
@@ -307,6 +342,9 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: SHA256_TOOL=$SHA256_TOOL" 1>&2
+    echo "$0: debug[3]: RSYNC_TOOL=$RSYNC_TOOL" 1>&2
+    echo "$0: debug[3]: TXZCHK_TOOL=$TXZCHK_TOOL" 1>&2
+    echo "$0: debug[3]: CHKENTRY_TOOL=$CHKENTRY_TOOL" 1>&2
     echo "$0: debug[3]: RMT_STAGE_PY=$RMT_STAGE_PY" 1>&2
     echo "$0: debug[3]: RMT_SET_SLOT_STATUS_PY=$RMT_SET_SLOT_STATUS_PY" 1>&2
     echo "$0: debug[3]: WORKDIR=$WORKDIR" 1>&2
@@ -336,6 +374,30 @@ fi
 #
 if [[ ! -x $SHA256_TOOL ]]; then
     echo "$0: ERROR: sha256sum tool not executable: $SHA256_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - RSYNC_TOOL must be executable
+#
+if [[ ! -x $RSYNC_TOOL ]]; then
+    echo "$0: ERROR: rsync tool not executable: $RSYNC_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - TXZCHK_TOOL must be executable
+#
+if [[ ! -x $TXZCHK_TOOL ]]; then
+    echo "$0: ERROR: txzchk tool not executable: $TXZCHK_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - CHKENTRY_TOOL must be executable
+#
+if [[ ! -x $CHKENTRY_TOOL ]]; then
+    echo "$0: ERROR: chkentry tool not executable: $CHKENTRY_TOOL" 1>&2
     exit 5
 fi
 
@@ -373,6 +435,11 @@ fi
 export ERRORS="errors"
 if [[ ! -d $ERRORS || ! -w $ERRORS ]]; then
     echo "$0: ERROR: errors is not a writable directory under workdir" 1>&2
+    exit 7
+fi
+export SUBMIT="submit"
+if [[ ! -d $SUBMIT || ! -w $SUBMIT ]]; then
+    echo "$0: ERROR: submit is not a writable directory under workdir" 1>&2
     exit 7
 fi
 
@@ -480,10 +547,19 @@ if [[ $STAGED_PATH == "." ]]; then
 fi
 
 
-# determine scp destination
+# determine scp destination, filename, and submit directory
 #
-DEST="$INBOUND/"$(basename "$STAGED_PATH")
+STAGED_FILENAME=$(basename "$STAGED_PATH")
+export STAGED_FILENAME
+DEST="$INBOUND/$STAGED_FILENAME"
 export DEST
+SUBMIT_TIME=${STAGED_FILENAME##submit.}
+SUBMIT_FILENAME=${SUBMIT_TIME%%.txz}
+export SUBMIT_FILENAME
+SUBMIT_TIME=${SUBMIT_FILENAME##*.}
+export SUBMIT_TIME
+SUBMIT_USERSLOT=${SUBMIT_FILENAME%%."$SUBMIT_TIME"}
+export SUBMIT_USERSLOT
 
 
 # remote copy of staged path into the inbound directory
@@ -495,10 +571,10 @@ if [[ -z $NOOP ]]; then
 
     # copy remote staged file
     #
-    "$SCP_TOOL" -P "$REMOTE_PORT" "$REMOTE_USER@$SERVER:$STAGED_PATH" "$DEST"
+    "$SCP_TOOL" -q -P "$REMOTE_PORT" "$REMOTE_USER@$SERVER:$STAGED_PATH" "$DEST"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SCP_TOOL -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
+	echo "$0: ERROR: $SCP_TOOL -q -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
 	exit 8
     fi
     if [[ ! -r $DEST ]]; then
@@ -531,21 +607,266 @@ if [[ -z $NOOP ]]; then
     #
     COMMENT="submit file fetched by an IOCCC judge prior to format testing"
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT'" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'"
+    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' failed, error: $status" 1>&2
+	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
 	exit 6
     fi
 
-# XXX - add code here - XXX #
+    # remove the remote staged file
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" rm -f "$STAGED_PATH"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH failed, error: $status" 1>&2
+	exit 8
+    fi
 
+    # test the destination file using txzchk
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $TXZCHK_TOOL -q $DEST" 1>&2
+    fi
+    "$TXZCHK_TOOL" -q "$DEST"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+
+	# report txzchk test failure
+	#
+	echo "$0: ERROR: $TXZCHK_TOOL -q $DEST failed, error: $status" 1>&2
+
+	# update the slot comment with the txzchk failure
+	#
+	COMMENT="submit file failed the txxchk test!  Use mkiocccentry to rebuild and resubmit to this slot."
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
+	fi
+	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# move destination file into errors
+	#
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
+	fi
+	mv -v -f "$DEST" "$ERRORS"
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# exit non-zero due to txzchk failure
+	#
+	exit 9
+    fi
+
+    # create submission directory
+    #
+    export SUBMIT_PARENT_DIR="$SUBMIT/$SUBMIT_USERSLOT"
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_PARENT_DIR" 1>&2
+    fi
+    mkdir -p "$SUBMIT_PARENT_DIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR failed, error: $status" 1>&2
+	exit 6
+    fi
+    if [[ ! -d $SUBMIT_PARENT_DIR ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR did not create the directory" 1>&2
+	exit 6
+    fi
+
+    # create a new unpack directory
+    #
+    export SUBMIT_UNPACK_DIR="$SUBMIT_PARENT_DIR/tmp.$$"
+    trap 'rm -rf $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_UNPACK_DIR" 1>&2
+    fi
+    mkdir -p "$SUBMIT_UNPACK_DIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+	exit 6
+    fi
+    if [[ ! -d $SUBMIT_UNPACK_DIR ]]; then
+	echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR did not create the directory" 1>&2
+	exit 6
+    fi
+
+    # untar the submit file under the new unpack directory
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST"
+    fi
+    tar -C "$SUBMIT_UNPACK_DIR" -Jxf "$DEST"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+
+	# report untar failure
+	#
+	echo "$0: ERROR: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST failed, error: $status" 1>&2
+
+	# update the slot comment with the txzchk failure
+	#
+	COMMENT="submit file failed to untar!  Use mkiocccentry to rebuild and resubmit to this slot."
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
+	fi
+	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# move destination file into errors
+	#
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
+	fi
+	mv -v -f "$DEST" "$ERRORS"
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# exit non-zero due to txzchk failure
+	#
+	exit 9
+    fi
+
+    # move the unpacked tree into place
+    #
+    export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+    SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d)
+    export SRC_DIR
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: mv -f $SRC_DIR $SUBMIT_DIR" 1>&2
+    fi
+    mv -f "$SRC_DIR" "$SUBMIT_DIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR failed, error: $status" 1>&2
+	exit 6
+    fi
+    if [[ ! -d $SUBMIT_DIR ]]; then
+	echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR did not create the directory" 1>&2
+	exit 6
+    fi
+
+    # cleanup unpacked tree
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
+    fi
+    rm -rf "$SUBMIT_UNPACK_DIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+	exit 6
+    fi
+    trap - 0 1 2 3 15
+
+    # perform chkentry test on the submission directory
+    #
+    export AUTH_JSON="$SUBMIT_DIR/.auth.json"
+    if [[ ! -r $AUTH_JSON ]]; then
+	echo "$0: ERROR: .auth.json readable file not found: $AUTH_JSON" 1>&2
+	exit 9
+    fi
+    export INFO_JSON="$SUBMIT_DIR/.info.json"
+    if [[ ! -r $INFO_JSON ]]; then
+	echo "$0: ERROR: .info.json readable file not found: $INFO_JSON" 1>&2
+	exit 9
+    fi
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON" 1>&2
+    fi
+    "CHKENTRY_TOOL" -q "$AUTH_JSON" "$INFO_JSON"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+
+	# report chkentry failure
+	#
+	echo "$0: ERROR: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON failed, error: $status" 1>&2
+
+	# update the slot comment with the txzchk failure
+	#
+	COMMENT="submit file failed chkentry test!  Use mkiocccentry to rebuild and resubmit to this slot."
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
+	fi
+	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# move destination file into errors
+	#
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
+	fi
+	mv -v -f "$DEST" "$ERRORS"
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
+	    exit 6
+	fi
+
+	# exit non-zero due to txzchk failure
+	#
+	exit 9
+    fi
+
+    # report submission success
+    #
+    COMMENT="submit file received by IOCCC judges and passed both txzchk and chkentry tests"
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	exit 6
+    fi
 fi
 
 
-# XXX - add code here - XXX #
+# case: we have 1 or more unexpected files
+#
+# Use rsync to "move" and files found in the remote server unexpected directory
+# to under the local errors directory.  By "move" we mean that we remove files
+# under the remote server unexpected directory after they are copied into
+# the local errors directory.
+#
+if [[ -z $NOOP && $UNEXPECTED_COUNT -ge 1 ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS" 1>&2
+    fi
+    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS failed, error: $status" 1>&2
+	exit 8
+    fi
+fi
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
