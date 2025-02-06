@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
 #
 # set_slot_status.py - Modify the status comment of a user's slot
 
 """
 set_slot_status.py - Modify the status comment of a user's slot
 """
+
 
 # system imports
 #
@@ -32,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.1 2025-01-31"
+VERSION = "2.3.2 2025-02-05"
 
 
 def main():

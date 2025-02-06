@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="1.0.0 2025-02-05"
+export VERSION="2.0.0 2025-02-05"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -109,6 +109,7 @@ else
 fi
 export SERVER="unknown.example.org"
 export RMT_STAGE_PY="/usr/ioccc/bin/stage.py"
+export RMT_SET_SLOT_STATUS_PY="/usr/ioccc/bin/set_slot_status.py"
 SSH_TOOL=$(type -P ssh)
 export SSH_TOOL
 if [[ -z "$SSH_TOOL" ]]; then
@@ -133,7 +134,7 @@ export WORKDIR="."
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-s rmt_host] [-T ssh_tool] [-S rmt_stage] [-w workdir]
+	[-p rmt_port] [-u rmt_user] [-s rmt_host] [-T ssh_tool] [-S rmt_stage] [-C slot_comment] [-w workdir]
 	rmt_slot_path
 
 	-h		print help message and exit
@@ -156,6 +157,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
 
 	-S rmt_stage	path to stage.py on the remote server (def: $RMT_STAGE_PY)
+	-C slot_comment	path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
 
 	-w workdir	cd to the workdir before running (def: stay in $WORKDIR)
 
@@ -169,11 +171,10 @@ Exit codes:
      2         -h and help string printed or -V and version string printed
      3         command line error
      4	       source of ioccc.rc file failed
-     5	       some critical executable tool not found
-     6	       remote execution of stage.py failed or answer from stage.py was malformed
-     7	       stage.py returned an exit code
-     8	       inbound and/or error are not writable directories, or workdir is not a directory
-     9	       scp of remote file(s) failed
+     5	       some critical local executable tool not found
+     6	       remote execution of a tool failed, returned an exit code, or returned a malformed response
+     7	       inbound and/or error are not writable directories, or workdir is not a directory
+     8	       scp of remote file(s) failed
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -181,7 +182,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:s:T:c:2:S:w: flag; do
+while getopts :hv:VnNi:Ip:u:s:T:c:2:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -210,6 +211,8 @@ while getopts :hv:VnNi:Ip:u:s:T:c:2:S:w: flag; do
     c) SCP_TOOL="$OPTARG"
 	;;
     S) RMT_STAGE_PY="$OPTARG"
+	;;
+    C) RMT_SET_SLOT_STATUS_PY="$OPTARG"
 	;;
     w) WORKDIR="$OPTARG"
 	;;
@@ -243,6 +246,15 @@ if [[ $# -ne 1 ]]; then
     exit 3
 fi
 RMT_SLOT_PATH="$1"
+
+
+# determine the username and slot_num of the slot path
+#
+SLOT_NUM=$(basename "$RMT_SLOT_PATH")
+export SLOT_NUM
+RMT_SLOT_DIRNAME=$(dirname "$RMT_SLOT_PATH")
+USERNAME=$(basename "$RMT_SLOT_DIRNAME")
+export USERNAME
 
 
 # unless -I, verify the ioccc.rc file, if it exists
@@ -296,8 +308,11 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: SHA256_TOOL=$SHA256_TOOL" 1>&2
     echo "$0: debug[3]: RMT_STAGE_PY=$RMT_STAGE_PY" 1>&2
+    echo "$0: debug[3]: RMT_SET_SLOT_STATUS_PY=$RMT_SET_SLOT_STATUS_PY" 1>&2
     echo "$0: debug[3]: WORKDIR=$WORKDIR" 1>&2
     echo "$0: debug[3]: RMT_SLOT_PATH=$RMT_SLOT_PATH" 1>&2
+    echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM" 1>&2
+    echo "$0: debug[3]: USERNAME=$USERNAME" 1>&2
 fi
 
 
@@ -329,7 +344,7 @@ fi
 #
 if [[ ! -d $WORKDIR ]]; then
     echo "$0: ERROR: workdir is not a directory: $WORKDIR" 1>&2
-    exit 8
+    exit 7
 fi
 
 
@@ -343,7 +358,7 @@ if [[ $WORKDIR != "." ]]; then
     cd "$WORKDIR" || CD_FAILED="true"
     if [[ -n $CD_FAILED ]]; then
 	echo "$0: ERROR: cd $WORKDIR failed" 1>&2
-	exit 8
+	exit 7
     fi
 fi
 
@@ -353,12 +368,12 @@ fi
 export INBOUND="inbound"
 if [[ ! -d $INBOUND || ! -w $INBOUND ]]; then
     echo "$0: ERROR: inbound is not a writable directory under workdir" 1>&2
-    exit 8
+    exit 7
 fi
 export ERRORS="errors"
 if [[ ! -d $ERRORS || ! -w $ERRORS ]]; then
     echo "$0: ERROR: errors is not a writable directory under workdir" 1>&2
-    exit 8
+    exit 7
 fi
 
 
@@ -439,7 +454,7 @@ if [[ $HEXDIGEST == exit.* ]]; then
     fi
     if [[ $EXIT_CODE =~ ^[0-9]+$ ]]; then
 	echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH exited non-zero: exit.$EXIT_CODE $STAGED_PATH $UNEXPECTED_COUNT" 1>&2
-	exit 7
+	exit 6
     fi
 fi
 
@@ -484,11 +499,11 @@ if [[ -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: $SCP_TOOL -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
-	exit 9
+	exit 8
     fi
     if [[ ! -r $DEST ]]; then
 	echo "$0: ERROR: $SCP_TOOL destination not found: $DEST" 1>&2
-	exit 9
+	exit 8
     fi
 
     # verify SHA256 hex digest
@@ -496,19 +511,37 @@ if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: $SHA256_TOOL $DEST" 1>&2
     fi
+    # remove filename from SHA256_TOOL output leaving just the SHA256 hex digest
     DEST_HEXDIGEST=$("$SHA256_TOOL" "$DEST")
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: $SHA256_TOOL $DEST failed, error: $status" 1>&2
-	exit 9
+	exit 8
     fi
+    DEST_HEXDIGEST=${DEST_HEXDIGEST%% *}
     if [[ $V_FLAG -ge 3 ]]; then
 	echo "$0: debug[3]: $SHA256_TOOL $DEST: $DEST_HEXDIGEST" 1>&2
     fi
     if [[ $DEST_HEXDIGEST != "$HEXDIGEST" ]]; then
 	echo "$0: ERROR: $DEST SHA256 hash: $DEST_HEXDIGEST != remote SHA256 hash: $HEXDIGEST" 1>&2
-	exit 9
+	exit 8
     fi
+
+    # update the slot comment on the remote server
+    #
+    COMMENT="submit file fetched by an IOCCC judge prior to format testing"
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT'" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' failed, error: $status" 1>&2
+	exit 6
+    fi
+
+# XXX - add code here - XXX #
+
 fi
 
 
