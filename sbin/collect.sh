@@ -86,12 +86,11 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.1.1 2025-02-06"
+export VERSION="2.3.0 2025-02-08"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
-export NOOP=
 export DO_NOT_PROCESS=
 #
 export REMOTE_TOPDIR="/var/spool/ioccc"
@@ -152,23 +151,378 @@ if [[ -z "$XZ_TOOL" ]]; then
     echo "$0: FATAL: xz tool is not installed or not in \$PATH" 1>&2
     exit 5
 fi
+GIT_TOOL=$(type -P git)
+export GIT_TOOL
+if [[ -z "$GIT_TOOL" ]]; then
+    echo "$0: FATAL: git tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+export USE_GIT="true"
 export WORKDIR="."
+
+
+# add_git - If we are using git, add file to git
+#
+# usage:
+#   add_git file
+#
+#   file - file to add to git
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+# NOTE: This function does nothing if we are not using git.
+#
+function add_git
+{
+    local FILE  # file to add to git
+
+    # firewall - must be using git
+    #
+    if [[ -z $USE_GIT ]]; then
+	# not using git, nothing to do
+	return 0
+    fi
+
+    # parse args
+    #
+    if [[ $# -ne 1 ]]; then
+        echo "$0: Warning: in add_git: expected 1 arg, found $#" 1>&2
+        return 1
+    fi
+    FILE="$1"
+
+    # firewall - file must exist
+    #
+    if [[ ! -e $FILE ]]; then
+        echo "$0: Warning: in add_git: does not exist: $MSG_FILE" 1>&2
+        return 2
+    fi
+
+    # git add
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in add_git: about to: $GIT_TOOL add $FILE" 1>&2
+    fi
+    "$GIT_TOOL" add "$FILE"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: in add_git: $GIT_TOOL add $FILE failed, error: $status" 1>&2
+	return 3
+    fi
+
+    # all OK
+    #
+    return 0
+}
+
+
+# commit_git - If we are using git, commit changes with a commit message
+#
+# usage:
+#   commit_git msg_file
+#
+#   msg_file - file containing the text for the commit message
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+# NOTE: This function does nothing if we are not using git.
+#
+function commit_git
+{
+    local MSG_FILE  # file containing the text for the commit message
+
+    # firewall - must be using git
+    #
+    if [[ -z $USE_GIT ]]; then
+	# not using git, nothing to do
+	return 0
+    fi
+
+    # parse args
+    #
+    if [[ $# -ne 1 ]]; then
+        echo "$0: Warning: in commit_git: expected 1 arg, found $#" 1>&2
+        return 1
+    fi
+    MSG_FILE="$1"
+
+    # firewall - file containing the text for the commit message must not be empty
+    #
+    if [[ ! -s $MSG_FILE ]]; then
+        echo "$0: Warning: in commit_git: MSG_FILE is not a non-empty file: $MSG_FILE" 1>&2
+        return 2
+    fi
+
+    # git commit
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in commit_git: about to: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE" 1>&2
+    fi
+    "$GIT_TOOL" commit --allow-empty -q -F "$MSG_FILE"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: in commit_git: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE failed, error: $status" 1>&2
+	return 3
+    fi
+
+    # all OK
+    #
+    return 0
+}
+
+
+# push_git - If we are using git, push commit(s) to repo
+#
+# usage:
+#   push_git .
+#
+#   NOTE: The argument to this function is ignored.
+#	  We have an argument to silence shellcheck warning 2120 and note 2119.
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+# NOTE: This function does nothing if we are not using git.
+#
+function push_git
+{
+    local IGNORED   # ignored argument
+
+    # firewall - must be using git
+    #
+    if [[ -z $USE_GIT ]]; then
+	# not using git, nothing to do
+	return 0
+    fi
+
+    # parse args
+    #
+    if [[ $# -ne 1 ]]; then
+        echo "$0: Warning: in push_git: expected 1 arg, found $#" 1>&2
+        return 1
+    fi
+    IGNORED="$1"
+
+    # git push
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in push_git: about to: $GIT_TOOL push 2>/dev/null" 1>&2
+    fi
+    if [[ $V_FLAG -ge 5 ]]; then
+	# This debug message is to silence shellcheck warning 2034
+	echo "$0: debug[5]: in push_git: ignored arg is: $IGNORED" 1>&2
+    fi
+    "$GIT_TOOL" push 2>/dev/null
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: in push_git: $GIT_TOOL push 2>/dev/null  failed, error: $status" 1>&2
+	return 2
+    fi
+
+    # all OK
+    #
+    return 0
+}
+
+
+# mv_to_errors - move something under the ERRORS directory
+#
+# usage:
+#   mv_to_errors file
+#
+#   file - file to move under ERRORS
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+function mv_to_errors
+{
+    local FILE  # file to add to git
+
+    # parse args
+    #
+    if [[ $# -ne 1 ]]; then
+        echo "$0: Warning: in mv_to_errors: expected 1 arg, found $#" 1>&2
+        return 1
+    fi
+    FILE="$1"
+
+    # firewall - file must exist
+    #
+    if [[ ! -e $FILE ]]; then
+        echo "$0: Warning: in mv_to_errors: does not exist: $MSG_FILE" 1>&2
+        return 2
+    fi
+
+    # firewall - ERRORS must be a writable directory
+    #
+    if [[ ! -d $ERRORS ]]; then
+        echo "$0: Warning: in mv_to_errors: not a directory: $ERRORS" 1>&2
+        return 3
+    fi
+    if [[ ! -w $ERRORS ]]; then
+        echo "$0: Warning: in mv_to_errors: not a writable directory: $ERRORS" 1>&2
+        return 4
+    fi
+
+    # move destination file into errors
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in mv_to_errors: about to: mv -f $FILE $ERRORS" 1>&2
+    fi
+    mv -f "$FILE" "$ERRORS"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: in mv_to_errors: mv -f $FILE $ERRORS failed, error: $status" 1>&2
+	return 5
+    fi
+
+    # all OK
+    #
+    return 0
+}
+
+
+# change_slot_comment - change to status comment of a slot
+#
+# usage:
+#   change_slot_comment username slot_num comment
+#
+#   ioccc_user	- remote server IOCCC username
+#   slot	- slot number to change
+#   comment	- new status comment of a slot
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+# NOTE: The slot collected state will also be set to True.
+#
+function change_slot_comment
+{
+    local IOCCC_USER	# remote server IOCCC username
+    local SLOT		# slot number to change
+    local COMMENT	# new status comment of a slot
+
+    # parse args
+    #
+    if [[ $# -ne 3 ]]; then
+        echo "$0: Warning: in change_slot_comment: expected 3 args, found $#" 1>&2
+        return 1
+    fi
+    IOCCC_USER="$1"
+    SLOT="$2"
+    COMMENT="$3"
+
+    # ssh to remove server to run RMT_SET_SLOT_STATUS_PY to set slot comment and set collected to True
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	return 2
+    fi
+
+    # all OK
+    #
+    return 0
+}
+
+
+# unexpected_collect - collect unexpected files under ERRORS
+#
+# We do nothing if the count is <= 0.
+#
+# Use rsync to "move" and files found in the remote server unexpected directory
+# to under the local errors directory.  By "move" we mean that we remove files
+# under the remote server unexpected directory after they are copied into
+# the local ERRORS directory.
+#
+# usage:
+#   unexpected_collect count
+#
+#   count - number of unexpected files
+#
+# returns:
+#     0 ==> no errors detected
+#   > 0 ==> function error number
+#
+function unexpected_collect
+{
+    local COUNT  # file to add to git
+
+    # parse args
+    #
+    if [[ $# -ne 1 ]]; then
+        echo "$0: Warning: in unexpected_collect: expected 1 arg, found $#" 1>&2
+        return 1
+    fi
+    COUNT="$1"
+
+    # firewall - we can only do something when COUNT > 0
+    #
+    if [[ $COUNT -lt 1 ]]; then
+	return 0
+    fi
+
+    # firewall - ERRORS must be a writable directory
+    #
+    if [[ ! -d $ERRORS ]]; then
+        echo "$0: Warning: in unexpected_collect: not a directory: $ERRORS" 1>&2
+        return 2
+    fi
+    if [[ ! -w $ERRORS ]]; then
+        echo "$0: Warning: in unexpected_collect: not a writable directory: $ERRORS" 1>&2
+        return 3
+    fi
+
+    # collect all remote files under unexpected
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: in unexpected_collect: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS" 1>&2
+    fi
+    if [[ -n $USE_GIT ]]; then
+	{
+	    echo
+	    echo "Fetching $UNEXPECTED_COUNT unexpected file(s) from REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/"
+	    echo "Output from $RSYNC_TOOL follows:"
+	    echo
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files -v "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS" >> "$TMP_GIT_COMMIT" 2>&1
+	else
+	    cat 1>&2
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS"
+	fi
+    fi
+
+    # all OK
+    #
+    return 0
+}
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
 	[-p rmt_port] [-u rmt_user] [-s rmt_host]
-	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz]
-	[-z txzchk] [-y chkenry]
-	[-S rmt_stage] [-C slot_comment] [-w workdir]
+	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz] [-g git_tool] [-G]
+	[-z txzchk] [-y chkenry] [-S rmt_stage] [-C slot_comment] [-w workdir]
 	rmt_slot_path
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
-	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
 	-t rmt_topdir   app directory path on server (def: $REMOTE_TOPDIR)
@@ -185,6 +539,9 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
 	-r rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
 	-x xz		use local xz tool to compress (def: $XZ_TOOL)
+	-g git_tool	use local git tool to manage files (def: $GIT_TOOL)
+
+	-G		disable git operations (def: try to use git)
 
 	-z txzchk	use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
 	-y chkenry	use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
@@ -199,24 +556,24 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	NOTE: The slot_path can be relative to the rmt_topdir
 
 Exit codes:
-     0         all OK
-     1	       some internal tool is missing or exited non-zero
-     2         -h and help string printed or -V and version string printed
-     3         command line error
-     4	       source of ioccc.rc file failed
-     5	       some critical local executable tool not found
-     6	       remote execution of a tool failed, returned an exit code, or returned a malformed response
-     7	       inbound and/or error are not writable directories, or workdir is not a directory
-     8	       scp of remote file(s) or ssh rm -f of file(s) failed
-     9	       downloaded file failed local tests
- >= 10         internal error
+     0        all OK
+     1        some internal tool is missing or exited non-zero
+     2        -h and help string printed or -V and version string printed
+     3        command line error
+     4        source of ioccc.rc file failed
+     5        some critical local executable tool not found
+     6        remote execution of a tool failed, returned an exit code, or returned a malformed response
+     7        inbound and/or error are not writable directories, or workdir is not a directory
+     8        scp of remote file(s) or ssh rm -f of file(s) failed
+     9        downloaded file failed local tests
+ >= 10        internal error
 
 $NAME version: $VERSION"
 
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:s:T:c:2:r:x:z:y:S:C:w: flag; do
+while getopts :hv:VNi:Ip:u:s:T:c:2:r:x:g:Gz:y:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -225,8 +582,6 @@ while getopts :hv:VnNi:Ip:u:s:T:c:2:r:x:z:y:S:C:w: flag; do
 	;;
     V) echo "$VERSION"
 	exit 2
-	;;
-    n) NOOP="-n"
 	;;
     N) DO_NOT_PROCESS="-N"
 	;;
@@ -249,6 +604,10 @@ while getopts :hv:VnNi:Ip:u:s:T:c:2:r:x:z:y:S:C:w: flag; do
     r) RSYNC_TOOL="$OPTARG"
 	;;
     x) XZ_TOOL="$OPTARG"
+	;;
+    g) GIT_TOOL="$OPTARG"
+	;;
+    G) USE_GIT=
 	;;
     z) TXZCHK_TOOL="$OPTARG"
 	;;
@@ -341,7 +700,6 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VERSION=$VERSION" 1>&2
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
-    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: REMOTE_TOPDIR=$REMOTE_TOPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
@@ -355,12 +713,156 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: XZ_TOOL=$XZ_TOOL" 1>&2
     echo "$0: debug[3]: TXZCHK_TOOL=$TXZCHK_TOOL" 1>&2
     echo "$0: debug[3]: CHKENTRY_TOOL=$CHKENTRY_TOOL" 1>&2
+    echo "$0: debug[3]: GIT_TOOL=$GIT_TOOL" 1>&2
+    echo "$0: debug[3]: USE_GIT=$USE_GIT" 1>&2
     echo "$0: debug[3]: RMT_STAGE_PY=$RMT_STAGE_PY" 1>&2
     echo "$0: debug[3]: RMT_SET_SLOT_STATUS_PY=$RMT_SET_SLOT_STATUS_PY" 1>&2
     echo "$0: debug[3]: WORKDIR=$WORKDIR" 1>&2
     echo "$0: debug[3]: RMT_SLOT_PATH=$RMT_SLOT_PATH" 1>&2
     echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM" 1>&2
     echo "$0: debug[3]: USERNAME=$USERNAME" 1>&2
+fi
+
+
+# determine if we can use git
+#
+# Use of -G will always prevent use of git.
+#
+# We will perform several tests to determine (unless -G was used),
+# if the use of git is possible and wise.
+#
+if [[ -n $USE_GIT ]]; then
+
+    # WORKDIR must be under git control to use git
+    #
+    if "$GIT_TOOL" -C "$WORKDIR" rev-parse 2>/dev/null; then
+
+	# While WORKDIR is under git control,
+	# we do NOT want to use git under common IOCCC related repos
+	# that certain well known files or directories.
+	#
+	for i in jparse.c mkiocccentry.c F iocccsubmit 1984; do
+	    if [[ -e $WORKDIR/$i ]]; then
+		if [[ $V_FLAG -ge 3 ]]; then
+		    echo "$0: debug[3]: found $WORKDIR/$i, disabling use of git" 1>&2
+		fi
+		USE_GIT=
+		break
+	    fi
+	done
+
+    else
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: $GIT_TOOL -C $WORKDIR rev-parse 2>/dev/null is false, disabling use of git" 1>&2
+	fi
+	USE_GIT=
+    fi
+
+    # Must have a non-empty DO.NOT.DISTRIBUTE readable file
+    #
+    if [[ ! -e $WORKDIR/DO.NOT.DISTRIBUTE ]]; then
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: $WORKDIR/DO.NOT.DISTRIBUTE does not exist, disabling use of git" 1>&2
+	fi
+	USE_GIT=
+    elif [[ ! -f $WORKDIR/DO.NOT.DISTRIBUTE ]]; then
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: $WORKDIR/DO.NOT.DISTRIBUTE is not a file, disabling use of git" 1>&2
+	fi
+	USE_GIT=
+    elif [[ ! -r $WORKDIR/DO.NOT.DISTRIBUTE ]]; then
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: $WORKDIR/DO.NOT.DISTRIBUTE is not a readable file, disabling use of git" 1>&2
+	fi
+	USE_GIT=
+    elif [[ ! -r $WORKDIR/DO.NOT.DISTRIBUTE ]]; then
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: $WORKDIR/DO.NOT.DISTRIBUTE is not a non-empty readable file, disabling use of git" 1>&2
+	fi
+	USE_GIT=
+    fi
+
+# case: -G used
+#
+else
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: use of -G, disabling use of git" 1>&2
+    fi
+fi
+if [[ $V_FLAG -ge 1 ]]; then
+    if [[ -z $USE_GIT ]]; then
+	echo "$0: debug[1]: use of git is disabled" 1>&2
+    else
+	echo "$0: debug[1]: enabled use of git" 1>&2
+    fi
+fi
+
+
+# firewall - GIT_TOOL must be executable if git is to be used
+#
+if [[ -n $USE_GIT ]]; then
+    if [[ ! -x $GIT_TOOL ]]; then
+	echo "$0: ERROR: git tool not executable: $GIT_TOOL" 1>&2
+	exit 5
+    fi
+fi
+
+
+# form temporary git commit message if git is to be used
+#
+if [[ -n $USE_GIT ]]; then
+    export TMP_GIT_COMMIT="$WORKDIR/.tmp.$NAME.GIT_COMMIT.$$.tmp"
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo  "$0: debug[3]: temporary git commit message file: $TMP_GIT_COMMIT" 1>&2
+    fi
+    trap 'rm -f $TMP_GIT_COMMIT; exit' 0 1 2 3 15
+    rm -f "$TMP_GIT_COMMIT"
+    if [[ -e $TMP_GIT_COMMIT ]]; then
+	echo "$0: ERROR: cannot remove git commit message file: $TMP_GIT_COMMIT" 1>&2
+	exit 10
+    fi
+    : >  "$TMP_GIT_COMMIT"
+    if [[ ! -e $TMP_GIT_COMMIT ]]; then
+	echo "$0: ERROR: cannot create git commit message file: $TMP_GIT_COMMIT" 1>&2
+	exit 11
+    fi
+fi
+
+
+# form temporary stderr collection file
+#
+export TMP_STDERR="$WORKDIR/.tmp.$NAME.STDERR.$$.tmp"
+if [[ $V_FLAG -ge 3 ]]; then
+    echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
+fi
+trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
+rm -f "$TMP_STDERR"
+if [[ -e $TMP_STDERR ]]; then
+    echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
+    exit 12
+fi
+: >  "$TMP_STDERR"
+if [[ ! -e $TMP_STDERR ]]; then
+    echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
+    exit 13
+fi
+
+
+# move to workdir is workdir is not .
+#
+if [[ $WORKDIR != "." ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cd $WORKDIR" 1>&2
+    fi
+    export CD_FAILED=""
+    cd "$WORKDIR" || CD_FAILED="true"
+    if [[ -n $CD_FAILED ]]; then
+	echo "$0: ERROR: cd $WORKDIR failed" 1>&2
+	exit 7
+    fi
+fi
+if [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: current working directory is: $(/bin/pwd)" 1>&2
 fi
 
 
@@ -428,21 +930,6 @@ if [[ ! -d $WORKDIR ]]; then
 fi
 
 
-# move to workdir is workdir is not .
-#
-if [[ $WORKDIR != "." ]]; then
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cd $WORKDIR" 1>&2
-    fi
-    export CD_FAILED=""
-    cd "$WORKDIR" || CD_FAILED="true"
-    if [[ -n $CD_FAILED ]]; then
-	echo "$0: ERROR: cd $WORKDIR failed" 1>&2
-	exit 7
-    fi
-fi
-
-
 # firewall - current directory must contain inbound and error as writable directories
 #
 export INBOUND="inbound"
@@ -472,54 +959,133 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 fi
 
 
+# start with "no problem" problem code
+#
+export PROBLEM_CODE=0
+
+
+# if using git, initialize git commit message
+#
+if [[ -n $USE_GIT ]]; then
+    {
+	echo "process $RMT_SLOT_PATH"
+	echo
+	echo "This run on $(date -u) was produced by $NAME"
+    } >> "$TMP_GIT_COMMIT"
+fi
+
+
 # run the remote stage.py tool via ssh, on the remote server, and collect the reply
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH" 1>&2
+    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR" 1>&2
 fi
-if [[ -z $NOOP ]]; then
-    ANSWER=$("$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_STAGE_PY" "$RMT_SLOT_PATH")
-    status="$?"
-else
-    ANSWER="exit.0 . 0"
-    status=0
+ANSWER=$("$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
+status="$?"
+if [[ -z $ANSWER ]]; then
+    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH answer was empty" 1>&2
+    # we have no response from RMT_STAGE_PY - we can do thing more at this stage
+    exit 6
 fi
 if [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: stage.py returned: $ANSWER" 1>&2
 fi
 if [[ $status -ne 0 ]]; then
-    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH failed, error: $status" 1>&2
-    exit 6
+
+    # record RMT_SLOT_PATH non-zero exit
+    #
+    PROBLEM_CODE=1
+    if [[ $status -ne 0 ]]; then
+	{
+	    echo
+	    echo "$0: Warning: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR failed, error: $status"
+	    echo "$0: Warning: stderr output starts below"
+	    cat "$TMP_STDERR"
+	    echo "$0: Warning: stderr output ends above"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
+fi
+if [[ -n $USE_GIT ]]; then
+    {
+	echo
+	echo "$SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH returned:"
+	echo
+	echo "$ANSWER"
+    } >> "$TMP_GIT_COMMIT"
 fi
 
 
 # parse answer from remote stage.py tool
 #
-if [[ -z $ANSWER ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH answer was empty" 1>&2
-    exit 6
-fi
 read -r HEXDIGEST STAGED_PATH UNEXPECTED_COUNT EXTRA <<< "$ANSWER"
 if [[ -z $HEXDIGEST ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH 1st field of answer, HEXDIGEST was empty" 1>&2
-    exit 6
+    HEXDIGEST="None"
+    PROBLEM_CODE=2
+    if [[ $status -ne 0 ]]; then
+	{
+	    echo
+	    echo "$0: Warning: HEXDIGEST was empty, reset to: $HEXDIGEST"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
 fi
 if [[ -z $STAGED_PATH ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH 2nd field of answer, STAGED_PATH was empty" 1>&2
-    exit 6
+    STAGED_PATH="."
+    PROBLEM_CODE=3
+    if [[ $status -ne 0 ]]; then
+	{
+	    echo
+	    echo "$0: Warning: STAGED_PATH was empty, reset to: $STAGED_PATH"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
 fi
 if [[ -z $UNEXPECTED_COUNT ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH 3rd field of answer, UNEXPECTED_COUNT was empty" 1>&2
-    exit 6
+    UNEXPECTED_COUNT=0
+    PROBLEM_CODE=4
+    if [[ $status -ne 0 ]]; then
+	{
+	    echo
+	    echo "$0: Warning: UNEXPECTED_COUNT was empty, reset to: $UNEXPECTED_COUNT"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
 fi
 if [[ -n $EXTRA ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH had 4 or more fields, expected only 3" 1>&2
-    exit 6
+    PROBLEM_CODE=5
+    if [[ $status -ne 0 ]]; then
+	{
+	    echo
+	    echo "$0: Warning: received 4 or more fields, expected only 3"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
 fi
 if [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: HEXDIGEST: $HEXDIGEST" 1>&2
-    echo "$0: debug[3]: STAGED_PATH: $STAGED_PATH" 1>&2
-    echo "$0: debug[3]: UNEXPECTED_COUNT: $UNEXPECTED_COUNT" 1>&2
+    echo "$0: debug[3]: HEXDIGEST=$HEXDIGEST" 1>&2
+    echo "$0: debug[3]: STAGED_PATH=$STAGED_PATH" 1>&2
+    echo "$0: debug[3]: UNEXPECTED_COUNT=$UNEXPECTED_COUNT" 1>&2
 fi
 
 
@@ -533,13 +1099,17 @@ fi
 #
 if [[ $HEXDIGEST == exit.* ]]; then
     EXIT_CODE=${HEXDIGEST#exit.*}
+    PROBLEM_CODE=6
     if [[ -z $EXIT_CODE ]]; then
-	echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH HEXDIGEST stats with exit. but lacks code: $HEXDIGEST" 1>&2
-	exit 6
-    fi
-    if [[ $EXIT_CODE =~ ^[0-9]+$ ]]; then
-	echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH exited non-zero: exit.$EXIT_CODE $STAGED_PATH $UNEXPECTED_COUNT" 1>&2
-	exit 6
+	{
+	    echo
+	    echo "$0: Warning: HEXDIGEST stats with exit. but lacks code: $HEXDIGEST"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
     fi
 fi
 
@@ -547,21 +1117,70 @@ fi
 # firewall - now that the exit.code has been taken care of, verify HEXDIGEST is a SHA256 hex digest
 #
 if ! [[ $HEXDIGEST =~ ^[0-9a-f]+$ || ${#HEXDIGEST} -ne 64 ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH HEXDIGEST is neither exit.code not SHA256 hash: $HEXDIGEST" 1>&2
-    exit 6
+    PROBLEM_CODE=7
+    {
+	echo
+	echo "$0: Warning: HEXDIGEST is neither exit.code not SHA256 hash: $HEXDIGEST"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
+    fi
 fi
 
 
-# firewall - STAGED_PATH cannot be .
+# firewall - STAGED_PATH cannot be . nor can PROBLEM_CODE be non-zero at this point
 #
 # When the remote stage.py tool ran into critical error that prevented it from moving the submit file
 # under the staged directory, a STAGED_PATH of "." is returned.  Normally such a condition would have
 # come with a HEXDIGEST of the form exit.code.  Just in case the HEXDIGEST is a SHA256 SHA256 hex digest,
 # we deal with a "." STAGED_PATH here.
 #
-if [[ $STAGED_PATH == "." ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH  is ." 1>&2
-    exit 6
+if [[ $STAGED_PATH == "." || $PROBLEM_CODE -ne 0 ]]; then
+
+    # case: we have no staged file to process
+    #
+    if [[ $STAGED_PATH == "." ]]; then
+
+	if [[ $PROBLEM_CODE -eq 0 ]]; then
+	    # only set PROBLEM_CODE if it was not set above
+	    PROBLEM_CODE=8
+	fi
+	{
+	    echo
+	    echo "$0: Warning: STAGED_PATH is ."
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+    fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$USERNAME" "$SLOT_NUM" "server slot error code: $PROBLEM_CODE! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    add_git "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    commit_git "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    push_git .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
 fi
 
 
@@ -589,113 +1208,192 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME" 1>&2
     echo "$0: debug[3]: SUBMIT_USERSLOT=$SUBMIT_USERSLOT" 1>&2
 fi
+if [[ $STAGED_PATH == "." ]]; then
+    echo "$0: ERROR: it should be impossible for STAGED_PATH to be . at this point, but it is for some reason" 1>&2
+    exit 14
+fi
 
 
-# remote copy of staged path into the inbound directory
+# copy remote staged file into the inbound directory
 #
 if [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: about to: $SCP_TOOL -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST" 1>&2
 fi
-if [[ -z $NOOP ]]; then
+"$SCP_TOOL" -q -P "$REMOTE_PORT" "$REMOTE_USER@$SERVER:$STAGED_PATH" "$DEST"
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: Warning: $SCP_TOOL -q -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
+fi
+if [[ ! -r $DEST ]]; then
+    # We have no remote file - we can do thing more at this stage
+    echo "$0: ERROR: DEST destination file not found: $DEST" 1>&2
+    exit 8
+fi
 
-    # copy remote staged file
-    #
-    "$SCP_TOOL" -q -P "$REMOTE_PORT" "$REMOTE_USER@$SERVER:$STAGED_PATH" "$DEST"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SCP_TOOL -q -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
-	exit 8
+
+# verify SHA256 hex digest
+#
+if [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: about to: $SHA256_TOOL $DEST" 1>&2
+fi
+
+
+# determine SHA256 hex digest hash of destination file
+#
+DEST_HEXDIGEST=$("$SHA256_TOOL" "$DEST")
+status="$?"
+if [[ $status -ne 0 ]]; then
+    PROBLEM_CODE=10
+    {
+	echo
+	echo "$0: Warning: $SHA256_TOOL $DEST failed, error: $status"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
     fi
-    if [[ ! -r $DEST ]]; then
-	echo "$0: ERROR: $SCP_TOOL destination not found: $DEST" 1>&2
-	exit 8
+fi
+# remove filename from SHA256_TOOL output leaving just the SHA256 hex digest
+DEST_HEXDIGEST=${DEST_HEXDIGEST%% *}
+if [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: $SHA256_TOOL $DEST: $DEST_HEXDIGEST" 1>&2
+fi
+
+
+# case: SHA256 hex digest hash of destination file matches
+#
+if [[ $DEST_HEXDIGEST == "$HEXDIGEST" ]]; then
+
+    # update the slot comment on the remote server to note the submit file was fetched
+    #
+    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge and it is ready for format testing."
+
+# case: SHA256 hex digest hash of destination file is wrong
+#
+else
+    PROBLEM_CODE=11
+    {
+	echo
+	echo "$0: Warning: $DEST SHA256 hash: $DEST_HEXDIGEST != remote SHA256 hash: $HEXDIGEST"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
     fi
 
-    # verify SHA256 hex digest
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
     #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SHA256_TOOL $DEST" 1>&2
-    fi
-    # remove filename from SHA256_TOOL output leaving just the SHA256 hex digest
-    DEST_HEXDIGEST=$("$SHA256_TOOL" "$DEST")
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SHA256_TOOL $DEST failed, error: $status" 1>&2
-	exit 8
-    fi
-    DEST_HEXDIGEST=${DEST_HEXDIGEST%% *}
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: $SHA256_TOOL $DEST: $DEST_HEXDIGEST" 1>&2
-    fi
-    if [[ $DEST_HEXDIGEST != "$HEXDIGEST" ]]; then
-	echo "$0: ERROR: $DEST SHA256 hash: $DEST_HEXDIGEST != remote SHA256 hash: $HEXDIGEST" 1>&2
-	exit 8
-    fi
+    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file corrupted on the server! Use mkiocccentry to rebuild and resubmit to this slot."
 
-    # update the slot comment on the remote server
+    # move staged path file under ERRORS
     #
-    COMMENT="submit file fetched by an IOCCC judge prior to format testing"
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
-    fi
-    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
-	exit 6
-    fi
+    mv_to_errors "$STAGED_PATH"
 
-    # remove the remote staged file
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
     #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    add_git "$ERRORS"
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
+fi
+
+
+# remove the remote staged file, unless there was a problem
+#
+if [[ $PROBLEM_CODE -eq 0 ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH" 1>&2
     fi
     "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" rm -f "$STAGED_PATH"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH failed, error: $status" 1>&2
-	exit 8
+	PROBLEM_CODE=12
+	{
+	    echo
+	    echo "$0: Warning: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH failed, error: $status"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
     fi
+fi
+
+
+# case: there was a problem, and we have a staged path file, move it into errors
+#
+if [[ $PROBLEM_CODE -ne 0 && -f $DEST ]]; then
+
+    # move staged path file under ERRORS
+    #
+    mv_to_errors "$STAGED_PATH"
+
+    # if using git, add ERRORS
+    #
+    add_git "$ERRORS"
+
+# case: no problem and a staged path file
+#
+elif [[ -f $DEST ]]; then
 
     # test the destination file using txzchk
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $TXZCHK_TOOL -q $DEST" 1>&2
+	echo "$0: debug[1]: about to: $TXZCHK_TOOL -q $DEST 2>$TMP_STDERR" 1>&2
     fi
-    "$TXZCHK_TOOL" -q "$DEST"
+    "$TXZCHK_TOOL" -q "$DEST" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
 
 	# report txzchk test failure
 	#
-	echo "$0: ERROR: $TXZCHK_TOOL -q $DEST failed, error: $status" 1>&2
+	PROBLEM_CODE=13
+	{
+	    echo
+	    echo "$0: Warning: $TXZCHK_TOOL -q $DEST 2>$TMP_STDERR failed, error: $status"
+	    echo "$0: Warning: stderr output starts below"
+	    cat "$TMP_STDERR"
+	    echo "$0: Warning: stderr output ends above"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
 
-	# update the slot comment with the txzchk failure
+	# update the slot comment on the remote server to note txxchk test failure
 	#
-	COMMENT="submit file failed the txxchk test!  Use mkiocccentry to rebuild and resubmit to this slot."
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
-	fi
-	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
-	status="$?"
-	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
-	    exit 6
-	fi
+	change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed the txxchk test! Use mkiocccentry to rebuild and resubmit to this slot."
 
-	# move destination file into errors
+	# move destination under ERRORS
 	#
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
-	fi
-	mv -v -f "$DEST" "$ERRORS"
-	status="$?"
-	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
-	    exit 6
-	fi
+	mv_to_errors "$DEST"
 
-	# exit non-zero due to txzchk failure
+	# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+	#
+	unexpected_collect "$UNEXPECTED_COUNT"
+
+	# if using git, add ERRORS
+	#
+	add_git "$ERRORS"
+
+	# if using git, commit the files that have been added
+	#
+	commit_git "$TMP_GIT_COMMIT"
+
+	# if using git, push any commits
+	#
+	push_git .
+
+	# exit non-zero due to txzchk failure - we can do thing more at this stage
 	#
 	exit 9
     fi
@@ -710,271 +1408,323 @@ if [[ -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR failed, error: $status" 1>&2
-	exit 6
-    fi
-    if [[ ! -d $SUBMIT_PARENT_DIR ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR did not create the directory" 1>&2
-	exit 6
+	# exit non-zero due to mkdir failure - we can do thing more at this stage
+	exit 15
     fi
 
-    # create tarball holding directory
+    # if we have a submission directory, create tarball holding directory
     #
-    export SUBMIT_TARBALL_DIR="$SUBMIT/$SUBMIT_USERSLOT/txz"
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_TARBALL_DIR" 1>&2
-    fi
-    mkdir -p "$SUBMIT_TARBALL_DIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR failed, error: $status" 1>&2
-	exit 6
-    fi
-    if [[ ! -d $SUBMIT_TARBALL_DIR ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR did not create the directory" 1>&2
-	exit 6
-    fi
+    if [[ -d $SUBMIT_PARENT_DIR ]]; then
 
-    # create a new temporary unpack directory
-    #
-    export SUBMIT_UNPACK_DIR="$SUBMIT_PARENT_DIR/tmp.$$"
-    trap 'rm -rf $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_UNPACK_DIR" 1>&2
-    fi
-    mkdir -p "$SUBMIT_UNPACK_DIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
-	exit 6
-    fi
-    if [[ ! -d $SUBMIT_UNPACK_DIR ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR did not create the directory" 1>&2
-	exit 6
-    fi
-
-    # untar the submit file under the new temporary directory
-    #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST"
-    fi
-    tar -C "$SUBMIT_UNPACK_DIR" -Jxf "$DEST"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-
-	# report untar failure
-	#
-	echo "$0: ERROR: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST failed, error: $status" 1>&2
-
-	# update the slot comment with the txzchk failure
-	#
-	COMMENT="submit file failed to untar!  Use mkiocccentry to rebuild and resubmit to this slot."
+	export SUBMIT_TARBALL_DIR="$SUBMIT/$SUBMIT_USERSLOT/txz"
 	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
+	    echo "$0: debug[1]: about to: mkdir -p $SUBMIT_TARBALL_DIR" 1>&2
 	fi
-	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
+	mkdir -p "$SUBMIT_TARBALL_DIR"
 	status="$?"
 	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
-	    exit 6
+	    echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR failed, error: $status" 1>&2
+	    # exit non-zero due to mkdir failure - we can do thing more at this stage
+	    exit 15
 	fi
 
-	# move destination file into errors
+	# if we have a tarball holding directory, process it
 	#
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
+	if [[ -d $SUBMIT_TARBALL_DIR ]]; then
+
+	    # create a new temporary unpack directory
+	    #
+	    export SUBMIT_UNPACK_DIR="$SUBMIT_PARENT_DIR/tmp.$$"
+	    if [[ -n $USE_GIT ]]; then
+		trap 'rm -rf $TMP_GIT_COMMIT $TMP_STDERR $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
+	    else
+		trap 'rm -rf $SUBMIT_UNPACK_DIR $TMP_STDERR; exit' 0 1 2 3 15
+	    fi
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: about to: mkdir -p $SUBMIT_UNPACK_DIR" 1>&2
+	    fi
+	    mkdir -p "$SUBMIT_UNPACK_DIR"
+	    status="$?"
+	    if [[ $status -ne 0 ]]; then
+		echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+		# exit non-zero due to mkdir failure - we can do thing more at this stage
+		exit 16
+	    fi
+
+	    # if we have a temporary unpack directory, untar the submit file
+	    #
+	    if [[ -d $SUBMIT_UNPACK_DIR ]]; then
+
+		# untar the submit file under the new temporary directory
+		#
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST 2>$TMP_STDERR"
+		fi
+		tar -C "$SUBMIT_UNPACK_DIR" -Jxf "$DEST" 2>"$TMP_STDERR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+
+		    # report untar failure
+		    #
+		    PROBLEM_CODE=14
+		    {
+			echo
+			echo "$0: Warning: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST 2>$TMP_STDERR failed, error: $status"
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+
+		    # update the slot comment on the remote server to note untar faulure
+		    #
+		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed to untar! Use mkiocccentry to rebuild and resubmit to this slot."
+
+		    # move destination under ERRORS
+		    #
+		    mv_to_errors "$DEST"
+
+		    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+		    #
+		    unexpected_collect "$UNEXPECTED_COUNT"
+
+		    # if using git, add ERRORS
+		    #
+		    add_git "$ERRORS"
+
+		    # if using git, commit the files that have been added
+		    #
+		    commit_git "$TMP_GIT_COMMIT"
+
+		    # if using git, push any commits
+		    #
+		    push_git .
+
+		    # exit non-zero due to untar failure - we can do thing more at this stage
+		    #
+		    exit 9
+		fi
+
+		# find a brand new place into which to move the temporary tree
+		#
+		export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+		if [[ -e $SUBMIT_DIR ]]; then
+
+		    # we already have SUBMIT_DIR, find a different directory that does NOT already exist
+		    #
+		    ((i=0))
+		    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
+		    while [[ -e $SUBMIT_DIR ]]; do
+			((i=i+1))
+			SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
+		    done
+		fi
+		if [[ $V_FLAG -ge 3 ]]; then
+		    echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
+		fi
+
+		# move the temporary unpacked tree into place
+		#
+		if [[ $V_FLAG -ge 3 ]]; then
+		    echo "$0: debug[3]: will move unpacked into: $SUBMIT_DIR" 1>&2
+		fi
+		SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d)
+		export SRC_DIR
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: mv -f $SRC_DIR $SUBMIT_DIR" 1>&2
+		fi
+		mv -f "$SRC_DIR" "$SUBMIT_DIR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+		    echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR failed, error: $status" 1>&2
+		    # exit non-zero due to mv failure - we can do thing more at this stage
+		    exit 17
+		fi
+
+		# if we moved the temporary unpacked tree into place
+		#
+		if [[ -d $SUBMIT_DIR ]]; then
+
+		    # find a destination tarball under the SUBMIT_TARBALL_DIR directory
+		    #
+		    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME"
+		    if [[ -e $DEST_TARBALL ]]; then
+
+			# we already have a DEST_TARBALL, find a different filename that does NOT already exist
+			#
+			((i=0))
+			DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+			while [[ -e $DEST_TARBALL ]]; do
+			    ((i=i+1))
+			    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+			done
+		    fi
+		    if [[ $V_FLAG -ge 3 ]]; then
+			echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
+		    fi
+
+		    # move the inbound tarball under the SUBMIT_TARBALL_DIR
+		    #
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
+		    fi
+		    mv -f "$DEST" "$DEST_TARBALL"
+		    status="$?"
+		    if [[ $status -ne 0 ]]; then
+			echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
+			# exit non-zero due to mv failure - we can do thing more at this stage
+			exit 18
+		    fi
+
+		    # cleanup temporary tree
+		    #
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
+		    fi
+		    rm -rf "$SUBMIT_UNPACK_DIR"
+		    status="$?"
+		    if [[ $status -ne 0 ]]; then
+			echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+			# exit non-zero due to rm failure - we can do thing more at this stage
+			exit 19
+		    fi
+		    if [[ -n $USE_GIT ]]; then
+			trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
+		    else
+			trap 'rm -f $TMP_STDERR' 0 1 2 3 15
+		    fi
+
+		    # perform chkentry test on the submission directory
+		    #
+		    export AUTH_JSON="$SUBMIT_DIR/.auth.json"
+		    export INFO_JSON="$SUBMIT_DIR/.info.json"
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON" 1>&2
+		    fi
+		    "$CHKENTRY_TOOL" -q "$AUTH_JSON" "$INFO_JSON" >"$TMP_STDERR"
+		    status="$?"
+		    if [[ $status -ne 0 ]]; then
+
+			# report chkentry failure
+			#
+			PROBLEM_CODE=15
+			{
+			    echo
+			    echo "$0: Warning: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON 2>$TMP_STDERR failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+
+			# update the slot comment on the remote server to note chkentry faulure
+			#
+			change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
+
+			# move destination under ERRORS
+			#
+			mv_to_errors "$DEST"
+
+			# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+			#
+			unexpected_collect "$UNEXPECTED_COUNT"
+
+			# if using git, add ERRORS
+			#
+			add_git "$ERRORS"
+
+			# if using git, commit the files that have been added
+			#
+			commit_git "$TMP_GIT_COMMIT"
+
+			# if using git, push any commits
+			#
+			push_git .
+
+			# exit non-zero due to chkentry failure - we can do thing more at this stage
+			#
+			exit 9
+		    fi
+
+		    # as an "gram of protection", compress the .auth.json file
+		    #
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: $XZ_TOOL -z -f $AUTH_JSON 2>$TMP_STDERR" 1>&2
+		    fi
+		    "$XZ_TOOL" -z -f "$AUTH_JSON" 2>"$TMP_STDERR"
+		    status="$?"
+		    if [[ $status -ne 0 ]]; then
+
+			# report chkentry failure
+			#
+			PROBLEM_CODE=16
+			{
+			    echo
+			    echo "$0: Warning: $XZ_TOOL -z -f $AUTH_JSON 2>$TMP_STDERR failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+		    fi
+
+		    # if using git, add the submission directory and tarball
+		    #
+		    if [[ -n $USE_GIT ]]; then
+			{
+			    echo
+			    echo "Formed: $SUBMIT_DIR/"
+			    echo "Formed: $DEST_TARBALL"
+			} >> "$TMP_GIT_COMMIT"
+		    fi
+		    add_git "$SUBMIT_DIR"
+		    add_git "$DEST_TARBALL"
+
+		    # report submission success
+		    #
+		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file received by IOCCC judges and passed both txzchk and chkentry tests."
+		fi
+	    fi
 	fi
-	mv -v -f "$DEST" "$ERRORS"
-	status="$?"
-	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
-	    exit 6
-	fi
-
-	# exit non-zero due to txzchk failure
-	#
-	exit 9
-    fi
-
-    # find a brand new place into which to move the temporary tree
-    #
-    export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
-    if [[ -e $SUBMIT_DIR ]]; then
-
-	# we already have SUBMIT_DIR, find a different directory that does NOT already exist
-	#
-	((i=0))
-	SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
-	while [[ -e $SUBMIT_DIR ]]; do
-	    ((i=i+1))
-	    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
-	done
-    fi
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
-    fi
-
-    # move the temporary unpacked tree into place
-    #
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: will move unpacked into: $SUBMIT_DIR" 1>&2
-    fi
-    SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d)
-    export SRC_DIR
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: mv -f $SRC_DIR $SUBMIT_DIR" 1>&2
-    fi
-    mv -f "$SRC_DIR" "$SUBMIT_DIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR failed, error: $status" 1>&2
-	exit 6
-    fi
-    if [[ ! -d $SUBMIT_DIR ]]; then
-	echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR did not create the directory" 1>&2
-	exit 6
-    fi
-
-    # find a destination tarball under the SUBMIT_TARBALL_DIR directory
-    #
-    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME"
-    if [[ -e $DEST_TARBALL ]]; then
-
-	# we already have a DEST_TARBALL, find a different filename that does NOT already exist
-	#
-	((i=0))
-	DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
-	while [[ -e $DEST_TARBALL ]]; do
-	    ((i=i+1))
-	    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
-	done
-    fi
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
-    fi
-
-    # move the inbound tarball under the SUBMIT_TARBALL_DIR
-    #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
-    fi
-    mv -f "$DEST" "$DEST_TARBALL"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
-	exit 6
-    fi
-
-    # cleanup temporary tree
-    #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
-    fi
-    rm -rf "$SUBMIT_UNPACK_DIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
-	exit 6
-    fi
-    trap - 0 1 2 3 15
-
-    # perform chkentry test on the submission directory
-    #
-    export AUTH_JSON="$SUBMIT_DIR/.auth.json"
-    if [[ ! -r $AUTH_JSON ]]; then
-	echo "$0: ERROR: .auth.json readable file not found: $AUTH_JSON" 1>&2
-	exit 9
-    fi
-    export INFO_JSON="$SUBMIT_DIR/.info.json"
-    if [[ ! -r $INFO_JSON ]]; then
-	echo "$0: ERROR: .info.json readable file not found: $INFO_JSON" 1>&2
-	exit 9
-    fi
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON" 1>&2
-    fi
-    "$CHKENTRY_TOOL" -q "$AUTH_JSON" "$INFO_JSON"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-
-	# report chkentry failure
-	#
-	echo "$0: ERROR: $CHKENTRY_TOOL -q $AUTH_JSON $INFO_JSON failed, error: $status" 1>&2
-
-	# update the slot comment with the txzchk failure
-	#
-	COMMENT="submit file failed chkentry test!  Use mkiocccentry to rebuild and resubmit to this slot."
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
-	fi
-	"$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
-	status="$?"
-	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
-	    exit 6
-	fi
-
-	# move destination file into errors
-	#
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to: mv -v -f $DEST $ERRORS" 1>&2
-	fi
-	mv -v -f "$DEST" "$ERRORS"
-	status="$?"
-	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: mv -v -f $DEST $ERRORS failed, error: $status" 1>&2
-	    exit 6
-	fi
-
-	# exit non-zero due to txzchk failure
-	#
-	exit 9
-    fi
-
-    # as an "gram of protection", compress the .auth.json file
-    #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $XZ_TOOL -z -f $AUTH_JSON" 1>&2
-    fi
-    "$XZ_TOOL" -z -f "$AUTH_JSON"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $XZ_TOOL -z -f $AUTH_JSON failed, error: $status" 1>&2
-	exit 6
-    fi
-
-    # report submission success
-    #
-    COMMENT="submit file received by IOCCC judges and passed both txzchk and chkentry tests"
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null" 1>&2
-    fi
-    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" "$USERNAME" "$SLOT_NUM" "'$COMMENT'" >/dev/null
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY $USERNAME $SLOT_NUM '$COMMENT' > /dev/null failed, error: $status" 1>&2
-	exit 6
     fi
 fi
 
 
-# case: we have 1 or more unexpected files
+# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
 #
-# Use rsync to "move" and files found in the remote server unexpected directory
-# to under the local errors directory.  By "move" we mean that we remove files
-# under the remote server unexpected directory after they are copied into
-# the local errors directory.
+unexpected_collect "$UNEXPECTED_COUNT"
+
+
+# if using git, add ERRORS
 #
-if [[ -z $NOOP && $UNEXPECTED_COUNT -ge 1 ]]; then
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS" 1>&2
-    fi
-    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS failed, error: $status" 1>&2
-	exit 8
-    fi
+add_git "$ERRORS"
+
+
+# if using git, display the commit message
+#
+commit_git "$TMP_GIT_COMMIT"
+if [[ $V_FLAG -ge 1 && -s $TMP_GIT_COMMIT ]]; then
+    echo "$0: debug[1]: git commit message starts below" 1>&2
+    cat "$TMP_GIT_COMMIT" 1>&2
+    echo "$0: debug[1]: git commit message ends above" 1>&2
 fi
+
+
+# if using git, push any commits
+#
+push_git .
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
