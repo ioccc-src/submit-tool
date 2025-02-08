@@ -34,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.1 2025-02-07"
+VERSION = "2.4.2 2025-02-07"
 
 
 def main():
@@ -117,8 +117,12 @@ def main():
 
     # no option selected
     #
-    info(f'{program}: username: {username} slot_num: {slot_num} status: {status}')
-    print(f'{program}: username: {username} slot_num: {slot_num} status: {status}')
+    if set_collected_to_true:
+        info(f'{program}: username: {username} slot_num: {slot_num} collected: True status: {status}')
+        print(f'{program}: username: {username} slot_num: {slot_num} collected: True status: {status}')
+    else:
+        info(f'{program}: username: {username} slot_num: {slot_num} collected: ((unchanged)) status: {status}')
+        print(f'{program}: username: {username} slot_num: {slot_num} collected: ((unchanged)) status: {status}')
     sys.exit(0)
 
 
