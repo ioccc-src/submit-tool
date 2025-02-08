@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables
 #
-export VERSION="2.0.1 2024-12-20"
+export VERSION="2.0.2 2025-01-07"
 NAME=$(basename "$0")
 export NAME
 
@@ -117,7 +117,7 @@ semanage fcontext --delete '/var/ioccc/wsgi(/.*)?'
 semanage fcontext --delete '/var/log/ioccc'
 restorecon -vR /var/ioccc
 restorecon -v /var/log/ioccc
-ls -lRZa /var/ioccc
+#no#ls -lRZa /var/ioccc
 semanage fcontext --list --locallist --noheading
 set +x
 
