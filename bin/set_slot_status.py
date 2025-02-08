@@ -34,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.0 2025-02-07"
+VERSION = "2.4.1 2025-02-07"
 
 
 def main():
@@ -45,7 +45,7 @@ def main():
     # setup
     #
     program = os.path.basename(__file__)
-    set_collected_to_false = False
+    set_collected_to_true = False
 
     # parse args
     #
@@ -69,7 +69,7 @@ def main():
                         metavar='dbglvl',
                         type=str)
     parser.add_argument('-c', '--collected',
-                        help='Set collected to false (def: do not change collected)',
+                        help='Set collected to True (def: do not change collected)',
                         action='store_true')
     parser.add_argument('username', help='IOCCC submit server username')
     parser.add_argument('slot_num', help=f'slot number from 0 to {MAX_SUBMIT_SLOT}')
@@ -91,7 +91,7 @@ def main():
     # -c - force collected to be set to false
     #
     if args.collected:
-        set_collected_to_false = True
+        set_collected_to_true = True
 
     # verify arguments
     #
@@ -110,7 +110,7 @@ def main():
 
     # update slot JSON file
     #
-    if not update_slot_status(username, slot_num, status, set_collected_to_false):
+    if not update_slot_status(username, slot_num, status, set_collected_to_true):
         print(f'{program}: update_slot_status for username: {username} slot_num: {slot_num} '
               f'failed: {return_last_errmsg()}')
         sys.exit(6)

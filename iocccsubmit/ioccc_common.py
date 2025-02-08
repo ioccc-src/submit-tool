@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.7 2025-02-07"
+VERSION_IOCCC_COMMON = "2.5.8 2025-02-07"
 
 # force password change grace time
 #
@@ -3955,7 +3955,7 @@ def update_slot(username, slot_num, submit_file):
 
 # pylint: disable=too-many-return-statements
 #
-def update_slot_status(username, slot_num, status, set_collected_to_false):
+def update_slot_status(username, slot_num, status, set_collected_to_true):
     """
     Update the status comment for a given user's slot
 
@@ -3963,7 +3963,7 @@ def update_slot_status(username, slot_num, status, set_collected_to_false):
         username    IOCCC submit server username
         slot_num    slot number for a given username
         status      the new status string for the slot
-        set_collected_to_false  True ==> set collected to false,
+        set_collected_to_true  True ==> set collected to false,
                                 False ==> do not change the collected value
 
     Returns:
@@ -4003,8 +4003,8 @@ def update_slot_status(username, slot_num, status, set_collected_to_false):
     if not isinstance(status, str):
         error(f'{me}: status arg is not a string')
         return False
-    if not isinstance(set_collected_to_false, bool):
-        error(f'{me}: set_collected_to_false arg is not a boolean')
+    if not isinstance(set_collected_to_true, bool):
+        error(f'{me}: set_collected_to_true arg is not a boolean')
         return False
 
     # must be a valid user
@@ -4037,12 +4037,12 @@ def update_slot_status(username, slot_num, status, set_collected_to_false):
     #
     slot_dict['status'] = status
 
-    # if set_collected_to_false, set collected to False
+    # if set_collected_to_true, set collected to False
     #
     # paranoia - If there was not a collected value, force it to be False.
     #
-    if set_collected_to_false or not 'collected' in slot_dict:
-        slot_dict['collected'] = False
+    if set_collected_to_true or not 'collected' in slot_dict:
+        slot_dict['collected'] = True
 
     # save JSON data for the slot
     #
