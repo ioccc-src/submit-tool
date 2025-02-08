@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.6 2025-02-06"
+VERSION_IOCCC_COMMON = "2.5.7 2025-02-07"
 
 # force password change grace time
 #
@@ -3955,7 +3955,7 @@ def update_slot(username, slot_num, submit_file):
 
 # pylint: disable=too-many-return-statements
 #
-def update_slot_status(username, slot_num, status):
+def update_slot_status(username, slot_num, status, set_collected_to_false):
     """
     Update the status comment for a given user's slot
 
@@ -3963,6 +3963,8 @@ def update_slot_status(username, slot_num, status):
         username    IOCCC submit server username
         slot_num    slot number for a given username
         status      the new status string for the slot
+        set_collected_to_false  True ==> set collected to false,
+                                False ==> do not change the collected value
 
     Returns:
         True        status updated
@@ -4001,6 +4003,9 @@ def update_slot_status(username, slot_num, status):
     if not isinstance(status, str):
         error(f'{me}: status arg is not a string')
         return False
+    if not isinstance(set_collected_to_false, bool):
+        error(f'{me}: set_collected_to_false arg is not a boolean')
+        return False
 
     # must be a valid user
     #
@@ -4032,6 +4037,13 @@ def update_slot_status(username, slot_num, status):
     #
     slot_dict['status'] = status
 
+    # if set_collected_to_false, set collected to False
+    #
+    # paranoia - If there was not a collected value, force it to be False.
+    #
+    if set_collected_to_false or not 'collected' in slot_dict:
+        slot_dict['collected'] = False
+
     # save JSON data for the slot
     #
     slot_json_file = return_slot_json_filename(username, slot_num)
@@ -4047,7 +4059,8 @@ def update_slot_status(username, slot_num, status):
     # unlock the slot and report success
     #
     unlock_slot()
-    debug(f'{me}: end: updated slot status for username: {username} slot_num: {slot_num}')
+    debug(f'{me}: end: updated slot: collected: {slot_dict["collected"]} for '
+          f'username: {username} slot_num: {slot_num} status: {slot_dict["status"]}')
     return True
 #
 # pylint: enable=too-many-return-statements
@@ -5674,9 +5687,9 @@ def stage_submit(username, slot_num):
     slot_err = validate_slot_nolock(slot_dict, username, slot_num, True, True)
     if isinstance(slot_err, str):
         ioccc_last_errmsg = (f'ERROR: {me}: slot invalid for username: {username} slot_num: {slot_num} '
-                             f'slot error: {slot_err}')
+                             f'slot_dir: {slot_dir} slot error: {slot_err}')
         error(f'{me}: slot invalid for username: {username} slot_num: {slot_num} '
-              f'slot error: {slot_err}')
+              f'slot_dir: {slot_dir} slot error: {slot_err}')
         unexpected_count = move_unexpected_nolock(slot_dir)
         unlock_slot()
         return None, '.', unexpected_count

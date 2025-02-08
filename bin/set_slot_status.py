@@ -34,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.3 2025-02-05"
+VERSION = "2.4.0 2025-02-07"
 
 
 def main():
@@ -45,6 +45,7 @@ def main():
     # setup
     #
     program = os.path.basename(__file__)
+    set_collected_to_false = False
 
     # parse args
     #
@@ -67,6 +68,9 @@ def main():
                         action="store",
                         metavar='dbglvl',
                         type=str)
+    parser.add_argument('-c', '--collected',
+                        help='Set collected to false (def: do not change collected)',
+                        action='store_true')
     parser.add_argument('username', help='IOCCC submit server username')
     parser.add_argument('slot_num', help=f'slot number from 0 to {MAX_SUBMIT_SLOT}')
     parser.add_argument('status', help='slot status string')
@@ -83,6 +87,11 @@ def main():
             error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
+
+    # -c - force collected to be set to false
+    #
+    if args.collected:
+        set_collected_to_false = True
 
     # verify arguments
     #
@@ -101,7 +110,7 @@ def main():
 
     # update slot JSON file
     #
-    if not update_slot_status(username, slot_num, status):
+    if not update_slot_status(username, slot_num, status, set_collected_to_false):
         print(f'{program}: update_slot_status for username: {username} slot_num: {slot_num} '
               f'failed: {return_last_errmsg()}')
         sys.exit(6)
