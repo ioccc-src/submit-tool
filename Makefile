@@ -152,7 +152,7 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 
 # scripts that are not run, nor installed on the submit server
 #
-SBIN_SRC = sbin/collect.sh sbin/submitted_slots.sh
+SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh
 
 # tool to generate the secret Flask key
 #

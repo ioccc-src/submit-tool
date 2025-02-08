@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.3.0 2025-02-08"
+export VERSION="2.3.1 2025-02-08"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -1267,7 +1267,7 @@ if [[ $DEST_HEXDIGEST == "$HEXDIGEST" ]]; then
 
     # update the slot comment on the remote server to note the submit file was fetched
     #
-    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge and it is ready for format testing."
+    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge. The format test is pending."
 
 # case: SHA256 hex digest hash of destination file is wrong
 #
@@ -1694,7 +1694,7 @@ elif [[ -f $DEST ]]; then
 
 		    # report submission success
 		    #
-		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file received by IOCCC judges and passed both txzchk and chkentry tests."
+		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
 		fi
 	    fi
 	fi
