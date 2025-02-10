@@ -8,7 +8,7 @@ This is the mechanism to upload submissions to an open
 # IMPORTANT NOTE
 
 <div id="setup">
-You **MUST setup the python environment** before you run any of the commands in test mode.
+You **MUST set up the python environment** before you run any of the commands in test mode.
 </div>
 
 All of examples assume you have **cd-ed into the top directory**
@@ -21,7 +21,7 @@ make clobber all install
 ```
 
 Now, in each tab/terminal window/console you need to do something (like running
-the server and then in another tab/terminal window/console, creating a new user
+the server and then, in another tab/terminal window/console, creating a new user
 and password), you should run the following:
 
 
@@ -55,7 +55,7 @@ before your prompt (the `PS1` variable).
 
 # bin/ioccc_submit.py - the submit tool
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 To run the **IOCCC submit tool** server interactively on the command line:
 
@@ -191,7 +191,7 @@ python implementation.
 
 # bin/pychk.sh - use of pylint
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 ```sh
 ./bin/pychk.sh
@@ -246,7 +246,7 @@ ioccc_passwd.py version: 2.2.0 2024-12-22
 
 ## Add a new user
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 An example in how to add a new user:
 
@@ -261,7 +261,7 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Remove an old user
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 For example, to add a user called `username`:
 
@@ -272,7 +272,7 @@ For example, to add a user called `username`:
 
 ## Add a random UUID user and require them to change their password
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 To generate a username with a random UUID, a temporary random password,
 and a requirement to change that temporary password within the grace period:
@@ -291,7 +291,7 @@ The `bin/ioccc_date.py` tool is used to query or set the IOCCC
 open and close dates.
 
 
-## Set the staring and/or ending dates of the IOCCC
+## Set the starting and/or ending dates of the IOCCC
 
 The starting and ending dates of the IOCCC control when `./iocccsubmit/ioccc.py` allows
 for submission uploads.
@@ -324,7 +324,7 @@ IOCCC start and end values are printed.
 
 ## Set both the start and the end dates of the IOCCC
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 Example of setting an open and close date:
 
@@ -337,7 +337,7 @@ Example of setting an open and close date:
 
 # bin/set_slot_status.py - modify a slot comment
 
-**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+**NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
 To set / change the status comment of a user's slot:
 
