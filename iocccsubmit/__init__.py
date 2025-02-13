@@ -33,9 +33,12 @@ from .ioccc_common import \
         info, \
         initialize_user_tree, \
         is_proper_password, \
+        lookup_email_by_username, \
         lookup_username, \
+        lookup_username_by_email, \
         must_change_password, \
         prerr, \
+        read_pwfile, \
         read_state, \
         return_client_ip, \
         return_last_errmsg, \

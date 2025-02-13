@@ -1,62 +1,68 @@
 [
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "12345678-1234-4321-abcd-1234567890ab",
         "pwhash": "scrypt:32768:8:1$tKdCV9ftYUsKlBCr$d3925212f549f5084e15706ae4735be7a026919164ee784bfb27d0c56dce691c1bc2577dc5f0d8334e41f109cf2dfae7fcee6cbd86227b60239f03e1da2ff5b9",
         "ignore_date": true,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": "user1@example.org",
         "disable_login": false
     },
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "chongo",
         "pwhash": "scrypt:32768:8:1$KdPSxY7OMRUZRt5T$815ba04cefd1b8a003f1e5725b841507e10530b4e6f75d429e45f3b2979bc0f2eb829ce6cb5ae070fdbd33bd6eaef88f7a30e5a0c367e59c31b786ebe2f0d8db",
         "ignore_date": false,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": "chongo@example.edu",
         "disable_login": false
     },
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "eliot",
         "pwhash": "scrypt:32768:8:1$efV2NGDizhRrUQOW$b4b61f1d1d047f2756cae08254c604df566bb8b398dd1a713d96c595218df1d3e3a3181b6d8e570d5c0cf0440f4acd5e59fdb276243f37429958af713322e699",
         "ignore_date": false,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": null,
         "disable_login": false
     },
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "leob",
         "pwhash": "scrypt:32768:8:1$0DOKtiuADVENQaQ0$af5c17a275ac8940ba1431d9dfaac69681895aae16939ce2bc7864d79a05f5805931ed558eb72635f9016279c875787f0daedfcee60f425da3e973bf24221369",
         "ignore_date": false,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": null,
         "disable_login": false
     },
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "00000000-0000-4000-8000-000000000000",
         "pwhash": "scrypt:32768:8:1$u8oyFbJwQQ8GCDHo$c0f5b28f47506769b24767d28806125d4874812ba4e1921543c4df4e42b87400f02b0b8467b1ffd728639d4bffc7a78d48091afdafd5ec31bcf64e4e93a22c22",
         "ignore_date": false,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": "user0@example.org",
         "disable_login": true
     },
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.2 2025-01-26",
+        "iocccpasswd_format_version": "1.3 2025-02-12",
         "username": "blocked",
         "pwhash": "scrypt:32768:8:1$VQHoLWtxTv7S1Aba$175cc800881084ca4df8eb1f410543ef26de7f878573f19fbe511ecb38f8cd5306e0b552df8b6ec3f6000fb584bfe2f057e8f6815cd3d1908c4ace845712d1db",
         "ignore_date": false,
         "force_pw_change": false,
         "pw_change_by": null,
+        "email": null,
         "disable_login": true
     }
 ]

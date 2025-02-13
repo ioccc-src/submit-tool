@@ -36,6 +36,7 @@ from iocccsubmit import \
         hash_password, \
         info, \
         lookup_username, \
+        lookup_username_by_email, \
         return_last_errmsg, \
         setup_logger, \
         update_username, \
@@ -46,7 +47,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.0 2025-01-26"
+VERSION = "2.5.0 2025-02-12"
 
 
 # pylint: disable=too-many-locals
@@ -67,6 +68,8 @@ def main():
     pw_change_by = None
     program = os.path.basename(__file__)
     ignore_date = False
+    email = None
+    username_with_email = None
 
     # parse args
     #
@@ -113,6 +116,10 @@ def main():
     parser.add_argument('-U', '--UUID',
                         help='generate a new UUID username and password',
                         action='store_true')
+    parser.add_argument('-e', '--email',
+                        help='set IOCCC email registration address',
+                        metavar='EMAIL',
+                        nargs=1)
     parser.add_argument('-l', '--log',
                         help="log via: stdout stderr syslog none (def: syslog)",
                         default="syslog",
@@ -196,9 +203,22 @@ def main():
     if args.ignore_date:
         ignore_date = True
 
+    # -e email - set email registration address
+    #
+    if args.email:
+        email = args.email[0]
+        username_with_email = lookup_username_by_email(email)
+
     # -a user - add user if they do not already exist
     #
     if args.add:
+
+        # If we used -e email, but email is not already in use by another user
+        #
+        if username_with_email:
+            error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+            print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+            sys.exit(6)
 
         # add with random password unless we used -p password
         #
@@ -211,7 +231,7 @@ def main():
         if not pwhash:
             error(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
-            sys.exit(4)
+            sys.exit(7)
 
         # determine the username to add
         #
@@ -222,18 +242,46 @@ def main():
         if lookup_username(username):
             warning(f'{program}: -a user: already exists for username: {username}')
             print(f'{program}: -a user: already exists for username: {username}')
-            sys.exit(5)
+            sys.exit(8)
 
         # add the user
         #
-        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
-            info(f'{program}: -a user: added username: {username}')
-            print(f'{program}: -a user: added username: {username}')
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, email, disable_login):
+            if args.email:
+                if force_pw_change and pw_change_by:
+                    info(f'{program}: -a user: '
+                         f'username: {username} '
+                         f'email: {email} '
+                         f'pw_change_by: {pw_change_by}')
+                    print(f'{program}: -a user: '
+                          f'username: {username} '
+                          f'email: {email} '
+                          f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -a user: '
+                         f'username: {username} '
+                         f'email: {email}')
+                    print(f'{program}: -a user: '
+                          f'username: {username} '
+                          f'email: {email}')
+            else:
+                if force_pw_change and pw_change_by:
+                    info(f'{program}: -a user: '
+                         f'username: {username} '
+                         f'pw_change_by: {pw_change_by}')
+                    print(f'{program}: -a user: '
+                          f'username: {username} '
+                          f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -a user: '
+                         f'username: {username}')
+                    print(f'{program}: -a user: '
+                          f'username: {username}')
             sys.exit(0)
         else:
             error(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
-            sys.exit(6)
+            sys.exit(9)
 
     # -u user - update if they exit, or add user if they do not already exist
     #
@@ -250,6 +298,13 @@ def main():
         # if this is an existing user, setup for the update
         #
         if user_dict:
+
+            # If we used -e email, but email is not already in use by a different user
+            #
+            if args.email and username_with_email and username_with_email != username:
+                error(f'{program}: -u {username} -e {email}: email address already used by: {username_with_email}')
+                print(f'{program}: -u {username} -e {email}: email address already used by: {username_with_email}')
+                sys.exit(10)
 
             # case: -p was not given, keep the existing password hash
             #
@@ -278,9 +333,21 @@ def main():
             if not args.nologin:
                 disable_login = user_dict['disable_login']
 
+            # case: -e email was not given, keep the existing email
+            #
+            if not args.email:
+                email = user_dict['email']
+
         # if not yet a user, generate the random password unless we used -p password
         #
         else:
+
+            # If we used -e email, but email is not already in use by another user
+            #
+            if username_with_email:
+                error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+                print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+                sys.exit(11)
 
             # add with random password unless we used -p password
             #
@@ -293,17 +360,73 @@ def main():
             if not pwhash:
                 error(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
                 print(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
-                sys.exit(7)
+                sys.exit(12)
 
         # update the user
         #
-        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
-            if password:
-                info(f'{program}: -u user: changed password for username: {username}')
-                print(f'{program}: -u user: changed password for username: {username}')
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, email, disable_login):
+            if args.email:
+                if password:
+                    if force_pw_change and pw_change_by:
+                        info(f'{program}: -u user: changed password for '
+                             f'username: {username} '
+                             f'email: {email} '
+                             f'pw_change_by: {pw_change_by}')
+                        print(f'{program}: -u user: changed password for '
+                              f'username: {username} '
+                              f'email: {email} '
+                              f'pw_change_by: {pw_change_by}')
+                    else:
+                        info(f'{program}: -u user: changed password for '
+                             f'username: {username} '
+                             f'email: {email}')
+                        print(f'{program}: -u user: changed password for '
+                              f'username: {username} '
+                              f'email: {email}')
+                else:
+                    if force_pw_change and pw_change_by:
+                        info(f'{program}: -u user: changed details for '
+                             f'username: {username} '
+                             f'email: {email} '
+                             f'pw_change_by: {pw_change_by}')
+                        print(f'{program}: -u user: changed details for '
+                              f'username: {username} '
+                              f'email: {email} '
+                              f'pw_change_by: {pw_change_by}')
+                    else:
+                        info(f'{program}: -u user: changed details for '
+                             f'username: {username} '
+                             f'email: {email}')
+                        print(f'{program}: -u user: changed details for '
+                              f'username: {username} '
+                              f'email: {email}')
             else:
-                info(f'{program}: -u user: changed details for username: {username}')
-                print(f'{program}: -u user: changed details for username: {username}')
+                if password:
+                    if force_pw_change and pw_change_by:
+                        info(f'{program}: -u user: changed password for '
+                             f'username: {username} '
+                             f'pw_change_by: {pw_change_by}')
+                        print(f'{program}: -u user: changed password for '
+                              f'username: {username} '
+                              f'pw_change_by: {pw_change_by}')
+                    else:
+                        info(f'{program}: -u user: changed password for '
+                             f'username: {username}')
+                        print(f'{program}: -u user: changed password for '
+                              f'username: {username}')
+                else:
+                    if force_pw_change and pw_change_by:
+                        info(f'{program}: -u user: changed details for '
+                             f'username: {username} '
+                             f'pw_change_by: {pw_change_by}')
+                        print(f'{program}: -u user: changed details for '
+                              f'username: {username} '
+                              f'pw_change_by: {pw_change_by}')
+                    else:
+                        info(f'{program}: -u user: changed details for '
+                             f'username: {username}')
+                        print(f'{program}: -u user: changed details for '
+                              f'username: {username}')
             sys.exit(0)
         else:
             if password:
@@ -316,7 +439,7 @@ def main():
                       f'failed: {return_last_errmsg()}')
                 print(f'{program}: -u user: failed to change details for username: {username} '
                       f'failed: {return_last_errmsg()}')
-            sys.exit(8)
+            sys.exit(13)
 
     # -d user - delete user
     #
@@ -331,22 +454,31 @@ def main():
         if not lookup_username(username):
             info(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
             print(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
-            sys.exit(9)
+            sys.exit(14)
 
         # remove the user
         #
         if delete_username(username):
-            info(f'{program}: -d user: deleted username: {username} last_errmsg: {return_last_errmsg()}')
-            print(f'{program}: -d user: deleted username: {username} last_errmsg: {return_last_errmsg()}')
+            info(f'{program}: -d user: deleted '
+                 f'username: {username}')
+            print(f'{program}: -d user: deleted '
+                  f'username: {username}')
             sys.exit(0)
         else:
             error(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
-            sys.exit(10)
+            sys.exit(15)
 
     # -U - add random UUID user
     #
     if args.UUID:
+
+        # If we used -e email, but email is not already in use by another user
+        #
+        if username_with_email:
+            error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+            print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
+            sys.exit(16)
 
         # add with random password unless we used -p password
         #
@@ -359,7 +491,7 @@ def main():
         if not pwhash:
             error(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
             print(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
-            sys.exit(11)
+            sys.exit(17)
 
         # generate an random UUID of type that is not an existing user
         #
@@ -411,23 +543,51 @@ def main():
         if not username:
             error(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
             print(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
-            sys.exit(12)
+            sys.exit(18)
 
         # add the user
         #
-        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
-            info(f'{program}: -U: added username: {username}')
-            print(f'{program}: -U: added username: {username}')
+        if update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, email, disable_login):
+            if args.email:
+                if force_pw_change and pw_change_by:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email} '
+                         f'pw_change_by: {pw_change_by}')
+                    print(f'{program}: -U: '
+                          f'username: {username} '
+                          f'email: {email} '
+                          f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email}')
+                    print(f'{program}: -U: '
+                          f'username: {username} '
+                          f'email: {email}')
+            else:
+                if force_pw_change and pw_change_by:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'pw_change_by: {pw_change_by}')
+                    print(f'{program}: -U: '
+                          f'username: {username} '
+                          f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -U: '
+                         f'username: {username}')
+                    print(f'{program}: -U: '
+                          f'username: {username}')
             sys.exit(0)
         else:
             error(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
-            sys.exit(13)
+            sys.exit(19)
 
     # no option selected
     #
-    print(f'{program}: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime')
-    sys.exit(14)
+    print(f'{program}: must use one of: -a USER or -u USER or -d USER or -U')
+    sys.exit(20)
 #
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-branches

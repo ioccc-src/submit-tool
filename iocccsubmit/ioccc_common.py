@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.5.8 2025-02-07"
+VERSION_IOCCC_COMMON = "2.6.0 2025-02-13"
 
 # force password change grace time
 #
@@ -192,7 +192,7 @@ MAX_USERNAME_LENGTH = 40
 
 # password related JSON values
 #
-PASSWORD_VERSION_VALUE = "1.2 2025-01-26"
+PASSWORD_VERSION_VALUE = "1.3 2025-02-12"
 
 # state (open and close) related JSON values
 #
@@ -1337,7 +1337,7 @@ def read_pwfile():
 
                 # read the JSON of the password file
                 #
-                pw_file_json = json.load(j_pw)
+                pw_dict = json.load(j_pw)
 
                 # release the lock of the password file
                 #
@@ -1346,7 +1346,7 @@ def read_pwfile():
 
                 # firewall
                 #
-                if not pw_file_json:
+                if not pw_dict:
 
                     # we have no JSON to return
                     #
@@ -1380,10 +1380,10 @@ def read_pwfile():
     # return the password JSON data as a python dictionary
     #
     debug(f'{me}: end: loaded password file: {PW_FILE}')
-    return pw_file_json
+    return pw_dict
 
 
-def replace_pwfile(pw_file_json):
+def replace_pwfile(pw_dict):
     """
     Replace the contents of the password file
 
@@ -1391,7 +1391,7 @@ def replace_pwfile(pw_file_json):
     We release the lock for the password file afterwards.
 
     Given:
-        pw_file_json    JSON to write into the password file as a python dictionary
+        pw_dict    JSON to write into the password file as a python dictionary
 
     Returns:
         False ==> unable to write JSON into the password file
@@ -1412,11 +1412,11 @@ def replace_pwfile(pw_file_json):
         error(f'{me}: failed to lock file for PW_LOCK: {PW_LOCK}')
         return False
 
-    # rewrite the password file with the pw_file_json and unlock
+    # rewrite the password file with the PW_FILE and unlock
     #
     try:
         with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
-            j_pw.write(json.dumps(pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write(json.dumps(pw_dict, ensure_ascii=True, indent=4))
             j_pw.write('\n')
 
             # close and unlock the password file
@@ -1581,6 +1581,17 @@ def validate_user_dict_nolock(user_dict):
         error(f'{me}: pw_change_by not null nor string for for username: {username}')
         return False
 
+    # firewall check email for user
+    #
+    if not 'email' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: email is missing from user_dict'
+        error(f'{me}: email is missing from user_dict')
+        return False
+    if user_dict['email'] and not isinstance(user_dict['email'], str):
+        ioccc_last_errmsg = f'ERROR: {me}: email is not null nor string for username: {username}'
+        error(f'{me}: email not null nor string for for username: {username}')
+        return False
+
     # firewall check disable_login for user
     #
     if not 'disable_login' in user_dict:
@@ -1638,15 +1649,15 @@ def lookup_username(username):
 
     # load JSON from the password file as a python dictionary
     #
-    pw_file_json = read_pwfile()
-    if not pw_file_json:
-        error(f'{me}: read_pwfile failed for username: {username}')
+    pw_dict = read_pwfile()
+    if not pw_dict:
+        error(f'{me}: read_pwfile failed')
         return None
 
     # search the password file for the user
     #
     user_dict = None
-    for i in pw_file_json:
+    for i in pw_dict:
         if 'username' in i and i['username'] == username:
             user_dict = i
             break
@@ -1669,13 +1680,126 @@ def lookup_username(username):
 # pylint: enable=too-many-return-statements
 
 
+def lookup_username_by_email(email):
+    """
+    Return username that has a given email address.
+
+    Given:
+        email    email registration address
+
+    Returns:
+        != None ==> username that has email as an registration address
+        None ==> email not used by any user
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not isinstance(email, str):
+        error(f'{me}: email arg not a string')
+        return None
+
+    # load JSON from the password file as a python dictionary
+    #
+    pw_dict = read_pwfile()
+    if not pw_dict:
+        error(f'{me}: read_pwfile failed')
+        return None
+
+    # search the password file for the email address
+    #
+    user_dict = None
+    for i in pw_dict:
+        if 'email' in i and i['email'] == email:
+            user_dict = i
+            break
+
+    # email not found
+    #
+    if not user_dict:
+        return None
+
+    # collect username for this password entry that has the given email address
+    #
+    if not 'username' in user_dict or not isinstance(user_dict['username'], str):
+        error(f'{me}: no username found for password entry with email: {email}')
+        return None
+    username = user_dict['username']
+
+    # return username for the user with the given email
+    #
+    debug(f'{me}: end: email: {email} found for username: {username}')
+    return username
+
+
+def lookup_email_by_username(username):
+    """
+    Return username that has a given email address.
+
+    Given:
+        username    IOCCC submit server username
+
+    Returns:
+        != None ==> username of the user wiith the given email registration address
+        None ==> username has no email address,
+                 no such username, or
+                 username does not match POSIX_SAFE_RE, or
+                 bad password file
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    if not check_username_arg(username):
+
+        # The check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        #
+        return None
+
+    # search the password file for the email address
+    #
+    user_dict = lookup_username(username)
+
+    # user not found
+    #
+    if not user_dict:
+        return None
+
+    # collect email for this password entry that has the given user
+    #
+    if not 'email' in user_dict:
+        error(f'{me}: no email found for password entry with username: {username}')
+        return None
+    # NOTE: email may be None
+    email = user_dict['email']
+
+    # return email (which may be None) information for this user
+    #
+    if email:
+        debug(f'{me}: end: username: {username} registeded email: {email}')
+    else:
+        debug(f'{me}: end: username: {username} has no registeded email address')
+    return email
+
+
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-positional-arguments
 # pylint: disable=too-many-arguments
 #
-def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, disable_login):
+def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by, email, disable_login):
     """
     Update a username entry in the password file, or add the entry
     if the username is not already in the password file.
@@ -1687,6 +1811,8 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
         force_pw_change     boolean indicating if the user will be forced to change their password on next login
         pw_change_by        date and time string in DATETIME_USEC_FORMAT by which password must be changed, or
                             None ==> no deadline for changing password
+        email               IOCCC registration email address
+                            None ==> no email registration email address
         disable_login       boolean indicating if the user is banned from login
 
     Returns:
@@ -1706,18 +1832,14 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
 
     # firewall - canonical firewall checks on the username arg
     #
+    # NOTE: The call to check_username_arg() also verifies that the
+    #       username arg must be a string
+    #
     if not check_username_arg(username):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
         #
-        return False
-
-    # firewall - username arg must be a string
-    #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
         return False
 
     # firewall - pwhash must be a string
@@ -1746,6 +1868,13 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     if not isinstance(pw_change_by, str) and pw_change_by is not None:
         ioccc_last_errmsg = f'ERROR: {me}: pw_change_by arg is not a string nor None for username: {username}'
         error(f'{me}: pw_change_by arg is not a string')
+        return False
+
+    # firewall - email must None or must be be string
+    #
+    if not isinstance(email, str) and email is not None:
+        ioccc_last_errmsg = f'ERROR: {me}: email arg is not a string nor None for username: {username}'
+        error(f'{me}: email arg is not a string')
         return False
 
     # firewall - disable_login must be a boolean
@@ -1802,13 +1931,13 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     try:
         with open(PW_FILE, 'r', encoding='utf-8') as j_pw:
 
-            # read the JSON of the password file
+            # read the JSON of the password file and return a python dictionary
             #
-            pw_file_json = json.load(j_pw)
+            pw_dict = json.load(j_pw)
 
             # firewall
             #
-            if not pw_file_json:
+            if not pw_dict:
 
                 # we have no JSON to return
                 #
@@ -1829,7 +1958,7 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     # scan through the password file, looking for the user
     #
     found_username = False
-    for i in pw_file_json:
+    for i in pw_dict:
         if 'username' in i and i['username'] == username:
 
             # user found, update user info
@@ -1838,6 +1967,7 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
             i['ignore_date'] = ignore_date
             i['force_pw_change'] = force_pw_change
             i['pw_change_by'] = pw_change_by
+            i['email'] = email
             i['disable_login'] = disable_login
             found_username = True
             break
@@ -1848,20 +1978,21 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
 
         # append the new user to the password file
         #
-        pw_file_json.append({ "no_comment" : NO_COMMENT_VALUE,
+        pw_dict.append({ "no_comment" : NO_COMMENT_VALUE,
                               "iocccpasswd_format_version" : PASSWORD_VERSION_VALUE,
                               "username" : username,
                               "pwhash" : pwhash,
                               "ignore_date" : ignore_date,
                               "force_pw_change" : force_pw_change,
                               "pw_change_by" : pw_change_by,
+                              "email" : email,
                               "disable_login" : disable_login })
 
-    # rewrite the password file with the pw_file_json and unlock
+    # rewrite the password file with the PW_FILE and unlock
     #
     try:
         with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
-            j_pw.write(json.dumps(pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write(json.dumps(pw_dict, ensure_ascii=True, indent=4))
             j_pw.write('\n')
 
             # close and unlock the password file
@@ -1962,11 +2093,11 @@ def delete_username(username):
 
             # read the JSON of the password file
             #
-            pw_file_json = json.load(j_pw)
+            pw_dict = json.load(j_pw)
 
             # firewall
             #
-            if not pw_file_json:
+            if not pw_dict:
 
                 # we have no JSON to return
                 #
@@ -1987,8 +2118,8 @@ def delete_username(username):
     # scan through the password file, looking for the user
     #
     deleted_user = None
-    new_pw_file_json = []
-    for i in pw_file_json:
+    new_pw_dict = []
+    for i in pw_dict:
 
         # set aside the username we are deleting
         #
@@ -1998,13 +2129,13 @@ def delete_username(username):
         # otherwise save other users
         #
         else:
-            new_pw_file_json.append(i)
+            new_pw_dict.append(i)
 
-    # rewrite the password file with the pw_file_json and unlock
+    # rewrite the password file with the PW_FILE and unlock
     #
     try:
         with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
-            j_pw.write(json.dumps(new_pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write(json.dumps(new_pw_dict, ensure_ascii=True, indent=4))
             j_pw.write('\n')
 
             # close and unlock the password file
@@ -2662,6 +2793,7 @@ def update_password(username, old_password, new_password):
                            user_dict['ignore_date'],
                            False,
                            None,
+                           None,
                            user_dict['disable_login']):
         error(f'{me}: password database update failed for username: {username}')
         return False
@@ -2724,18 +2856,25 @@ def user_allowed_to_login(user_dict):
         info(f'{me}: login not allowed for username: {username}')
         return False
 
-    # paranoia - must have disable_login for this user_dict
+    # paranoia - must have force_pw_change for this user_dict
     #
     if not 'force_pw_change' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is missing from user_dict'
         error(f'{me}: force_pw_change is missing from user_dict')
         return False
 
-    # paranoia - must have disable_login for this user_dict
+    # paranoia - must have pw_change_by for this user_dict
     #
     if not 'pw_change_by' in user_dict:
         ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is missing from user_dict'
         error(f'{me}: pw_change_by is missing from user_dict')
+        return False
+
+    # paranoia - must have email for this user_dict
+    #
+    if not 'email' in user_dict:
+        ioccc_last_errmsg = f'ERROR: {me}: email is missing from user_dict'
+        error(f'{me}: email is missing from user_dict')
         return False
 
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit

@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.2.1 2024-02-04"
+export VERSION="2.2.2 2024-02-13"
 NAME=$(basename "$0")
 export NAME
 export TOPDIR="."
@@ -180,7 +180,7 @@ for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.p
 
     # announce
     #
-    echo "=-=-= $TOPDIR/$i =-=-="
+    echo "=-=-= python3 -m pylint $i =-=-="
 
     # pylint file
     #
@@ -195,12 +195,12 @@ done
 
 # pylint critical bin files
 #
-for i in bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py \
-	 bin/set_slot_status.py ; do
+for i in bin/email_pr.py bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py \
+	 bin/ioccc_passwd.py bin/set_slot_status.py ; do
 
     # announce
     #
-    echo "=-=-= $TOPDIR/$i =-=-="
+    echo "=-=-= python3 -m pylint $i =-=-="
 
     # pylint file
     #
@@ -221,7 +221,7 @@ for i in wsgi/ioccc.wsgi ; do
 
     # announce
     #
-    echo "=-=-= $TOPDIR/$i =-=-="
+    echo "=-=-= python3 -m pylint $i =-=-="
 
     # pylint file
     #
