@@ -21,7 +21,9 @@ from iocccsubmit import \
         change_startup_appdir, \
         error, \
         lookup_email_by_username, \
+        lookup_username, \
         lookup_username_by_email, \
+        prerr, \
         read_pwfile, \
         return_last_errmsg, \
         setup_logger
@@ -31,11 +33,12 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.0.0 2025-02-13"
+VERSION = "1.0.1 2025-02-13"
 
 
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-locals
 #
 def main():
     """
@@ -143,6 +146,7 @@ def main():
 
     # case: no args, process the entire IOCCC submit server password file
     #
+    exit_code = 0
     if argc <= 0:
 
         # obtain the IOCCC submit server password file
@@ -213,20 +217,43 @@ def main():
             # args are registered email address(es): determine the username
             #
             if args_are_email:
+
+                # determine the username for this email address
+                #
                 email = arg
                 username = lookup_username_by_email(email)
+
+                # firewall - no user with this registered email address
+                #
+                if not username:
+                    prerr(f'{program}: registered email address not found: {email}')
+                    exit_code = 1
+                    continue
 
             # case: process args with -u
             #
             # args are username(s), determine the registered email address
             #
             else:
+
+                # firewall - verify username is valid
+                #
                 username = arg
+                user_dict = lookup_username(username)
+                if not user_dict:
+                    prerr(f'{program}: username not found: {username}')
+                    exit_code = 1
+                    continue
+
+                # determine the registered email address for this user
+                #
                 email = lookup_email_by_username(username)
 
             # unless -0, ignore email that is None
             #
             if not print_none and not email:
+                prerr(f'{program}: no registered email address for username: {username}')
+                exit_code = 1
                 continue
 
             # convert None email to "None"
@@ -246,10 +273,13 @@ def main():
             elif print_username:
                 print(f'{username}')
 
-    sys.exit(0)
+    # All Done!!! All Done!!! -- Jessica Noll, Age 2
+    #
+    sys.exit(exit_code)
 #
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-statements
+# pylint: enable=too-many-locals
 
 
 # case: run from the command line

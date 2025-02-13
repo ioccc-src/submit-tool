@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.0 2025-02-13"
+VERSION_IOCCC_COMMON = "2.6.1 2025-02-13"
 
 # force password change grace time
 #
@@ -1533,8 +1533,9 @@ def validate_user_dict_nolock(user_dict):
         return False
     if user_dict['iocccpasswd_format_version'] != PASSWORD_VERSION_VALUE:
         ioccc_last_errmsg = f'ERROR: {me}: invalid iocccpasswd_format_version for username: {username}'
-        error(f'{me}: invalid iocccpasswd_format_version for username: {username} iocccpasswd_format_version: '
-              f'<<{user_dict["iocccpasswd_format_version"]}>> != PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE}')
+        error(f'{me}: invalid iocccpasswd_format_version for username: {username} '
+              f'PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE} '
+              f'iocccpasswd_format_version: <<{user_dict["iocccpasswd_format_version"]}>>')
         return False
 
     # firewall check pwhash for user
