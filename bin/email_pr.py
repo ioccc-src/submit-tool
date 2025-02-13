@@ -33,7 +33,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.0.1 2025-02-13"
+VERSION = "1.0.2 2025-02-13"
 
 
 # pylint: disable=too-many-branches
@@ -121,7 +121,6 @@ def main():
             print_email = False
             print_username = False
         else:
-            error(f'{program}: -e may only be followed by e, u, eu, or ue')
             print(f'{program}: -e may only be followed by e, u, eu, or ue')
             sys.exit(4)
 
@@ -179,7 +178,7 @@ def main():
                 email = i['email']
             else:
                 # malformed password entry as no username
-                error(f'{program}: password entry number {i} has no email')
+                error(f'{program}: password entry number {i} has no email for username: {username}')
                 continue
 
             # unless -0, ignore email that is None
