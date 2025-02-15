@@ -276,16 +276,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to run: $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE" 1>&2
+	echo "$0: debug[1]: about to run: LC_ALL=C $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE" 1>&2
     fi
-    "$S_NAIL" "${S_NAIL_OPTION[@]}" "$EMAIL" < "$FILE"
+    LC_ALL=C "$S_NAIL" "${S_NAIL_OPTION[@]}" "$EMAIL" < "$FILE"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE failed, error: $status" 1>&2
+	echo "$0: ERROR: LC_ALL=C $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE failed, error: $status" 1>&2
 	exit 5
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: LC_ALL=C $S_NAIL ${S_NAIL_OPTION[*]} $EMAIL < $FILE" 1>&2
 fi
 
 
