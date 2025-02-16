@@ -87,10 +87,13 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.2.2 2024-02-13"
+export VERSION="2.3.0 2024-02-16"
 NAME=$(basename "$0")
 export NAME
 export TOPDIR="."
+SHELLCHECK_TOOL=$(type -P shellcheck)
+export SHELLCHECK_TOOL
+# NOTE: If we do not have shellcheck, we will simply bypass shell script checks.
 
 
 # usage
@@ -190,7 +193,6 @@ for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.p
 	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
 	exit 1
     fi
-
 done
 
 # pylint critical bin files
@@ -232,6 +234,27 @@ for i in wsgi/ioccc.wsgi ; do
 	exit 3
     fi
 done
+
+
+# if we have shellcheck, then check the shell scripts
+#
+if [[ -x $SHELLCHECK_TOOL ]]; then
+
+    # announce
+    #
+    echo '=-=-= shellcheck bin/*.sh sbin/*.sh =-=-='
+
+    # check the shell scripts
+    #
+    find bin sbin -type f -name '*.sh' -print0 | xargs -0 "$SHELLCHECK_TOOL"
+    status_codes=("${PIPESTATUS[@]}")
+    if [[ ${status_codes[*]} =~ [1-9] ]]; then
+	echo "$0: ERROR: shell check failed, error codes: ${status_codes[*]}" 1>&2
+	exit 4
+    fi
+else
+    echo "0: Notice: no shellcheck tool, skipping shellcheck tests" 1>&2
+fi
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2

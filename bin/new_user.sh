@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #
-# gen_acct.sh - generate an IOCCC submit server account
+# new_user.sh - create an IOCCC submit server account and send notification Email
 #
-# Given an email address of someone who has registered the IOCCC,
-# generate an IOCCC submit server account and output information
-# about the newly created IOCCC submit server in stdout.
+# We generate an new IOCCC submit server account, collect
+# the account information and send email to the IOCCC registered user.
 #
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -89,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.2 2025-02-16"
+export VERSION="1.0.0 2025-02-16"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -98,11 +97,18 @@ if [[ ! -d $TOPDIR ]]; then
     # not on submit server, assume testing in .
     TOPDIR="."
 fi
-IOCCC_PASSWD_PY=$(type -P ioccc_passwd.py)
-export IOCCC_PASSWD_PY
-if [[ -z $IOCCC_PASSWD_PY ]]; then
-    IOCCC_PASSWD_PY="bin/ioccc_passwd.py"
+GEN_ACCT_SH=$(type -P gen_acct.sh)
+export GEN_ACCT_SH
+if [[ -z $GEN_ACCT_SH ]]; then
+    GEN_ACCT_SH="bin/gen_acct.sh"
 fi
+REG_EMAIL_SH=$(type -P reg_email.sh)
+export REG_EMAIL_SH
+if [[ -z $REG_EMAIL_SH ]]; then
+    REG_EMAIL_SH="bin/reg_email.sh"
+fi
+export MAIL_HEAD="etc/mail.head"
+export MAIL_TAIL="etc/mail.tail"
 #
 export NOOP=
 export DO_NOT_PROCESS=
@@ -110,7 +116,7 @@ export DO_NOT_PROCESS=
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-p pwtool] email
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-g gen_acct] [-r reg_email] email
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -121,17 +127,19 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-p pwtool] e
 
 	-t appdir	app directory path (def: $TOPDIR)
 
-	-p pwtool	tool to create an IOCCC submit server account (def: $IOCCC_PASSWD_PY)
+	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
+	-r reg_email	tool to send a IOCCC submit server registration email (def: $REG_EMAIL_SH)
 
 	email		email address that we registed with the IOCCC
 
 Exit codes:
      0         all OK
-     1	       failed to generate an IOCCC submit server account
+     1	       failed to generate an IOCCC submit server account, or send email to the user
      2         -h and help string printed or -V and version string printed
      3         command line error
      4	       topdir is not a directory
-     5	       pwtool tool is not executable
+     5	       missing internal tool
+     6	       mail head and/or mail tail not a non-empty readable file
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -139,7 +147,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:p: flag; do
+while getopts :hv:VnNt:g:r: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -155,7 +163,9 @@ while getopts :hv:VnNt:p: flag; do
 	;;
     t) TOPDIR="$OPTARG"
 	;;
-    p) IOCCC_PASSWD_PY="$OPTARG"
+    g) GEN_ACCT_SH="$OPTARG"
+	;;
+    r) REG_EMAIL_SH="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -202,7 +212,10 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: TOPDIR=$TOPDIR" 1>&2
-    echo "$0: debug[3]: IOCCC_PASSWD_PY=$IOCCC_PASSWD_PY" 1>&2
+    echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2
+    echo "$0: debug[3]: REG_EMAIL_SH=$REG_EMAIL_SH" 1>&2
+    echo "$0: debug[3]: MAIL_HEAD=$MAIL_HEAD" 1>&2
+    echo "$0: debug[3]: MAIL_TAIL=$MAIL_TAIL" 1>&2
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: EMAIL=$EMAIL" 1>&2
@@ -219,11 +232,55 @@ if [[ -n $CD_FAILED ]]; then
 fi
 
 
-# pwtool must be executable
+# gen_acct.sh must be executable
 #
-if [[ ! -x $IOCCC_PASSWD_PY ]]; then
-    echo "$0: ERROR: not exeutable: $IOCCC_PASSWD_PY" 1>&2
+if [[ ! -x $GEN_ACCT_SH ]]; then
+    echo "$0: ERROR: gen_acct.sh not exeutable: $GEN_ACCT_SH" 1>&2
     exit 5
+fi
+
+
+# reg_email.sh must be executable
+#
+if [[ ! -x $REG_EMAIL_SH ]]; then
+    echo "$0: ERROR: reg_email.sh not exeutable: $REG_EMAIL_SH" 1>&2
+    exit 5
+fi
+
+
+# mail head and tail content files must be non-empty readable files
+#
+if [[ ! -e $MAIL_HEAD ]]; then
+    echo "$0: ERROR: mail head content file does not exist: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -f $MAIL_HEAD ]]; then
+    echo "$0: ERROR: mail head content file not a file: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -r $MAIL_HEAD ]]; then
+    echo "$0: ERROR: mail head content file not a readable file: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -s $MAIL_HEAD ]]; then
+    echo "$0: ERROR: mail head content file not a non-empty readable file: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -e $MAIL_TAIL ]]; then
+    echo "$0: ERROR: mail tail content file does not exist: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -f $MAIL_TAIL ]]; then
+    echo "$0: ERROR: mail tail content file not a file: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -r $MAIL_TAIL ]]; then
+    echo "$0: ERROR: mail tail content file not a readable file: $GEN_ACCT_SH" 1>&2
+    exit 6
+fi
+if [[ ! -s $MAIL_TAIL ]]; then
+    echo "$0: ERROR: mail tail content file not a non-empty readable file: $GEN_ACCT_SH" 1>&2
+    exit 6
 fi
 
 
@@ -237,20 +294,100 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 fi
 
 
+# form temporary email message file
+#
+export TMP_EMAIL_MESSAGE=".tmp.$NAME.STDERR.$$.tmp"
+if [[ $V_FLAG -ge 3 ]]; then
+    echo  "$0: debug[3]: temporary new email message file: $TMP_EMAIL_MESSAGE" 1>&2
+fi
+trap 'rm -f $TMP_EMAIL_MESSAGE; exit' 0 1 2 3 15
+rm -f "$TMP_EMAIL_MESSAGE"
+if [[ -e $TMP_EMAIL_MESSAGE ]]; then
+    echo "$0: ERROR: cannot remove new email message file: $TMP_EMAIL_MESSAGE" 1>&2
+    exit 10
+fi
+: >  "$TMP_EMAIL_MESSAGE"
+if [[ ! -e $TMP_EMAIL_MESSAGE ]]; then
+    echo "$0: ERROR: cannot create new femail message file: $TMP_EMAIL_MESSAGE" 1>&2
+    exit 11
+fi
+
+
+# form temporary new account info file
+#
+export TMP_NEW_ACCT_INFO=".tmp.$NAME.STDERR.$$.tmp"
+if [[ $V_FLAG -ge 3 ]]; then
+    echo  "$0: debug[3]: temporary new account info file: $TMP_NEW_ACCT_INFO" 1>&2
+fi
+trap 'rm -f $TMP_EMAIL_MESSAGE $TMP_NEW_ACCT_INFO; exit' 0 1 2 3 15
+rm -f "$TMP_NEW_ACCT_INFO"
+if [[ -e $TMP_NEW_ACCT_INFO ]]; then
+    echo "$0: ERROR: cannot remove new account info file: $TMP_NEW_ACCT_INFO" 1>&2
+    exit 10
+fi
+: >  "$TMP_NEW_ACCT_INFO"
+if [[ ! -e $TMP_NEW_ACCT_INFO ]]; then
+    echo "$0: ERROR: cannot create new account info file: $TMP_NEW_ACCT_INFO" 1>&2
+    exit 11
+fi
+
+
 # generate an IOCCC submit server account
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to run: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL" 1>&1
+	echo "$0: debug[1]: about to run: $GEN_ACCT_SH -U -E -c -e $EMAIL > $TMP_NEW_ACCT_INFO" 1>&1
     fi
-    "$IOCCC_PASSWD_PY" -U -E -c -e "$EMAIL"
+    "$GEN_ACCT_SH" -U -E -c -e "$EMAIL" > "$TMP_NEW_ACCT_INFO"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL failed, error: $status" 1>&2
+	echo "$0: ERROR: $GEN_ACCT_SH -U -E -c -e $EMAIL failed, error: $status" 1>&2
+	exit 1
+    fi
+    if [[ ! -s $TMP_NEW_ACCT_INFO ]]; then
+	echo "$0: ERROR: $GEN_ACCT_SH failed to output new account info content" 1>&2
 	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $GEN_ACCT_SH -U -E -c -e $EMAIL > $TMP_NEW_ACCT_INFO" 1>&2
+fi
+
+
+# form the email message
+#
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to run: cat $MAIL_HEAD $TMP_NEW_ACCT_INFO $MAIL_TAIL > $TMP_EMAIL_MESSAGE" 1>&1
+    fi
+    cat "$MAIL_HEAD" "$TMP_NEW_ACCT_INFO" "$MAIL_TAIL" > "$TMP_EMAIL_MESSAGE"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+        echo "$0: ERROR: cat $MAIL_HEAD $TMP_NEW_ACCT_INFO $MAIL_TAIL > $TMP_EMAIL_MESSAGE failed, error: $status" 1>&2
+        exit 1
+    fi
+    if [[ ! -s $TMP_EMAIL_MESSAGE ]]; then
+        echo "$0: ERROR: failed to output new email message" 1>&2
+        exit 1
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: cat $MAIL_HEAD $TMP_NEW_ACCT_INFO $MAIL_TAIL > $TMP_EMAIL_MESSAGE" 1>&2
+fi
+
+
+# send the email message
+#
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to run: $REG_EMAIL_SH $TMP_EMAIL_MESSAGE $EMAIL" 1>&2
+    fi
+    "$REG_EMAIL_SH" "$TMP_EMAIL_MESSAGE" "$EMAIL"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+        echo "$0: ERROR: $REG_EMAIL_SH $TMP_EMAIL_MESSAGE $EMAIL failed, error: $status" 1>&2
+        exit 1
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: $REG_EMAIL_SH $TMP_EMAIL_MESSAGE $EMAIL" 1>&2
 fi
 
 
