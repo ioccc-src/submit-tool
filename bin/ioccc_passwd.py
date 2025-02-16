@@ -48,7 +48,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.6.0 2025-02-14"
+VERSION = "2.6.1 2025-02-15"
 
 
 # pylint: disable=too-many-locals
@@ -284,6 +284,14 @@ def main():
                 if force_pw_change:
                     print('')
                     print(f'    IMPORTANT: You MUST login and change your password before: {pw_change_by}')
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email} '
+                         f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email}')
                 sys.exit(0)
 
             # case: -e email output
@@ -440,6 +448,14 @@ def main():
                 if force_pw_change:
                     print('')
                     print(f'    IMPORTANT: You MUST login and change your password before: {pw_change_by}')
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email} '
+                         f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email}')
                 sys.exit(0)
 
             # case: -e email output
@@ -661,6 +677,14 @@ def main():
                 if force_pw_change:
                     print('')
                     print(f'    IMPORTANT: You MUST login and change your password before: {pw_change_by}')
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email} '
+                         f'pw_change_by: {pw_change_by}')
+                else:
+                    info(f'{program}: -U: '
+                         f'username: {username} '
+                         f'email: {email}')
                 sys.exit(0)
 
             # case: -e email output
