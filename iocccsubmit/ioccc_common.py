@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.2 2025-02-13"
+VERSION_IOCCC_COMMON = "2.6.3 2025-02-15"
 
 # force password change grace time
 #
@@ -2124,13 +2124,20 @@ def delete_username(username):
 
         # set aside the username we are deleting
         #
-        if 'usernamne' in i and i['username'] == username:
+        if 'username' in i and i['username'] == username:
             deleted_user = i
 
         # otherwise save other users
         #
         else:
             new_pw_dict.append(i)
+
+    # case: no user was deleted
+    #
+    if not deleted_user:
+        ioccc_last_errmsg = f'ERROR: {me}: no such user to delete: {username}'
+        error(f'{me}:  no such user to delete: {username}')
+        return None
 
     # rewrite the password file with the PW_FILE and unlock
     #
