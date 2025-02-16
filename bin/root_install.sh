@@ -211,7 +211,7 @@ if [[ $status -ne 0 ]]; then
     echo "$0: ERROR: systemctl status httpd failed, error: $status" 1>&2
     exit 17
 fi
-ps -fp $(pgrep -d, -x httpd)
+ps -fp "$(pgrep -d, -x httpd)"
 status="$?"
 if [[ $status -ne 0 ]]; then
     echo "$0: ERROR: ps -fp \$(pgrep -d, -x httpd) failed, error: $status" 1>&2
