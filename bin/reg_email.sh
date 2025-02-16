@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.0 2025-02-14"
+export VERSION="1.0.2 2025-02-16"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -100,7 +100,8 @@ export S_NAIL
 if [[ -z $S_NAIL ]]; then
     S_NAIL="/bin/s-nail"
 fi
-
+export FROM_ADDR="ioccc-account-bot@ioccc.org"
+export BCC_ADDR="bcc-sent-account@ioccc.org"
 
 # build s-nail arguments
 #
@@ -111,14 +112,11 @@ S_NAIL_OPTION+=("-Sv15-compat")
 S_NAIL_OPTION+=("-Sttycharset=utf-8")
 S_NAIL_OPTION+=("-Sexpandaddr=fail,-all,failinvaddr")
 S_NAIL_OPTION+=("-Sfullnames")
-S_NAIL_OPTION+=("-S")
-S_NAIL_OPTION+=("from=judges-test@ioccc.org")
-S_NAIL_OPTION+=("-r")
-S_NAIL_OPTION+=("judges-test@ioccc.org")
-S_NAIL_OPTION+=("-s")
-S_NAIL_OPTION+=("$SUBJECT")
-S_NAIL_OPTION+=("-b")
-S_NAIL_OPTION+=("bcc-sent-account@ioccc.org")
+S_NAIL_OPTION+=("-Sfrom=$FROM_ADDR")
+S_NAIL_OPTION+=("--from-address=$FROM_ADDR")
+S_NAIL_OPTION+=("--discard-empty-messages")
+S_NAIL_OPTION+=("--bcc=$BCC_ADDR")
+S_NAIL_OPTION+=("--subject=$SUBJECT")
 
 
 # usage
@@ -211,6 +209,28 @@ if [[ -z $EMAIL ]]; then
 fi
 
 
+# print running info if verbose
+#
+# If -v 3 or higher, print exported variables in order that they were exported.
+#
+if [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: VERSION=$VERSION" 1>&2
+    echo "$0: debug[3]: NAME=$NAME" 1>&2
+    echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: SUBJECT=$SUBJECT" 1>&2
+    echo "$0: debug[3]: S_NAIL=$S_NAIL" 1>&2
+    echo "$0: debug[3]: FROM_ADDR=$FROM_ADDR" 1>&2
+    echo "$0: debug[3]: BCC_ADDR=$BCC_ADDR" 1>&2
+    for index in "${!S_NAIL_OPTION[@]}"; do
+        echo "$0: debug[3]: S_NAIL_OPTION[$index]=${S_NAIL_OPTION[$index]}" 1>&2
+    done
+    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
+    echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
+    echo "$0: debug[3]: FILE=$FILE" 1>&2
+    echo "$0: debug[3]: EMAIL=$EMAIL" 1>&2
+fi
+
+
 # file must be a readable non-empty filename
 #
 if [[ ! -e $FILE ]]; then
@@ -228,29 +248,6 @@ fi
 if [[ ! -s $FILE ]]; then
     echo "$0: ERROR: is not a non-empty readable file: $FILE" 1>&2
     exit 4
-fi
-
-
-#NOOP="true" # XXX - debug - disable sending
-
-
-# print running info if verbose
-#
-# If -v 3 or higher, print exported variables in order that they were exported.
-#
-if [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: VERSION=$VERSION" 1>&2
-    echo "$0: debug[3]: NAME=$NAME" 1>&2
-    echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
-    echo "$0: debug[3]: SUBJECT=$SUBJECT" 1>&2
-    echo "$0: debug[3]: S_NAIL=$S_NAIL" 1>&2
-    for index in "${!S_NAIL_OPTION[@]}"; do
-        echo "$0: debug[3]: S_NAIL_OPTION[$index]=${S_NAIL_OPTION[$index]}" 1>&2
-    done
-    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
-    echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
-    echo "$0: debug[3]: FILE=$FILE" 1>&2
-    echo "$0: debug[3]: EMAIL=$EMAIL" 1>&2
 fi
 
 
