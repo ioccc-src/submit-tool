@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.0 2025-02-16"
+export VERSION="1.0.1 2025-02-16"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -336,12 +336,12 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to run: $GEN_ACCT_SH -U -E -c -e $EMAIL > $TMP_NEW_ACCT_INFO" 1>&1
+	echo "$0: debug[1]: about to run: $GEN_ACCT_SH $EMAIL > $TMP_NEW_ACCT_INFO" 1>&1
     fi
-    "$GEN_ACCT_SH" -U -E -c -e "$EMAIL" > "$TMP_NEW_ACCT_INFO"
+    "$GEN_ACCT_SH" "$EMAIL" > "$TMP_NEW_ACCT_INFO"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $GEN_ACCT_SH -U -E -c -e $EMAIL failed, error: $status" 1>&2
+	echo "$0: ERROR: $GEN_ACCT_SH $EMAIL failed, error: $status" 1>&2
 	exit 1
     fi
     if [[ ! -s $TMP_NEW_ACCT_INFO ]]; then
@@ -349,7 +349,7 @@ if [[ -z $NOOP ]]; then
 	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $GEN_ACCT_SH -U -E -c -e $EMAIL > $TMP_NEW_ACCT_INFO" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $GEN_ACCT_SH $EMAIL > $TMP_NEW_ACCT_INFO" 1>&2
 fi
 
 
