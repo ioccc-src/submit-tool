@@ -154,7 +154,7 @@ def main():
     partent_slot_path = os.path.dirname(slot_path)
     username = os.path.basename(partent_slot_path)
     debug(f'{program}: username: {username}')
-    if not check_username_arg(username):
+    if not check_username_arg(username, program):
         # the above function call will have logged the error
         prerr(f'{program}: {return_last_errmsg()}')
         print('exit.7 . 0')

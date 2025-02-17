@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.3 2025-02-15"
+VERSION_IOCCC_COMMON = "2.6.4 2025-02-16"
 
 # force password change grace time
 #
@@ -555,7 +555,9 @@ def prerr(*args, **kwargs):
     #no#debug(f'{me}: end')
 
 
-def check_username_arg(username):
+# pylint: disable=too-many-return-statements
+#
+def check_username_arg(username, parent):
     """
     Determine if the username passes various sanity checks:
 
@@ -566,6 +568,7 @@ def check_username_arg(username):
 
     Given:
         username    IOCCC submit server username
+        parent      name of parent function calling check_username_arg()
 
     Returns:
         True ==> username passes all of the canonical firewall checks
@@ -582,6 +585,23 @@ def check_username_arg(username):
     # We do NOT want to call debug from this function because we call this code too frequently
     #no#debug(f'{me}: start')
 
+    # firewall - parent arg must be a string
+    #
+    # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
+    #
+    # NOTE: When testing with the bin/ioccc_submit.py test tool,
+    #       this firewall test may also be triggered.
+    #
+    # NOTE: In all other cases, failing this firewall is unexpected.
+    #
+    if not isinstance(parent, str):
+        ioccc_last_errmsg = f'ERROR: {me}: parent arg is not a string'
+        # use info() instead of error() - cause may be a system cracked or testing.
+        info(f'{me}: parent arg is not a string')
+        return False
+
     # firewall - username arg must be a string
     #
     # NOTE: From the wsgi/ioccc.wsgi web application, a non-string
@@ -594,9 +614,9 @@ def check_username_arg(username):
     # NOTE: In all other cases, failing this firewall is unexpected.
     #
     if not isinstance(username, str):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg is not a string'
+        ioccc_last_errmsg = f'ERROR: {me}: via {parent}: username arg is not a string'
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: username arg is not a string')
+        info(f'{me}: via {parent}: username arg is not a string')
         return False
 
     # firewall - username cannot be empty
@@ -611,9 +631,9 @@ def check_username_arg(username):
     # NOTE: In all other cases, failing this firewall is unexpected.
     #
     if len(username) == 0:
-        ioccc_last_errmsg = f'ERROR: {me}: username is missing'
+        ioccc_last_errmsg = f'ERROR: {me}: via {parent}: username is empty'
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: username is missing')
+        info(f'{me}: via {parent}: username is empty')
         return False
 
     # firewall - username cannot be too short
@@ -628,9 +648,10 @@ def check_username_arg(username):
     # NOTE: In all other cases, failing this firewall is unexpected.
     #
     if len(username) < MIN_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'ERROR: {me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        ioccc_last_errmsg = (f'ERROR: {me}: via {parent}: username arg is too short: '
+                             f'{len(username)} < {MIN_USERNAME_LENGTH}')
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        info(f'{me}: via {parent}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
         return False
 
     # firewall - username cannot be too long
@@ -645,9 +666,10 @@ def check_username_arg(username):
     # NOTE: In all other cases, failing this firewall is unexpected.
     #
     if len(username) > MAX_USERNAME_LENGTH:
-        ioccc_last_errmsg = f'ERROR: {me}: username arg is too long: {len(username)} > {MAX_USERNAME_LENGTH}'
+        ioccc_last_errmsg = (f'ERROR: {me}: via {parent}: username arg is too long: '
+                             f'{len(username)} > {MAX_USERNAME_LENGTH}')
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: username arg is too long: {len(username)} > {MAX_USERNAME_LENGTH}')
+        info(f'{me}: via {parent}: username arg is too long: {len(username)} > {MAX_USERNAME_LENGTH}')
         return False
 
     # firewall - username must be a POSIX safe filename string
@@ -662,9 +684,9 @@ def check_username_arg(username):
     # NOTE: In all other cases, failing this firewall is unexpected.
     #
     if not re.match(POSIX_SAFE_RE, username):
-        ioccc_last_errmsg = f'ERROR: {me}: username arg not POSIX safe'
+        ioccc_last_errmsg = f'ERROR: {me}: via {parent}: username arg not POSIX safe'
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: username arg not POSIX safe')
+        info(f'{me}: via {parent}: username arg not POSIX safe')
         return False
 
     # username passes all of the canonical firewall checks
@@ -672,6 +694,8 @@ def check_username_arg(username):
     # We do NOT want to call debug from this function because we call this code too frequently
     #no#debug(f'{me}: end: valid username: {username}')
     return True
+#
+# pylint: enable=too-many-return-statements
 
 
 def check_slot_num_arg(slot_num):
@@ -747,7 +771,7 @@ def return_user_dir_path(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -791,7 +815,7 @@ def return_slot_dir_path(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -851,7 +875,7 @@ def return_slot_json_filename(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -918,7 +942,7 @@ def return_slot_lockfile(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -990,7 +1014,7 @@ def return_submit_filename(slot_dict, username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -1062,7 +1086,7 @@ def return_submit_path(slot_dict, username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -1497,7 +1521,7 @@ def validate_user_dict_nolock(user_dict):
 
     # firewall - canonical firewall checks on the username string
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -1641,7 +1665,7 @@ def lookup_username(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -1761,7 +1785,7 @@ def lookup_email_by_username(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -1836,7 +1860,7 @@ def update_username(username, pwhash, ignore_date, force_pw_change, pw_change_by
     # NOTE: The call to check_username_arg() also verifies that the
     #       username arg must be a string
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -2062,7 +2086,7 @@ def delete_username(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -2425,7 +2449,7 @@ def verify_user_password(username, password):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -2716,7 +2740,7 @@ def update_password(username, old_password, new_password):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -2989,7 +3013,7 @@ def username_login_allowed(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3058,7 +3082,7 @@ def lock_slot(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3183,7 +3207,7 @@ def is_slot_setup(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3475,7 +3499,7 @@ def initialize_slot_nolock(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3714,7 +3738,7 @@ def initialize_user_tree(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3897,7 +3921,7 @@ def get_all_json_slots(username):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -3974,7 +3998,7 @@ def update_slot(username, slot_num, submit_file):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -4129,7 +4153,7 @@ def update_slot_status(username, slot_num, status, set_collected_to_true):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -4242,7 +4266,7 @@ def update_slot_status_if_submit(username, slot_num, status, submit_file):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -5228,7 +5252,7 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -5439,7 +5463,7 @@ def get_slot_dict_nolock(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -5541,7 +5565,7 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
@@ -5774,7 +5798,7 @@ def stage_submit(username, slot_num):
 
     # firewall - canonical firewall checks on the username arg
     #
-    if not check_username_arg(username):
+    if not check_username_arg(username, me):
 
         # The check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
