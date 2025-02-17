@@ -24,11 +24,25 @@
       {% if username %}
         <div style="font-size: 20px; color: darkblue;">Welcome, {{ username }}</div><br>
       {% endif %}
-      <h2>The contest is NOT open for submissions.</h2>
-      <br>
-      Sorry (tm Canada 🇨🇦), the IOCCC is not open.
-      <br><br>
-      You cannot upload IOCCC submissions at this time.
+      {% if before_open %}
+          <h2>The contest is NOT yet open for submissions.</h2>
+          <br>
+          Sorry (tm Canada 🇨🇦), the IOCCC is not yet open.
+          <br><br>
+          The IOCCC is scheduled to open at {{open_datetime}} UTC.
+      {% elif after_open %}
+          <h2>The contest is no longer open for submissions.</h2>
+          <br>
+          Sorry (tm Canada 🇨🇦), you can no longer upload submissions to the IOCCC.
+          <br><br>
+          The IOCCC stopped accepting submissions after {{close_datetime}} UTC.
+      {% else %}
+          <h2>We cannot determine if the contest is open or not open for submissions.</h2>
+          <br>
+          Sorry (tm Canada 🇨🇦), due a logic error, you cannot upload submissions to the open IOCCC.
+          <br><br>
+          Please <a href="https://www.ioccc.org/judges.html">contact the IOCCC judges</a> about this error.
+      {% endif %}
       </strong>
     </section>
 

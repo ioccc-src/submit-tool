@@ -23,7 +23,7 @@ from .ioccc_common import \
         change_startup_appdir, \
         check_slot_num_arg, \
         check_username_arg, \
-        contest_is_open, \
+        contest_open_close, \
         debug, \
         delete_username, \
         error, \

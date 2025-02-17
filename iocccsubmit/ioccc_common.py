@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.4 2025-02-16"
+VERSION_IOCCC_COMMON = "2.6.5 2025-02-17"
 
 # force password change grace time
 #
@@ -2477,6 +2477,10 @@ def verify_user_password(username, password):
 
         # user is not in the password file, so we cannot state they have been disabled
         #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: no such username"
         debug(f'{me}: lookup_username failed for username: {username}')
         return False
 
@@ -3993,6 +3997,11 @@ def initialize_user_tree(username):
     # setup
     #
     if not lookup_username(username):
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: no such username"
         debug(f'{me}: lookup_username failed for username: {username}')
         return None
     user_dir = return_user_dir_path(username)
@@ -4802,8 +4811,8 @@ def update_state(open_date, close_date):
     Update contest dates in the JSON state file
 
     Given:
-        open_date   IOCCC open date as a string in DATETIME_USEC_FORMAT format
-        close_date  IOCCC close date as a string in DATETIME_USEC_FORMAT format
+        open_date    IOCCC open date as a string in DATETIME_USEC_FORMAT format
+        close_date   IOCCC close date as a string in DATETIME_USEC_FORMAT format
 
     Return:
         True        json state file was successfully written
@@ -4903,17 +4912,28 @@ def update_state(open_date, close_date):
     return write_sucessful
 
 
-def contest_is_open(user_dict):
+# pylint: disable=too-many-return-statements
+#
+def contest_open_close(user_dict, open_datetime, close_datetime):
     """
     Determine if the IOCCC is open.
 
     Given:
-        user_dict    user information for username as a python dictionary
+        user_dict        user information for username as a python dictionary
+        open_datetime    IOCCC open date as a string in DATETIME_USEC_FORMAT format
+        close_datetime   IOCCC close date as a string in DATETIME_USEC_FORMAT format
 
     Return:
-        != None     Contest is open,
-                    return close_datetime in datetime in DATETIME_USEC_FORMAT format
-        None        Contest is closed
+        before_open, is_open, after_open
+
+        before_open == True ==> contest is not yet open
+                       False ==> after contest opened, but may also be after contest closed
+
+        is_open == True ==> contest is open,
+                   False ==> contest is not open
+
+        after_open == True ==> contest was but now is no longer open
+                      False ==> contest is not open
 
     NOTE: If the user may ignore the date, and we have a close date, then we will
           always assume the contest is open for that user.  This is to allow
@@ -4926,40 +4946,55 @@ def contest_is_open(user_dict):
     debug(f'{me}: start')
     now = datetime.now(timezone.utc)
 
-    # firewall check the user information
+    # firewall - open_datetime arg
+    #
+    if not open_datetime:
+        error(f'{me}: open_datetime arg is None')
+        return False, False, False
+
+    # firewall - close_datetime arg
+    #
+    if not close_datetime:
+        error(f'{me}: close_datetime arg is None')
+        return False, False, False
+
+    # firewall - check the user information
     #
     if not validate_user_dict_nolock(user_dict):
         error(f'{me}: validate_user_dict_nolock failed')
-        return None
+        return False, False, False
 
     # paranoia - must have ignore_date in user_dict
     #
     if not 'ignore_date' in user_dict:
         error(f'{me}: ignore_date is missing from user_dict')
-        return False
-
-    # obtain open and close dates as date strings
-    #
-    open_datetime, close_datetime = read_state()
-    if not open_datetime or not close_datetime:
-        debug(f'{me}: end: no open and close dates')
-        return None
+        return False, False, False
 
     # For users that mayignore the date, the contest is always open,
     # even if we are outside the contest open-close internal.
     #
     if user_dict['ignore_date']:
         debug(f'{me}: end: ignoring close date for username: {user_dict["username"]}')
-        return close_datetime
+        return False, True, False
 
-    # determine if the contest is open now
+    # case: now is before the contest is open
     #
-    if now.timestamp() >= open_datetime.timestamp():
-        if now.timestamp() < close_datetime.timestamp():
-            debug(f'{me}: end: contest is open')
-            return close_datetime
-    debug(f'{me}: end: contest is closed')
-    return None
+    if now.timestamp() < open_datetime.timestamp():
+        debug(f'{me}: end: contest is not yet open')
+        return True, False, False
+
+    # case: now is after the contest open period
+    #
+    if now.timestamp() >= close_datetime.timestamp():
+        debug(f'{me}: end: contest is no longer open')
+        return False, False, True
+
+    # case: contest is open now
+    #
+    debug(f'{me}: end: contest is open')
+    return False, True, False
+#
+# pylint: enable=too-many-return-statements
 
 
 def return_secret():
@@ -5844,7 +5879,7 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
     #
     if not lookup_username(username):
         debug(f'{me}: end: lookup_username failed')
-        return 'lookup_username failed'
+        return 'no such username'
 
     # determine slot directory path
     #

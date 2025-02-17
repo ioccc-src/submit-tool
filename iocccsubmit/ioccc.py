@@ -51,7 +51,7 @@ from iocccsubmit.ioccc_common import \
     MAX_PASSWORD_LENGTH, \
     MAX_TARBALL_LEN, \
     MIN_PASSWORD_LENGTH, \
-    contest_is_open, \
+    contest_open_close, \
     debug, \
     error, \
     get_all_json_slots, \
@@ -60,6 +60,7 @@ from iocccsubmit.ioccc_common import \
     is_proper_password, \
     lookup_username, \
     must_change_password, \
+    read_state, \
     return_client_ip, \
     return_last_errmsg, \
     return_secret, \
@@ -77,7 +78,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.6.0 2025-02-16"
+VERSION_IOCCC = "2.6.1 2025-02-17"
 
 
 # Configure the application
@@ -295,28 +296,76 @@ def login():
             flash("Notice: You are required to change your password")
             return redirect(url_for('passwd'))
 
-        # render based on if the contest is open or not
+        # obtain the contest open and close dates
         #
-        close_datetime = contest_is_open(user.user_dict)
-        if close_datetime:
+        open_datetime, close_datetime = read_state()
+        if not open_datetime or not close_datetime:
+            if not open_datetime:
+                info(f'{me}: {return_client_ip()}: '
+                     f'cannot determine the contest open date')
+                open_datetime = "ERROR: unknown open date"
+                flash('ERROR: cannot determine the contest open date')
+            if not close_datetime:
+                info(f'{me}: {return_client_ip()}: '
+                     f'cannot determine the contest close date')
+                open_datetime = "ERROR: unknown close date"
+                flash('ERROR: cannot determine the contest close date')
+            return render_template('not-open.html',
+                                   flask_login = flask_login,
+                                   username = username,
+                                   etable = slots,
+                                   before_open = False,
+                                   after_open = False,
+                                   open_datetime = open_datetime,
+                                   close_datetime = close_datetime)
 
-            # case: contest open - both login and user setup are successful
+        # determine if we are before, during, or after contest opening
+        #
+        before_open, contest_open, after_open = contest_open_close(user.user_dict, open_datetime, close_datetime)
+
+        # case: contest is open
+        #
+        if contest_open:
+
+            # case: contest open and both login and user setup are successful
             #
             return render_template('submit.html',
                                    flask_login = flask_login,
                                    username = username,
                                    etable = slots,
-                                   date=str(close_datetime).replace('+00:00', ''))
+                                   date = str(close_datetime).replace('+00:00', ''))
 
-        # case: contest is not open - both login and user setup are successful
+        # case: contest is not yet open
+        #
+        if before_open:
+
+            # case: we are too early for the contest
+            #
+            info(f'{me}: {return_client_ip()}: '
+                 f'IOCCC is not yet open for username: {username}')
+            flash("The IOCCC is not yet open for submissions")
+            return render_template('not-open.html',
+                                   flask_login = flask_login,
+                                   username = username,
+                                   etable = slots,
+                                   before_open = before_open,
+                                   after_open = after_open,
+                                   open_datetime = str(open_datetime).replace('+00:00', ''),
+                                   close_datetime = str(close_datetime).replace('+00:00', ''))
+
+        # case: contest is no longer open
         #
         info(f'{me}: {return_client_ip()}: '
-             f'IOCCC is not open for username: {username}')
-        flash("The IOCCC is not open")
+             f'IOCCC is no longer accepting submissions for username: {username}')
+        flash("The IOCCC is no longer accepting submissions")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
-                               etable = slots)
+                               etable = slots,
+                               before_open = before_open,
+                               after_open = after_open,
+                               open_datetime = str(open_datetime).replace('+00:00', ''),
+                               close_datetime = str(close_datetime).replace('+00:00', ''))
 
     # case: process / GET
     #
@@ -399,17 +448,66 @@ def submit():
         flash("User is required to change their password")
         return redirect(url_for('passwd'))
 
-    # verify that the contest is still open
+    # obtain the contest open and close dates
     #
-    close_datetime = contest_is_open(current_user.user_dict)
-    if not close_datetime:
-        info(f'{me}: {return_client_ip()}: '
-             f'IOCCC is not open for username: {username}')
-        flash("The IOCCC is not open.")
+    open_datetime, close_datetime = read_state()
+    if not open_datetime or not close_datetime:
+        if not open_datetime:
+            info(f'{me}: {return_client_ip()}: '
+                 f'cannot determine the contest open date')
+            open_datetime = "ERROR: unknown open date"
+            flash('ERROR: cannot determine the contest open date')
+        if not close_datetime:
+            info(f'{me}: {return_client_ip()}: '
+                 f'cannot determine the contest close date')
+            open_datetime = "ERROR: unknown close date"
+            flash('ERROR: cannot determine the contest close date')
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
-                               etable = slots)
+                               etable = slots,
+                               before_open = False,
+                               after_open = False,
+                               open_datetime = open_datetime,
+                               close_datetime = close_datetime)
+
+    # determine if we are before, during, or after contest opening
+    #
+    # pylint: disable-next=unused-variable
+    before_open, contest_open, after_open = contest_open_close(current_user.user_dict, open_datetime, close_datetime)
+
+    # case: contest is not yet open
+    #
+    if before_open:
+
+        # case: we are too early for the contest
+        #
+        info(f'{me}: {return_client_ip()}: '
+             f'IOCCC is not yet open for username: {username}')
+        flash("The IOCCC is not yet open for submissions")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               before_open = before_open,
+                               after_open = after_open,
+                               open_datetime = str(open_datetime).replace('+00:00', ''),
+                               close_datetime = str(close_datetime).replace('+00:00', ''))
+
+    # case: contest is no longer open
+    #
+    if after_open:
+        info(f'{me}: {return_client_ip()}: '
+             f'IOCCC is no longer accepting submissions for username: {username}')
+        flash("The IOCCC is no longer accepting submissions")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               before_open = before_open,
+                               after_open = after_open,
+                               open_datetime = str(open_datetime).replace('+00:00', ''),
+                               close_datetime = str(close_datetime).replace('+00:00', ''))
 
     # verify they selected a slot number to upload
     #
@@ -571,17 +669,66 @@ def upload():
         flash("User is required to change their password")
         return redirect(url_for('passwd'))
 
-    # verify that the contest is still open
+    # obtain the contest open and close dates
     #
-    close_datetime = contest_is_open(current_user.user_dict)
-    if not close_datetime:
-        info(f'{me}: {return_client_ip()}: '
-             f'IOCCC is not open for username: {username}')
-        flash("The IOCCC is not open.")
+    open_datetime, close_datetime = read_state()
+    if not open_datetime or not close_datetime:
+        if not open_datetime:
+            info(f'{me}: {return_client_ip()}: '
+                 f'cannot determine the contest open date')
+            open_datetime = "ERROR: unknown open date"
+            flash('ERROR: cannot determine the contest open date')
+        if not close_datetime:
+            info(f'{me}: {return_client_ip()}: '
+                 f'cannot determine the contest close date')
+            open_datetime = "ERROR: unknown close date"
+            flash('ERROR: cannot determine the contest close date')
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
-                               etable = slots)
+                               etable = slots,
+                               before_open = False,
+                               after_open = False,
+                               open_datetime = open_datetime,
+                               close_datetime = close_datetime)
+
+    # determine if we are before, during, or after contest opening
+    #
+    # pylint: disable-next=unused-variable
+    before_open, contest_open, after_open = contest_open_close(current_user.user_dict, open_datetime, close_datetime)
+
+    # case: contest is not yet open
+    #
+    if before_open:
+
+        # case: we are too early for the contest
+        #
+        info(f'{me}: {return_client_ip()}: '
+             f'IOCCC is not yet open for username: {username}')
+        flash("The IOCCC is not yet open for submissions")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               before_open = before_open,
+                               after_open = after_open,
+                               open_datetime = str(open_datetime).replace('+00:00', ''),
+                               close_datetime = str(close_datetime).replace('+00:00', ''))
+
+    # case: contest is no longer open
+    #
+    if after_open:
+        info(f'{me}: {return_client_ip()}: '
+             f'IOCCC is no longer accepting submissions for username: {username}')
+        flash("The IOCCC is no longer accepting submissions")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               before_open = before_open,
+                               after_open = after_open,
+                               open_datetime = str(open_datetime).replace('+00:00', ''),
+                               close_datetime = str(close_datetime).replace('+00:00', ''))
 
     # verify they selected a slot number to upload
     #
