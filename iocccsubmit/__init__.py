@@ -55,6 +55,7 @@ from .ioccc_common import \
         update_state, \
         update_username, \
         user_allowed_to_login, \
+        valid_password_change, \
         warning
 
 

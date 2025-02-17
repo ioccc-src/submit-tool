@@ -68,6 +68,7 @@ from iocccsubmit.ioccc_common import \
     update_password, \
     update_slot, \
     user_allowed_to_login, \
+    valid_password_change, \
     verify_hashed_password, \
     warning
 
@@ -76,7 +77,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.5.2 2025-01-31"
+VERSION_IOCCC = "2.6.0 2025-02-16"
 
 
 # Configure the application
@@ -159,7 +160,7 @@ ip_based_limit = limiter.limit(
 #
 user_based_limit = limiter.shared_limit(
     limit_value = "8 per minute",
-    key_func = lambda : current_user.id,
+    key_func = lambda : (current_user.id if (current_user and hasattr(current_user, 'id')) else None),
     per_method = True,
     error_message = (
         # pylint: disable-next=f-string-without-interpolation
@@ -193,7 +194,7 @@ class User(flask_login.UserMixin):
 
     def get_id(self):
         """Return the username to satisfy Flask-Login's requirements."""
-        return self.id
+        return (self.id if (self and hasattr(self, 'id')) else None)
 
     def is_authenticated(self):
         """Return True if the user is authenticated."""
@@ -210,8 +211,8 @@ def user_loader(user_id):
     """
     load the user
     """
-    user =  User(user_id)
-    if user.id:
+    user = User(user_id)
+    if user and hasattr(user, 'id') and user.id:
         return user
     return None
 
@@ -240,7 +241,7 @@ def login():
         # case: If the user is valid known user
         #
         user = User(username)
-        if not user.id:
+        if not user or not hasattr(user, 'id') or not user.id:
             info(f'{me}: {return_client_ip()}: '
                  f'invalid username')
             flash("ERROR: invalid username and/or password")
@@ -345,7 +346,7 @@ def submit():
     #
     debug(f'{me}: {return_client_ip()}: '
           f'start')
-    if not current_user.id:
+    if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required')
         flash("ERROR: Login required")
@@ -531,7 +532,7 @@ def upload():
     #
     debug(f'{me}: {return_client_ip()}: '
           f'start')
-    if not current_user.id:
+    if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required')
         flash("ERROR: Login required")
@@ -703,7 +704,7 @@ def logout():
     debug(f'{me}: {return_client_ip()}: '
           f'start')
     username = "((unknown user))"
-    if current_user and current_user.id:
+    if current_user and hasattr(current_user, 'id') and current_user.id:
         username = current_user.id
 
     # logout
@@ -733,7 +734,7 @@ def passwd():
     #
     debug(f'{me}: {return_client_ip()}: '
           f'start')
-    if not current_user.id:
+    if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required #0')
         flash("ERROR: Login required")
@@ -781,7 +782,7 @@ def passwd():
                 flash("ERROR: Login required")
                 return redirect(url_for('login'))
 
-            # get form parameters
+            # get and validate form parameters
             #
             old_password = form_dict.get('old_password')
             if not old_password:
@@ -789,17 +790,34 @@ def passwd():
                       f'username: {username} No current password')
                 flash("ERROR: You must enter your current password")
                 return redirect(url_for('login'))
+            if not isinstance(old_password, str):
+                info(f'{me}: {return_client_ip()}: '
+                     f'old_password is not a string')
+                flash("ERROR: Your current password must be a non-empty string")
+                return redirect(url_for('login'))
+            #
             new_password = form_dict.get('new_password')
             if not new_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} No new password')
                 flash("ERROR: You must enter a new password")
                 return redirect(url_for('login'))
+            if not isinstance(new_password, str):
+                info(f'{me}: {return_client_ip()}: '
+                     f'new_password is not a string')
+                flash("ERROR: Your new password must be a non-empty string")
+                return redirect(url_for('login'))
+            #
             reenter_new_password = form_dict.get('reenter_new_password')
             if not reenter_new_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} No reentered password')
                 flash("ERROR: You must re-enter the new password")
+                return redirect(url_for('login'))
+            if not isinstance(reenter_new_password, str):
+                info(f'{me}: {return_client_ip()}: '
+                     f'reenter_new_password is not a string')
+                flash("ERROR: Your re-entered new password must be a non-empty string")
                 return redirect(url_for('login'))
 
             # verify new and reentered passwords match
@@ -810,41 +828,21 @@ def passwd():
                 flash("ERROR: New Password and Reentered Password are not the same")
                 return redirect(url_for('passwd'))
 
-            # disallow old and new passwords being substrings of each other
-            #
-            if new_password == old_password:
-                debug(f'{me}: {return_client_ip()}: '
-                      f'username: {username} new password same as current password')
-                flash("ERROR: New password cannot be the same as your current password")
-                return redirect(url_for('passwd'))
-            if new_password in old_password:
-                debug(f'{me}: {return_client_ip()}: '
-                      f'username: {username} new password contains current password')
-                flash("ERROR: New password must not contain your current password")
-                return redirect(url_for('passwd'))
-            if old_password in new_password:
-                debug(f'{me}: {return_client_ip()}: '
-                      f'username: {username} current password contains new password')
-                flash("ERROR: Your current password cannot contain your new password")
-                return redirect(url_for('passwd'))
-
-            # validate new password
-            #
-            if not is_proper_password(new_password):
-                debug(f'{me}: {return_client_ip()}: '
-                      f'username: {username} new password rejected')
-                flash("ERROR: New Password is not a valid password")
-                flash(return_last_errmsg())
-                return redirect(url_for('passwd'))
-
             # change user password
             #
-            # NOTE: This will also validate the old password
+            # The update_password() calls valid_password_change(username, old_password, new_password)
+            # to check if proposed password change is proper for this user.
+            #
+            # The subsequent call of valid_password_change(username, old_password, new_password) will
+            # call is_proper_password(new_password) to determine if the new user password is proper.
+            #
+            # This update_password() call also validates that old password is the correct password for the user.
             #
             if not update_password(username, old_password, new_password):
                 error(f'{me}: {return_client_ip()}: '
                       f'username: {username} failed to change password')
                 flash("ERROR: Password not changed")
+                # The update_password() and functions it calls set the ioccc_last_errmsg so display that too.
                 flash(return_last_errmsg())
                 return redirect(url_for('passwd'))
 

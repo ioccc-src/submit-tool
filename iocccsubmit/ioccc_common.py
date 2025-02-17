@@ -574,6 +574,11 @@ def check_username_arg(username, parent):
         True ==> username passes all of the canonical firewall checks
         False ==> username fails at least one of the canonical firewall checks
 
+    NOTE: This function does NOT check if the username is a known username in the password file,
+          nor if that user is allowed to login.  This is because we call this function within
+          other functions that mange crearing of new users and that may change if said user
+          is allowed to login.
+
     NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
@@ -2661,6 +2666,8 @@ def is_proper_password(password):
         True ==> password is allowed under the rules
         False ==> password is is not allowed, or
                   non-string arg was found
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
     # setup
@@ -2672,26 +2679,38 @@ def is_proper_password(password):
 
     # firewall - password must be a string
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if not isinstance(password, str):
-        ioccc_last_errmsg = f'ERROR: {me}: password arg is not a string'
+        ioccc_last_errmsg = "ERROR: password arg to an internla function is not a string"
         error(f'{me}: password arg is not a string')
         return False
 
     # password must be at at least MIN_PASSWORD_LENGTH long
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if len(password) < MIN_PASSWORD_LENGTH:
-        ioccc_last_errmsg = f'ERROR: password must be at least {MIN_PASSWORD_LENGTH} characters long'
-        debug(f'{me}: password is too short')
+        ioccc_last_errmsg = f'ERROR: new password must be at least {MIN_PASSWORD_LENGTH} characters long'
+        debug(f'{me}: new password is too short')
         return False
 
     # password must be a sane length
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if len(password) > MAX_PASSWORD_LENGTH:
-        ioccc_last_errmsg = f'ERROR: password must not be longer than {MAX_PASSWORD_LENGTH} characters'
-        debug(f'{me}: password is too long')
+        ioccc_last_errmsg = f'ERROR: new password must not be longer than {MAX_PASSWORD_LENGTH} characters'
+        debug(f'{me}: new password is too long')
         return False
 
     # password must not have been Pwned
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
     #
     if is_pw_pwned(password):
         ioccc_last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
@@ -2702,6 +2721,128 @@ def is_proper_password(password):
     #
     debug(f'{me}: end: password is allowed')
     return True
+
+
+# pylint: disable=too-many-return-statements
+#
+def valid_password_change(username, old_password, new_password):
+    """
+    Determine if, for a givern user, the proposed password change is allowed.
+
+    The new password must be proper.  That is, if the new password
+    follows the rules for a good password that as not been pwned.
+
+    In addition to the proper password checks for the new password,
+    the new password must NOT contain the old password, nor the username.
+    The old password must NOT contain new password.
+
+    Given:
+        username        IOCCC submit server username
+        old_password    current plaintext password
+        new_password    new plaintext password
+
+    Returns:
+        True ==> password change is allowed under the rules
+        False ==> password change is is not allowed, or
+                  non-string arg was found
+
+    NOTE: This function performs various canonical firewall checks on the username arg.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - canonical firewall checks on the username arg
+    #
+    # NOTE: The call to check_username_arg() also verifies that the
+    #       username arg must be a string
+    #
+    if not check_username_arg(username, me):
+
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is not a proper username"
+        return False
+
+    # firewall - old_password must be a string
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if not isinstance(old_password, str):
+        ioccc_last_errmsg = "ERROR: old_password arg to an internal function is not a string"
+        error(f'{me}: old_password arg is not a string')
+        return False
+
+    # firewall - new_password must be a string
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if not isinstance(new_password, str):
+        ioccc_last_errmsg = "ERROR: new_password arg to an internal function is not a string"
+        error(f'{me}: new_password arg is not a string')
+        return False
+
+    # new password must be a valid password
+    #
+    if not is_proper_password(new_password):
+
+        # The is_proper_password() above will set ioccc_last_errmsg
+        # and issue log messages due the new password not being proper.
+        #
+        debug(f'{me}: is_proper_password returned false for the new password')
+        return False
+
+    # disallow old and new passwords being substrings of each other
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if new_password == old_password:
+        ioccc_last_errmsg = "ERROR: new password must not be the same as your current password"
+        debug(f'{me}: username: {username} new password same as your current password')
+        return False
+    if new_password in old_password:
+        ioccc_last_errmsg = "ERROR: new password but not be a sub-string of your current password"
+        debug(f'{me}: username: {username} current password contains your new password')
+        return False
+    if old_password in new_password:
+        ioccc_last_errmsg = "ERROR: new password must not contain your current password"
+        debug(f'{me}: username: {username} new password contains your current password')
+        return False
+
+    # disallow username and new passwords being substrings of each other
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if new_password == username:
+        ioccc_last_errmsg = "ERROR: new password not be the same as your username"
+        debug(f'{me}: username: {username} new password same as username')
+        return False
+    if new_password in username:
+        ioccc_last_errmsg = "ERROR: new password but not be a sub-string of your username"
+        debug(f'{me}: username: {username} username contains new password')
+        return False
+    if username in new_password:
+        ioccc_last_errmsg = "ERROR: new password must not contain your username"
+        debug(f'{me}: username: {username} new password contains username')
+        return False
+
+    # until we have password rules, allow any string
+    #
+    debug(f'{me}: end: password is allowed')
+    return True
+#
+# pylint: enable=too-many-return-statements
 
 
 # pylint: disable=too-many-return-statements
@@ -2728,6 +2869,10 @@ def update_password(username, old_password, new_password):
                   user is not allowed to login, or
                   new_password is not a valid password
 
+    NOTE: This will check if the change of passwords, for this user, is proper.
+
+    NOTE: This will also validates that old password is the correct password for the user.
+
     NOTE: This function performs various canonical firewall checks on the username arg.
     """
 
@@ -2742,29 +2887,32 @@ def update_password(username, old_password, new_password):
     #
     if not check_username_arg(username, me):
 
-        # The check_username_arg() function above will set ioccc_last_errmsg
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
         #
+        ioccc_last_errmsg = "ERROR: username is not a proper username"
         return False
 
     # firewall - old_password must be a string
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if not isinstance(old_password, str):
-        ioccc_last_errmsg = f'ERROR: {me}: old_password arg is not a string'
+        ioccc_last_errmsg = "ERROR: old_password arg to an internal function is not a string"
         error(f'{me}: old_password arg is not a string')
         return False
 
     # firewall - new_password must be a string
     #
-    if not isinstance(new_password, str):
-        ioccc_last_errmsg = f'ERROR: {me}: new_password arg is not a string'
-        error(f'{me}: new_password arg is not a string')
-        return False
-
-    # new_password must be a proper password
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
     #
-    if not is_proper_password(new_password):
-        debug(f'{me}: is_proper_password returned false for new_password')
+    if not isinstance(new_password, str):
+        ioccc_last_errmsg = "ERROR: new_password arg to an internal function is not a string"
+        error(f'{me}: new_password arg is not a string')
         return False
 
     # obtain the python dictionary for the username
@@ -2776,6 +2924,10 @@ def update_password(username, old_password, new_password):
 
         # user is not in the password file, so we cannot state they have been disabled
         #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: no such username"
         debug(f'{me}: lookup_username failed for username: {username}')
         return False
 
@@ -2785,18 +2937,47 @@ def update_password(username, old_password, new_password):
 
         # user is not allowed to login
         #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: user is not allowed to login"
         info(f'{me}: login not allowed for username: {username}')
+        return False
+
+    # firewall - new_password must be a string
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if not isinstance(new_password, str):
+        ioccc_last_errmsg = "ERROR: new_password arg to an internal function is not a string"
+        error(f'{me}: new_password arg is not a string')
+        return False
+
+    # The change of passwords, for this user, must be proper.
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if not valid_password_change(username, old_password, new_password):
+        debug(f'{me}: valid_password_change returned false for new_password')
         return False
 
     # return the result of the hashed password check for this user
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if not 'pwhash' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: pwhash is missing for username: {username}'
+        ioccc_last_errmsg = "ERROR: pwhash is missing for username"
         error(f'{me}: pwhash is missing for username: {username}')
         return False
     if not verify_hashed_password(old_password, user_dict['pwhash']):
 
         # old_password is not correct
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
         #
         ioccc_last_errmsg = "ERROR: invalid old password"
         info(f'{me}: old_password is not correct for username: {username}')
@@ -2804,29 +2985,49 @@ def update_password(username, old_password, new_password):
 
     # paranoia - must have ignore_data for this user
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if not 'ignore_date' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: ignore_date is missing for username: {username}'
+        ioccc_last_errmsg = "ERROR: ignore_date is missing for username: {username}"
         error(f'{me}: ignore_date is missing for username: {username}')
+        return False
+
+    # paranoia - must have email for this user
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
+    if not 'email' in user_dict:
+        ioccc_last_errmsg = "ERROR: email is missing for username: {username}"
+        error(f'{me}: email is missing for username: {username}')
         return False
 
     # paranoia - must have disable_login for this user
     #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
+    #
     if not 'disable_login' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing for username: {username}'
+        ioccc_last_errmsg = "ERROR: disable_login is missing for username: {username}"
         error(f'{me}: disable_login is missing for username: {username}')
         return False
 
-    # update user entry in the password database
+    # update user password in the password database
+    #
+    # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+    #       server to a web browser and thus we do not mention our function name.
     #
     # We force the force_pw_change state to be False as this action IS changing the password.
     #
     if not update_username(username,
                            hash_password(new_password),
                            user_dict['ignore_date'],
-                           False,
-                           None,
-                           None,
+                           False,   # set force_pw_change to False as we are changing the password now
+                           None,    # set pw_change_by to None as we are changing the password now
+                           user_dict['email'],
                            user_dict['disable_login']):
+        ioccc_last_errmsg = "ERROR: failed to change the password"
         error(f'{me}: password database update failed for username: {username}')
         return False
 
@@ -2867,6 +3068,15 @@ def user_allowed_to_login(user_dict):
     # firewall check the user information
     #
     if not validate_user_dict_nolock(user_dict):
+
+        # report that validate_user_dict_nolock failed
+        #
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: invalid information found for username"
         error(f'{me}: validate_user_dict_nolock failed')
         return False
     username = user_dict['username']
@@ -2874,7 +3084,13 @@ def user_allowed_to_login(user_dict):
     # paranoia - must have disable_login for this user_dict
     #
     if not 'disable_login' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: disable_login is missing from user_dict'
+
+        # report that disable_login is missing from user_dict
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #0"
         error(f'{me}: disable_login is missing from user_dict')
         return False
 
@@ -2884,28 +3100,49 @@ def user_allowed_to_login(user_dict):
 
         # login disabled
         #
-        ioccc_last_errmsg = "ERROR: user login has been disabled"
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: login is not allowed at this time"
         info(f'{me}: login not allowed for username: {username}')
         return False
 
     # paranoia - must have force_pw_change for this user_dict
     #
     if not 'force_pw_change' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: force_pw_change is missing from user_dict'
+
+        # report force_pw_change is missing from user_dict
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #1"
         error(f'{me}: force_pw_change is missing from user_dict')
         return False
 
     # paranoia - must have pw_change_by for this user_dict
     #
     if not 'pw_change_by' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: pw_change_by is missing from user_dict'
+
+        # report pw_change_by is missing from user_dict
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #2"
         error(f'{me}: pw_change_by is missing from user_dict')
         return False
 
     # paranoia - must have email for this user_dict
     #
     if not 'email' in user_dict:
-        ioccc_last_errmsg = f'ERROR: {me}: email is missing from user_dict'
+
+        # report email is missing from user_dict
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #3"
         error(f'{me}: email is missing from user_dict')
         return False
 
@@ -2918,9 +3155,13 @@ def user_allowed_to_login(user_dict):
         try:
             pw_change_by = datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
         except ValueError as errcode:
-            ioccc_last_errmsg = (
-                f'ERROR: {me}: not in datetime format: '
-                f'<<{user_dict["pw_change_by"]}>> failed: <<{errcode}>>')
+
+            # report pw_change_by time format is invalid
+            #
+            # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+            #       server to a web browser and thus we do not mention our function name.
+            #
+            ioccc_last_errmsg = "ERROR: username password change by date is invalid"
             error(f'{me}: datetime.strptime of pw_change_by: <<{user_dict["pw_change_by"]}>>'
                   f'failed: <<{errcode}>>')
             return False
@@ -2931,8 +3172,12 @@ def user_allowed_to_login(user_dict):
 
         # failed to change the password in time
         #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
         if now.timestamp() > pw_change_by.timestamp():
-            ioccc_last_errmsg = "ERROR: user failed to change the password in time"
+            ioccc_last_errmsg = "ERROR: failed to change the password in time, " + \
+                                "account disabled, contact the IOCCC judges"
             info(f'{me}: password not changed in time for username: {username}')
             return False
 
@@ -3015,16 +3260,12 @@ def username_login_allowed(username):
     #
     if not check_username_arg(username, me):
 
-        # The check_username_arg() function above will set ioccc_last_errmsg
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
         # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
         #
-        return False
-
-    # firewall - username arg must be a string
-    #
-    if not isinstance(username, str):
-        ioccc_last_errmsg = f'{me}: username arg is not a string'
-        info(f'{me}: username arg is not a string')
+        ioccc_last_errmsg = "ERROR: username is not a proper username"
         return False
 
     # obtain the python dictionary for the username
@@ -3036,7 +3277,11 @@ def username_login_allowed(username):
 
         # user is not in the password file, so we cannot state they have been disabled
         #
-        debug(f'{me}: lookup_username failed for username: {username}')
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: username is unknown"
+        debug(f'{me}: unknown or invalid password entry for username: {username}')
         return False
 
     # determine, based on the user information, if the user is allowed to login
