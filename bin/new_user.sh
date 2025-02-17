@@ -296,7 +296,7 @@ fi
 
 # form temporary email message file
 #
-export TMP_EMAIL_MESSAGE=".tmp.$NAME.STDERR.$$.tmp"
+export TMP_EMAIL_MESSAGE=".tmp.$NAME.EMAIL_MESSAGE.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary new email message file: $TMP_EMAIL_MESSAGE" 1>&2
 fi
@@ -315,7 +315,7 @@ fi
 
 # form temporary new account info file
 #
-export TMP_NEW_ACCT_INFO=".tmp.$NAME.STDERR.$$.tmp"
+export TMP_NEW_ACCT_INFO=".tmp.$NAME.NEW_ACCT_INFO.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary new account info file: $TMP_NEW_ACCT_INFO" 1>&2
 fi
