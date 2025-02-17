@@ -382,6 +382,18 @@ All that we ask is that your code contributions:
 - pass pylint 10/10 with a minimum of disable lines
 - work as good, if not better than our code
 - code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
+- practice defense in depth and assume bad stuff might slip by external defenses
+- **NOT** spew python stack traces
+
+To the last point about not throwing exceptions, we do **NOT** want
+our python code to print out a call stack as that is **NOT** good for
+returning HTML from the web server.  And in the case of command line
+applications we do not want a human or other tool to deal with a python
+stack trace.
+
+FYI: We prefer LBYL (Look Before You Leap) over EAFP (Easier to Ask
+Forgiveness Than Permission) when all things are equal, but that is just
+a general preference, not a rule.
 
 
 ## Disclaimer
