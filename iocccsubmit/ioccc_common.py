@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.6 2025-02-17"
+VERSION_IOCCC_COMMON = "2.6.7 2025-02-17"
 
 # force password change grace time
 #
@@ -101,21 +101,32 @@ TCP_PORT = "8191"
 
 # determine the default APPDIR
 #
-# case: We have template sub-directory, assume our APPDIR is .
-#       (likely testing from the command line)
+# important directories and files that are relative to APPDIR
 #
-if Path("./templates").is_dir():
-    APPDIR = "."
+try:
 
-# case: assume are are running under the Apache server, and
-#       APPDIR is /var/ioccc
+    # case: We have template sub-directory, assume our APPDIR is .
+    #       (likely testing from the command line)
+    #
+    if Path("./templates").is_dir():
+        APPDIR = "."
+
+    # case: assume are are running under the Apache server, and
+    #       APPDIR is /var/ioccc
+    #
+    # Tests suggest that Apache seems to run applications from the / directory.
+    #
+    else:
+        APPDIR = "/var/ioccc"
+
+# Do not use: except OSError as errcode: because we have no easy way to report the errcode
 #
-# Tests suggest that Apache seems to run applications from the / directory.
-#
-else:
+except OSError:
+
+    # If we are not allowed access to templates, assume we must use /var/ioccc
+    #
     APPDIR = "/var/ioccc"
 
-# important directories and files that are relative to APPDIR
 #
 # We set FOO_RELATIVE_PATH, the value relative to APPDIR, and
 # then set FOO to be APPDIR + "/" + FOO_RELATIVE_PATH.
@@ -127,6 +138,7 @@ else:
 PW_FILE_RELATIVE_PATH = "etc/iocccpasswd.json"
 PW_FILE = f'{APPDIR}/{PW_FILE_RELATIVE_PATH}'
 #
+
 INIT_PW_FILE_RELATIVE_PATH = "etc/init.iocccpasswd.json"
 INIT_PW_FILE = f'{APPDIR}/{INIT_PW_FILE_RELATIVE_PATH}'
 #
@@ -223,29 +235,43 @@ STARTUP_CWD = os.getcwd()
 
 # determine the default Pwned password tree
 #
-# If we have a pwned.pw.tree directory (or symlink to a directory) under the current
-# working directory (i.e., "." but using the full path).
-#
-if Path(f"{STARTUP_CWD}/pwned.pw.tree").is_dir():
-    PWNED_PW_TREE = f"{STARTUP_CWD}/pwned.pw.tree"
+try:
 
-# Otherwise if we have a pwned.pw.tree directory (or symlink to a directory) under APPDIR,
-# then use that as Pwned password tree.
-#
-elif Path(f"{APPDIR}/pwned.pw.tree").is_dir():
-    PWNED_PW_TREE = f"{APPDIR}/pwned.pw.tree"
+    # case: ./pwned.pw.tree
+    #
+    # If we have a pwned.pw.tree directory (or symlink to a directory) under the current
+    # working directory (i.e., "." but using the full path).
+    #
+    if Path(f"{STARTUP_CWD}/pwned.pw.tree").is_dir():
+        PWNED_PW_TREE = f"{STARTUP_CWD}/pwned.pw.tree"
 
-# Assume the system default Pwned password
+    # case: APPDIR/pwned.pw.tree
+    #
+    # Otherwise if we have a pwned.pw.tree directory (or symlink to a directory) under APPDIR,
+    # then use that as Pwned password tree.
+    #
+    elif Path(f"{APPDIR}/pwned.pw.tree").is_dir():
+        PWNED_PW_TREE = f"{APPDIR}/pwned.pw.tree"
+
+    # case: Assume the system default Pwned password
+    #
+    # This tree was downloaded by:
+    #
+    #   /usr/local/bin/pwned-pw-download /usr/local/share/pwned.pw.tree
+    #
+    # where /usr/local/bin/pwned-pw-download was installed from:
+    #
+    #   https://github.com/lcn2/pwned-pw-download
+    #
+    else:
+        PWNED_PW_TREE = "/usr/local/share/pwned.pw.tree"
+
+# Do not use: except OSError as errcode: because we have no easy way to report the errcode
 #
-# This tree was downloaded by:
-#
-#   /usr/local/bin/pwned-pw-download /usr/local/share/pwned.pw.tree
-#
-# where /usr/local/bin/pwned-pw-download was installed from:
-#
-#   https://github.com/lcn2/pwned-pw-download
-#
-else:
+except OSError:
+
+    # If we are not allowed access the Pwned password tree, assume they will be in the system area
+    #
     PWNED_PW_TREE = "/usr/local/share/pwned.pw.tree"
 
 # length of a SHA1 hash in ASCII hex characters
@@ -478,9 +504,15 @@ def change_startup_appdir(topdir):
 
     # topdir must be a directory
     #
-    if not Path(topdir).is_dir():
-        ioccc_last_errmsg = f'ERROR: {me}: topdir is not a directory: {topdir}'
-        error(f'{me}: topdir arg is not a directory')
+    try:
+        if not Path(topdir).is_dir():
+            ioccc_last_errmsg = f'ERROR: {me}: topdir is not a directory: {topdir}'
+            error(f'{me}: topdir arg is not a directory')
+        return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: {me}: cannot access directory: {topdir} failed: <<{errcode}>>'
+        error(f'{me}: cannot access topdir: failed: <<{errcode}>>')
         return False
 
     # now modify paths to all other files and directories used in this file
@@ -3506,16 +3538,32 @@ def is_slot_setup(username, slot_num):
 
     # user directory must exist
     #
-    if not Path(user_dir).exists():
+    try:
+        if not Path(user_dir).exists():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: user directory does not exist: {user_dir}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: user directory does not exist: {user_dir}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if user directory exits: {user_dir}'
         return False
 
     # user directory must be a directory
     #
-    if not Path(user_dir).is_dir():
+    try:
+        if not Path(user_dir).is_dir():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: user directory is not a directory: {user_dir}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: user directory is not a directory: {user_dir}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if this is a user directory: {user_dir}'
         return False
 
     # user directory must be readable
@@ -3546,16 +3594,32 @@ def is_slot_setup(username, slot_num):
 
     # slot directory must exist
     #
-    if not Path(slot_dir).exists():
+    try:
+        if not Path(slot_dir).exists():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot directory does not exist: {slot_dir}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot directory does not exist: {slot_dir}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot directory exits: {slot_dir}'
         return False
 
     # slot directory must be a directory
     #
-    if not Path(slot_dir).is_dir():
+    try:
+        if not Path(slot_dir).is_dir():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot directory is not a directory: {slot_dir}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot directory is not a directory: {slot_dir}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if this is a slot directory: {slot_dir}'
         return False
 
     # slot directory must be readable
@@ -3586,16 +3650,32 @@ def is_slot_setup(username, slot_num):
 
     # slot JSON file must exist
     #
-    if not Path(slot_json_file).exists():
+    try:
+        if not Path(slot_json_file).exists():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot JSON file does not exist: {slot_json_file}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot JSON file does not exist: {slot_json_file}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot JSON file exits: {slot_json_file}'
         return False
 
     # slot JSON file must exist
     #
-    if not Path(slot_json_file).is_file():
+    try:
+        if not Path(slot_json_file).is_file():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot JSON file is not a file: {slot_json_file}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot JSON file is not a file: {slot_json_file}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if this is a slot JSON file: {slot_json_file}'
         return False
 
     # slot JSON file must be readable
@@ -3633,16 +3713,32 @@ def is_slot_setup(username, slot_num):
 
     # slot lock file must exist
     #
-    if not Path(slot_lock_file).exists():
+    try:
+        if not Path(slot_lock_file).exists():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot lock file does not exist: {slot_lock_file}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot lock file does not exist: {slot_lock_file}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot lock file exits: {slot_lock_file}'
         return False
 
     # slot lock file must exist
     #
-    if not Path(slot_lock_file).is_file():
+    try:
+        if not Path(slot_lock_file).is_file():
+            # do not log errors, let the caller (re)initialize
+            ioccc_last_errmsg = f'Notice: {me}: slot lock file is not a file: {slot_lock_file}'
+            return False
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
         # do not log errors, let the caller (re)initialize
-        ioccc_last_errmsg = f'Notice: {me}: slot lock file is not a file: {slot_lock_file}'
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if this is a slot lock file: {slot_lock_file}'
         return False
 
     # slot lock file must be readable
@@ -3798,16 +3894,24 @@ def initialize_slot_nolock(username, slot_num):
 
     # create user directory if needed
     #
-    if not Path(user_dir).is_dir():
+    try:
+        if not Path(user_dir).is_dir():
 
-        # attempt to create the user directory
-        #
-        try:
-            makedirs(user_dir, mode=0o2770, exist_ok=True)
-        except OSError as errcode:
-            ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
-            error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
-            return False
+            # attempt to create the user directory
+            #
+            try:
+                makedirs(user_dir, mode=0o2770, exist_ok=True)
+            except OSError as errcode:
+                ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
+                error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
+                return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = (f'Notice: {me}: cannot determine if this is a user '
+                             f'directory: {user_dir} failed: <<{errcode}>>')
+        error(f'{me}: cannot determine if this is a user '
+              f'directory: {user_dir} failed: <<{errcode}>>')
+        return False
 
     # ensure that the user directory is read/write
     #
@@ -3821,10 +3925,16 @@ def initialize_slot_nolock(username, slot_num):
 
     # firewall - user directory must be a read/write directory
     #
-    if not Path(user_dir).exists() or not Path(user_dir).is_dir() or \
-       not os.access(user_dir, os.R_OK) or not os.access(user_dir, os.W_OK):
-        ioccc_last_errmsg = f'ERROR: {me}: user directory was not setup correctly'
-        error(f'{me}: user directory was not setup correctly')
+    try:
+        if not Path(user_dir).exists() or not Path(user_dir).is_dir() or \
+           not os.access(user_dir, os.R_OK) or not os.access(user_dir, os.W_OK):
+            ioccc_last_errmsg = f'ERROR: {me}: user directory was not setup correctly'
+            error(f'{me}: user directory was not setup correctly')
+            return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if user directory is a read/write directory: {user_dir}'
+        error(f'{me}: cannot determine if user directory is a read/write directory: {user_dir}')
         return False
 
     ########################
@@ -3841,16 +3951,22 @@ def initialize_slot_nolock(username, slot_num):
 
     # create slot directory if needed
     #
-    if not Path(slot_dir).is_dir():
+    try:
+        if not Path(slot_dir).is_dir():
 
-        # attempt to create the slot directory
-        #
-        try:
-            makedirs(slot_dir, mode=0o2770, exist_ok=True)
-        except OSError as errcode:
-            ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
-            error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
-            return False
+            # attempt to create the slot directory
+            #
+            try:
+                makedirs(slot_dir, mode=0o2770, exist_ok=True)
+            except OSError as errcode:
+                ioccc_last_errmsg = f'ERROR: {me}: failed to create for username: {username} failed: <<{errcode}>>'
+                error(f'{me}: mkdir for username: {username} failed: <<{errcode}>>')
+                return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot directory exists: {slot_dir}'
+        error(f'{me}:  cannot determine if slot directory exists: {slot_dir}')
+        return False
 
     # ensure that the slot directory is read/write
     #
@@ -3864,10 +3980,16 @@ def initialize_slot_nolock(username, slot_num):
 
     # firewall - slot directory must be a read/write directory
     #
-    if not Path(slot_dir).exists() or not Path(slot_dir).is_dir() or \
-       not os.access(slot_dir, os.R_OK) or not os.access(slot_dir, os.W_OK):
-        ioccc_last_errmsg = f'ERROR: {me}: slot directory was not setup correctly'
-        error(f'{me}: slot directory was not setup correctly')
+    try:
+        if not Path(slot_dir).exists() or not Path(slot_dir).is_dir() or \
+           not os.access(slot_dir, os.R_OK) or not os.access(slot_dir, os.W_OK):
+            ioccc_last_errmsg = f'ERROR: {me}: slot directory was not setup correctly'
+            error(f'{me}: slot directory was not setup correctly')
+            return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot directory is a read/write directory: {slot_dir}'
+        error(f'{me}: cannot determine if slot directory is a read/write directory: {slot_dir}')
         return False
 
     ########################
@@ -3921,11 +4043,17 @@ def initialize_slot_nolock(username, slot_num):
 
     # firewall - slot.json must be a non-empty read/write file
     #
-    if not Path(slot_json_file).exists() or not Path(slot_json_file).is_file() or \
-       not os.access(slot_json_file, os.R_OK) or not os.access(slot_json_file, os.W_OK) or \
-       os.path.getsize(slot_json_file) <= 0:
-        ioccc_last_errmsg = f'ERROR: {me}: slot.json file was not setup correctly: {slot_json_file}'
-        error(f'{me}: slot.json file was not setup correctly: {slot_json_file}')
+    try:
+        if not Path(slot_json_file).exists() or not Path(slot_json_file).is_file() or \
+           not os.access(slot_json_file, os.R_OK) or not os.access(slot_json_file, os.W_OK) or \
+           os.path.getsize(slot_json_file) <= 0:
+            ioccc_last_errmsg = f'ERROR: {me}: slot.json file was not setup correctly: {slot_json_file}'
+            error(f'{me}: slot.json file was not setup correctly: {slot_json_file}')
+            return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot.json file is read/write: {slot_json_file}'
+        error(f'{me}: cannot determine if slot.json file is read/write: {slot_json_file}')
         return False
 
     ########################
@@ -3954,10 +4082,16 @@ def initialize_slot_nolock(username, slot_num):
 
     # firewall - slot lock must be a read/write file
     #
-    if not Path(slot_json_file).exists() or not Path(slot_json_file).is_file() or \
-       not os.access(slot_json_file, os.R_OK) or not os.access(slot_json_file, os.W_OK):
-        ioccc_last_errmsg = f'ERROR: {me}: slot lock file file was not setup correctly: {slot_json_file}'
-        error(f'{me}: slot lock file was not setup correctly: {slot_json_file}')
+    try:
+        if not Path(slot_lock_file).exists() or not Path(slot_lock_file).is_file() or \
+           not os.access(slot_lock_file, os.R_OK) or not os.access(slot_lock_file, os.W_OK):
+            ioccc_last_errmsg = f'ERROR: {me}: slot lock file file was not setup correctly: {slot_lock_file}'
+            error(f'{me}: slot lock file was not setup correctly: {slot_lock_file}')
+            return False
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'Notice: {me}: cannot determine if slot lock file is read/write: {slot_lock_file}'
+        error(f'{me}: cannot determine if slot lock file is read/write: {slot_lock_file}')
         return False
 
     ##########
@@ -4032,12 +4166,20 @@ def initialize_user_tree(username):
 
     # be sure the user directory exists
     #
-    if not Path(user_dir).is_dir():
-        info(f'{me}: about to initialize user directory tree for username: {username}')
     try:
-        makedirs(user_dir, mode=0o2770, exist_ok=True)
-    except OSError as errcode:
-        ioccc_last_errmsg = f'ERROR: {me}: cannot form user directory for username: {username} failed: <<{errcode}>>'
+        if not Path(user_dir).is_dir():
+            info(f'{me}: about to initialize user directory tree for username: {username}')
+        try:
+            makedirs(user_dir, mode=0o2770, exist_ok=True)
+        except OSError as errcode:
+            ioccc_last_errmsg = (f'ERROR: {me}: cannot form user directory for '
+                                 f'username: {username} failed: <<{errcode}>>')
+            return None
+
+    # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+    #
+    except OSError:
+        ioccc_last_errmsg = f'ERROR: {me}: cannot deterime if user directory is a directory: {user_dir}'
         return None
 
     # process each slot for this user
@@ -5234,33 +5376,40 @@ def setup_logger(logtype, dbglvl) -> None:
 
         # determine the logging address
         #
-        if Path("/var/run/syslog").exists():
+        log_address = None
+        try:
+            if Path("/var/run/syslog").exists():
 
-            # macOS
-            #
-            log_address = "/var/run/syslog"
+                # macOS
+                #
+                log_address = "/var/run/syslog"
 
-        elif Path("/run/systemd/journal/dev-log").exists():
+            elif Path("/run/systemd/journal/dev-log").exists():
 
-            # Linux and related friends
-            #
-            log_address = "/run/systemd/journal/dev-log"
+                # Linux and related friends
+                #
+                log_address = "/run/systemd/journal/dev-log"
 
-        elif Path("/dev/log").exists():
+            elif Path("/dev/log").exists():
 
-            # Linux and related friends symlink
-            #
-            log_address = "/dev/log"
+                # Linux and related friends symlink
+                #
+                log_address = "/dev/log"
 
-        elif Path("/var/run/log").exists():
+            elif Path("/var/run/log").exists():
 
-            # FreeBSD and NetBSD and related friends
-            #
-            log_address = "/var/run/log"
+                # FreeBSD and NetBSD and related friends
+                #
+                log_address = "/var/run/log"
 
-        else:
+        # Do not use: except OSError as errcode: because we have no easy way to report the errcode
+        #
+        except OSError:
+            pass
 
-            # unknown - use /dev/null
+        if not log_address:
+
+            # log access is unknown - use /dev/null
             #
             log_address = "/dev/null"
 
@@ -5929,54 +6078,61 @@ def validate_slot_nolock(slot_dict, username, slot_num, submit_required, check_h
 
         # case: submit file is a file
         #
-        if Path(submit_path).is_file():
+        try:
+            if Path(submit_path).is_file():
 
-            # if check_hash, also check the SHA256 hash
-            #
-            if check_hash:
-
-                # verify the SHA256 hash of the submit file
+                # if check_hash, also check the SHA256 hash
                 #
-                sha256 = sha256_file(submit_path)
-                if not sha256:
-                    debug(f'{me}: end: submit file SHA256 hash failed')
-                    return 'submit file SHA256 hash failed'
+                if check_hash:
 
-                # verify the content of the submit file
+                    # verify the SHA256 hash of the submit file
+                    #
+                    sha256 = sha256_file(submit_path)
+                    if not sha256:
+                        debug(f'{me}: end: submit file SHA256 hash failed')
+                        return 'submit file SHA256 hash failed'
+
+                    # verify the content of the submit file
+                    #
+                    if sha256 != slot_dict['SHA256']:
+                        debug(f'{me}: end: submit file corrupted contents')
+                        return 'submit file corrupted contents'
+
+                # verify that the submit file has not been collected
                 #
-                if sha256 != slot_dict['SHA256']:
-                    debug(f'{me}: end: submit file corrupted contents')
-                    return 'submit file corrupted contents'
+                if slot_dict['collected']:
+                    debug(f'{me}: end: submit file collected but still exists')
+                    return 'submit file collected but still exists'
 
-            # verify that the submit file has not been collected
+                # verify that the submit file length matches the length
+                #
+                if os.path.getsize(submit_path) != slot_dict['length']:
+                    debug(f'{me}: end: submit file length is wrong')
+                    return 'submit file length is wrong'
+
+            # case: submit file does not exist but is required to do so
             #
-            if slot_dict['collected']:
-                debug(f'{me}: end: submit file collected but still exists')
-                return 'submit file collected but still exists'
+            elif submit_required:
 
-            # verify that the submit file length matches the length
+                # if file is required, verify that submit file exists
+                #
+                debug(f'{me}: end: submit file is missing')
+                return 'submit file is missing'
+
+            # case: submit file does not exist and was never collected
             #
-            if os.path.getsize(submit_path) != slot_dict['length']:
-                debug(f'{me}: end: submit file length is wrong')
-                return 'submit file length is wrong'
+            elif not slot_dict['collected']:
 
-        # case: submit file does not exist but is required to do so
+                # submit file is gone but was never collected
+                #
+                debug(f'{me}: end: submit file is gone but not collected')
+                return 'submit file is gone but not collected'
+
+        # Do not use: except OSError as errcode: because we have no easy way to report the errcode
         #
-        elif submit_required:
-
-            # if file is required, verify that submit file exists
-            #
-            debug(f'{me}: end: submit file is missing')
-            return 'submit file is missing'
-
-        # case: submit file does not exist and was never collected
-        #
-        elif not slot_dict['collected']:
-
-            # submit file is gone but was never collected
-            #
-            debug(f'{me}: end: submit file is gone but not collected')
-            return 'submit file is gone but not collected'
+        except OSError:
+            debug(f'{me}: end: cannot determine if the submit file is a file')
+            return 'cannot determine if the submit file is a file'
 
     # case: filename is not a string, but a submit file is required
     #
