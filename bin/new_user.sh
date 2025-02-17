@@ -251,35 +251,35 @@ fi
 # mail head and tail content files must be non-empty readable files
 #
 if [[ ! -e $MAIL_HEAD ]]; then
-    echo "$0: ERROR: mail head content file does not exist: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail head content file does not exist: $MAIL_HEAD" 1>&2
     exit 6
 fi
 if [[ ! -f $MAIL_HEAD ]]; then
-    echo "$0: ERROR: mail head content file not a file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail head content file not a file: $MAIL_HEAD" 1>&2
     exit 6
 fi
 if [[ ! -r $MAIL_HEAD ]]; then
-    echo "$0: ERROR: mail head content file not a readable file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail head content file not a readable file: $MAIL_HEAD" 1>&2
     exit 6
 fi
 if [[ ! -s $MAIL_HEAD ]]; then
-    echo "$0: ERROR: mail head content file not a non-empty readable file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail head content file not a non-empty readable file: $MAIL_HEAD" 1>&2
     exit 6
 fi
 if [[ ! -e $MAIL_TAIL ]]; then
-    echo "$0: ERROR: mail tail content file does not exist: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail tail content file does not exist: $MAIL_TAIL" 1>&2
     exit 6
 fi
 if [[ ! -f $MAIL_TAIL ]]; then
-    echo "$0: ERROR: mail tail content file not a file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail tail content file not a file: $MAIL_TAIL" 1>&2
     exit 6
 fi
 if [[ ! -r $MAIL_TAIL ]]; then
-    echo "$0: ERROR: mail tail content file not a readable file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail tail content file not a readable file: $MAIL_TAIL" 1>&2
     exit 6
 fi
 if [[ ! -s $MAIL_TAIL ]]; then
-    echo "$0: ERROR: mail tail content file not a non-empty readable file: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: mail tail content file not a non-empty readable file: $MAIL_TAIL" 1>&2
     exit 6
 fi
 
