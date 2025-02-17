@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.5 2025-02-17"
+VERSION_IOCCC_COMMON = "2.6.6 2025-02-17"
 
 # force password change grace time
 #
@@ -1140,6 +1140,8 @@ def return_submit_path(slot_dict, username, slot_num):
 # pylint: enable=too-many-return-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def ioccc_file_lock(file_lock):
     """
     Lock a file
@@ -1248,6 +1250,14 @@ def ioccc_file_lock(file_lock):
         warning(f'{me}: lock timeout file_lock: {file_lock}')
         return None
 
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: {me}: cannot acquire lock: {file_lock} failed: <<{errcode}>>'
+        error(f'{me}: cannot acquire lock: {file_lock} failed: <<{errcode}>>')
+
+        # we have no JSON to return
+        #
+        return None
+
     # firewall - verify the lock
     #
     if not ioccc_last_lock_fd.is_locked:
@@ -1265,6 +1275,8 @@ def ioccc_file_lock(file_lock):
     #
     debug(f'{me}: end: locked: {ioccc_last_lock_path}')
     return ioccc_last_lock_fd
+#
+# pylint: enable=too-many-return-statements
 
 
 def ioccc_file_unlock() -> None:
@@ -1404,6 +1416,14 @@ def read_pwfile():
         debug(f'{me}: failed to lock: {PW_LOCK}')
         ioccc_last_errmsg = f'Warning: {me}: lock timeout after {LOCK_TIMEOUT} secs for: {PW_LOCK}'
         warning(f'{me}: lock timeout file_lock: {PW_LOCK}')
+        return None
+
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: {me}: cannot acquire lock: {PW_FILE} failed: <<{errcode}>>'
+        error(f'{me}: cannot acquire lock: {PW_FILE} failed: <<{errcode}>>')
+
+        # we have no JSON to return
+        #
         return None
 
     # return the password JSON data as a python dictionary
