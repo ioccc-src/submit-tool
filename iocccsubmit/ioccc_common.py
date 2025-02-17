@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.7 2025-02-17"
+VERSION_IOCCC_COMMON = "2.6.8 2025-02-17"
 
 # force password change grace time
 #
@@ -508,7 +508,7 @@ def change_startup_appdir(topdir):
         if not Path(topdir).is_dir():
             ioccc_last_errmsg = f'ERROR: {me}: topdir is not a directory: {topdir}'
             error(f'{me}: topdir arg is not a directory')
-        return False
+            return False
 
     except OSError as errcode:
         ioccc_last_errmsg = f'ERROR: {me}: cannot access directory: {topdir} failed: <<{errcode}>>'
