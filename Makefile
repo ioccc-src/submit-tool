@@ -56,7 +56,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.13.4
+VERSION= 0.13.5
 
 # Python package name
 #
@@ -406,12 +406,13 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${STATIC_SRC} ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/templates
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
+	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/tmp
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/users
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/unexpected
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/wsgi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi

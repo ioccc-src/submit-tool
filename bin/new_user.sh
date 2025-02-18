@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.2 2025-02-17"
+export VERSION="1.0.3 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -97,6 +97,7 @@ if [[ ! -d $TOPDIR ]]; then
     # not on submit server, assume testing in .
     TOPDIR="."
 fi
+export TMPDIR="$TOPDIR/tmp"
 GEN_ACCT_SH=$(type -P gen_acct.sh)
 export GEN_ACCT_SH
 if [[ -z $GEN_ACCT_SH ]]; then
@@ -116,7 +117,7 @@ export DO_NOT_PROCESS=
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-g gen_acct] [-r reg_email] email
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir] [-g gen_acct] [-r reg_email] email
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -126,6 +127,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-g gen_acct]
 	-N		do not process anything, just parse arguments (def: process something)
 
 	-t appdir	app directory path (def: $TOPDIR)
+	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
 
 	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
 	-r reg_email	tool to send a IOCCC submit server registration email (def: $REG_EMAIL_SH)
@@ -147,7 +149,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:g:r: flag; do
+while getopts :hv:VnNt:T:g:r: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -162,6 +164,8 @@ while getopts :hv:VnNt:g:r: flag; do
     N) DO_NOT_PROCESS="-N"
 	;;
     t) TOPDIR="$OPTARG"
+	;;
+    T) TMPDIR="$OPTARG"
 	;;
     g) GEN_ACCT_SH="$OPTARG"
 	;;
@@ -232,6 +236,34 @@ if [[ -n $CD_FAILED ]]; then
 fi
 
 
+# tmpdir must be a writable directory
+#
+if [[ ! -d $TMPDIR ]]; then
+    mkdir -p "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $TMPDIR failed, error: $status" 1>&2
+	exit 10
+    fi
+fi
+if [[ ! -d $TMPDIR ]]; then
+    echo "$0: ERROR: cannot create TMPDIR directory: $TMPDIR" 1>&2
+    exit 11
+fi
+if [[ ! -w $TMPDIR ]]; then
+    chmod 2770 "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+        echo "$0: ERROR: chmod 2770 $TMPDIR ailed, error: $status" 1>&2
+	exit 12
+    fi
+fi
+if [[ ! -w $TMPDIR ]]; then
+    echo "$0: ERROR: cannot make TMPDIR directory writable: $TMPDIR" 1>&2
+    exit 13
+fi
+
+
 # gen_acct.sh must be executable
 #
 if [[ ! -x $GEN_ACCT_SH ]]; then
@@ -296,7 +328,7 @@ fi
 
 # form temporary email message file
 #
-export TMP_EMAIL_MESSAGE=".tmp.$NAME.EMAIL_MESSAGE.$$.tmp"
+export TMP_EMAIL_MESSAGE="$TMPDIR/.tmp.$NAME.EMAIL_MESSAGE.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary new email message file: $TMP_EMAIL_MESSAGE" 1>&2
 fi
@@ -304,18 +336,18 @@ trap 'rm -f $TMP_EMAIL_MESSAGE; exit' 0 1 2 3 15
 rm -f "$TMP_EMAIL_MESSAGE"
 if [[ -e $TMP_EMAIL_MESSAGE ]]; then
     echo "$0: ERROR: cannot remove new email message file: $TMP_EMAIL_MESSAGE" 1>&2
-    exit 10
+    exit 14
 fi
 : >  "$TMP_EMAIL_MESSAGE"
 if [[ ! -e $TMP_EMAIL_MESSAGE ]]; then
     echo "$0: ERROR: cannot create new femail message file: $TMP_EMAIL_MESSAGE" 1>&2
-    exit 11
+    exit 15
 fi
 
 
 # form temporary new account info file
 #
-export TMP_NEW_ACCT_INFO=".tmp.$NAME.NEW_ACCT_INFO.$$.tmp"
+export TMP_NEW_ACCT_INFO="$TMPDIR/.tmp.$NAME.NEW_ACCT_INFO.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary new account info file: $TMP_NEW_ACCT_INFO" 1>&2
 fi
@@ -323,12 +355,12 @@ trap 'rm -f $TMP_EMAIL_MESSAGE $TMP_NEW_ACCT_INFO; exit' 0 1 2 3 15
 rm -f "$TMP_NEW_ACCT_INFO"
 if [[ -e $TMP_NEW_ACCT_INFO ]]; then
     echo "$0: ERROR: cannot remove new account info file: $TMP_NEW_ACCT_INFO" 1>&2
-    exit 10
+    exit 16
 fi
 : >  "$TMP_NEW_ACCT_INFO"
 if [[ ! -e $TMP_NEW_ACCT_INFO ]]; then
     echo "$0: ERROR: cannot create new account info file: $TMP_NEW_ACCT_INFO" 1>&2
-    exit 11
+    exit 17
 fi
 
 

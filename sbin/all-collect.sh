@@ -86,13 +86,14 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-17"
+export VERSION="2.0.2 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
 export DO_NOT_PROCESS=
 #
+export TMPDIR="/var/tmp"
 export IOCCC_RC="$HOME/.ioccc.rc"
 export COLLECT_SH="/usr/ioccc/bin/collect.sh"
 export SUBMITTED_SLOTS_SH="/usr/ioccc/bin/submitted_slots.sh"
@@ -100,13 +101,15 @@ export SUBMITTED_SLOTS_SH="/usr/ioccc/bin/submitted_slots.sh"
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i ioccc.rc] [-I] [-c collect] [-s submitted_slot]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-T tmpdir] [-i ioccc.rc] [-I] [-c collect] [-s submitted_slot]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
 	-N		do not process anything, just parse arguments (def: process something)
+
+	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
 
 	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
 	-I		Do not use any rc startup file (def: do)
@@ -220,9 +223,38 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
+    echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
     echo "$0: debug[3]: COLLECT_SH=$COLLECT_SH" 1>&2
     echo "$0: debug[3]: SUBMITTED_SLOTS_SH=$SUBMITTED_SLOTS_SH" 1>&2
+fi
+
+
+# tmpdir must be a writable directory
+#
+if [[ ! -d $TMPDIR ]]; then
+    mkdir -p "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $TMPDIR failed, error: $status" 1>&2
+	exit 10
+    fi
+fi
+if [[ ! -d $TMPDIR ]]; then
+    echo "$0: ERROR: cannot create TMPDIR directory: $TMPDIR" 1>&2
+    exit 11
+fi
+if [[ ! -w $TMPDIR ]]; then
+    chmod 2770 "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+        echo "$0: ERROR: chmod 2770 $TMPDIR ailed, error: $status" 1>&2
+	exit 12
+    fi
+fi
+if [[ ! -w $TMPDIR ]]; then
+    echo "$0: ERROR: cannot make TMPDIR directory writable: $TMPDIR" 1>&2
+    exit 13
 fi
 
 
@@ -244,7 +276,7 @@ fi
 
 # form temporary stderr collection file
 #
-export TMP_STDERR=".tmp.$NAME.STDERR.$$.tmp"
+export TMP_STDERR="$TMPDIR/.tmp.$NAME.STDERR.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
 fi

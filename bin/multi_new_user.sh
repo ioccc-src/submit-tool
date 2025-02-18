@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.0 2025-02-17"
+export VERSION="1.0.1 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -97,6 +97,7 @@ if [[ ! -d $TOPDIR ]]; then
     # not on submit server, assume testing in .
     TOPDIR="."
 fi
+export TMPDIR="$TOPDIR/tmp"
 GEN_ACCT_SH=$(type -P gen_acct.sh)
 export GEN_ACCT_SH
 if [[ -z $GEN_ACCT_SH ]]; then
@@ -123,7 +124,7 @@ export WAIT_SECS=3
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir]
 	[-w secs] [-g gen_acct] [-r reg_email] [-e new_user] file
 
 	-h		print help message and exit
@@ -133,7 +134,8 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir]
 	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
-	-t appdir	app directory path (def: $TOPDIR)
+	-t appdir	app directory path and change tmpdir to appdir/tmp (def: $TOPDIR)
+	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
 	-w secs		wait secs seconds between processing users (def: $WAIT_SECS)
 
 	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
@@ -157,7 +159,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:g:r:e:w: flag; do
+while getopts :hv:VnNt:T:g:r:e:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -172,6 +174,9 @@ while getopts :hv:VnNt:g:r:e:w: flag; do
     N) DO_NOT_PROCESS="-N"
 	;;
     t) TOPDIR="$OPTARG"
+       TMPDIR="$TOPDIR/tmp"
+	;;
+    T) TMPDIR="$OPTARG"
 	;;
     g) GEN_ACCT_SH="$OPTARG"
 	;;
@@ -226,6 +231,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: TOPDIR=$TOPDIR" 1>&2
+    echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2
     echo "$0: debug[3]: REG_EMAIL_SH=$REG_EMAIL_SH" 1>&2
     echo "$0: debug[3]: NEW_USER_SH=$NEW_USER_SH" 1>&2
@@ -244,6 +250,34 @@ cd "$TOPDIR" || CD_FAILED="true"
 if [[ -n $CD_FAILED ]]; then
     echo "$0: ERROR: cd $TOPDIR failed" 1>&2
     exit 4
+fi
+
+
+# tmpdir must be a writable directory
+#
+if [[ ! -d $TMPDIR ]]; then
+    mkdir -p "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: mkdir -p $TMPDIR failed, error: $status" 1>&2
+	exit 10
+    fi
+fi
+if [[ ! -d $TMPDIR ]]; then
+    echo "$0: ERROR: cannot create TMPDIR directory: $TMPDIR" 1>&2
+    exit 11
+fi
+if [[ ! -w $TMPDIR ]]; then
+    chmod 2770 "$TMPDIR"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+        echo "$0: ERROR: chmod 2770 $TMPDIR ailed, error: $status" 1>&2
+	exit 12
+    fi
+fi
+if [[ ! -w $TMPDIR ]]; then
+    echo "$0: ERROR: cannot make TMPDIR directory writable: $TMPDIR" 1>&2
+    exit 13
 fi
 
 
@@ -302,7 +336,7 @@ fi
 # It is a pain to set the EXIT_CODE deep inside a loop, so we write the EXIT_CODE into a file
 # and read the file (setting EXIT_CODE again) after the loop.  A hack, but good enough for our needs.
 #
-export TMP_EXIT_CODE=".tmp.$NAME.EXIT_CODE.$$.tmp"
+export TMP_EXIT_CODE="$TMPDIR/.tmp.$NAME.EXIT_CODE.$$.tmp"
 if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary exit code: $TMP_EXIT_CODE" 1>&2
 fi
@@ -311,12 +345,12 @@ if [[ -z $NOOP ]]; then
     rm -f "$TMP_EXIT_CODE"
     if [[ -e $TMP_EXIT_CODE ]]; then
         echo "$0: ERROR: cannot remove temporary exit code: $TMP_EXIT_CODE" 1>&2
-        exit 10
+        exit 14
     fi
     echo "$EXIT_CODE" > "$TMP_EXIT_CODE"
     if [[ ! -e $TMP_EXIT_CODE ]]; then
         echo "$0: ERROR: cannot create temporary exit code: $TMP_EXIT_CODE" 1>&2
-        exit 11
+        exit 15
     fi
 elif [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: because of -n, temporary exit code is not used: $TMP_EXIT_CODE" 1>&2
@@ -334,12 +368,12 @@ sed -E -e 's/\s*#.*//' -e 's/\s\s*$//' -e 's/^\s\s*//' -e '/^\s*$/d' "$FILE" | w
 	# generate an account and email for this email address
 	#
 	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[3]: about to run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
+	    echo "$0: debug[3]: about to run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
 	fi
-	"$NEW_USER_SH" -v "$V_FLAG" -t "$TOPDIR" -g "$GEN_ACCT_SH" -r "$REG_EMAIL_SH" "$EMAIL"
+	"$NEW_USER_SH" -v "$V_FLAG" -t "$TOPDIR" -T "$TMPDIR" -g "$GEN_ACCT_SH" -r "$REG_EMAIL_SH" "$EMAIL"
 	status="$?"
 	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL failed, error: $status" 1>&2
+	    echo "$0: ERROR: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL failed, error: $status" 1>&2
 	    echo 1 > "$TMP_EXIT_CODE" # exit 1
 	fi
 
@@ -365,7 +399,7 @@ if [[ -z $NOOP ]]; then
     EXIT_CODE=$(< "$TMP_EXIT_CODE")
     if [[ -z $EXIT_CODE ]]; then
 	echo "$0: ERROR: temporary exit file is empty: $TMP_EXIT_CODE" 1>&2
-	exit 12
+	exit 16
     fi
 fi
 
