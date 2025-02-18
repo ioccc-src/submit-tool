@@ -2324,46 +2324,49 @@ def generate_password():
     #
     #   /usr/local/share/polite.words/polite.english.words.txt
     #
-    # As of 2024 Dec 30 commit 979589999962b1029d25f6b9601702a6eb9f868d
-    # the polite English language words file had the following word count
-    # and word length in characters as follows:
+    # As of 2025 Feb 17 commit 9ffe97551033237701437f59a3ebb6d431266623
+    # the polite English language words file had the following word count by running:
     #
-    #            52 1
-    #           757 2
-    #          2781 3
-    #          8372 4
-    #         18338 5
-    #         34252 6
-    #         47491 7
-    #         57802 8
-    #         59528 9
-    #         51313 10
-    #         41992 11
-    #         32187 12
-    #         22849 13
-    #         15284 14
-    #          9514 15
-    #          5543 16
-    #          3151 17
-    #          1534 18
-    #           790 19
-    #           368 20
-    #           170 21
-    #            79 22
-    #            32 23
-    #            13 24
-    #             8 25
-    #             3 27
-    #             2 28
-    #             2 29
-    #             1 31
+    #   awk '{print length($1);}' < polite.english.words.txt | sort -n | uniq -c
+    #
+    # This produced the word count and word length:
+    #
+    #        52 1
+    #       756 2
+    #      2775 3
+    #      8353 4
+    #     18280 5
+    #     34159 6
+    #     47355 7
+    #     57615 8
+    #     59308 9
+    #     51116 10
+    #     41817 11
+    #     32065 12
+    #     22759 13
+    #     15228 14
+    #      9482 15
+    #      5522 16
+    #      3137 17
+    #      1526 18
+    #       787 19
+    #       367 20
+    #       170 21
+    #        79 22
+    #        32 23
+    #        13 24
+    #         8 25
+    #         3 27
+    #         2 28
+    #         2 29
+    #         1 31
     #
     # Using make rebuild_pw_words we build etc/pw.words from the polite English language words list
     # to form the etc/pw.words file this function reads and uses.
     #
     # The make rebuild_pw_words rule is used to select all English language words that are
     # at least MIN_POLITE_WORD_LENGTH (def: 4) and at most MAX_POLITE_WORD_LENGTH (def: 10) long,
-    # where those two values come from the Makefile  As of 2024 Dec 30, this is what is used to
+    # where those two values come from the Makefile  As of 2025 Feb 17, this is what is used to
     # generate the etc/pw.words file.
     #
     # The minimum password length we generate is:
@@ -2379,7 +2382,7 @@ def generate_password():
     #
     #  7.847 + 1 + 7.847 + 9 = 25.694
     #
-    # The etc/pw.words file has about 277096 words in it (log2 ~ 18.080).
+    # The etc/pw.words file has about 276186 words in it (log2(276186) ~ 18.075).
     #
     # We use punctuation symbols from list of 30 characters (log2 ~ 4.907).
     #
@@ -2387,12 +2390,12 @@ def generate_password():
     #
     # The number of different password we can generate, given the above, is:
     #
-    #   277096 * 30 * 277096 * 30 * 1000^2 = 69103973894400000000
+    #   276186 * 30 * 277096 * 30 * 1000^2 = 68877032270400000000
     #
     # We form a password using 2 polite English language words, 2 punctuation symbols, and
     # a f9.4 number, so we will have the following password entropy:
     #
-    #   log2(277096)*2 + log2(30)*2 + log2(1000)*2 = 65.905 bits of entropy
+    #   log2(276186)*2 + log2(30)*2 + log2(1000)*2 = 65.896 bits of entropy
     #
     # That gives us enough surprise for an initial password that users of the submit server will
     # be required to change when they first login.
