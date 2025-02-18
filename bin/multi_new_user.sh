@@ -88,10 +88,11 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.4 2025-02-17"
+export VERSION="1.0.5 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
+export SUBMIT_RC="$HOME/.submit.rc"
 export TOPDIR="/var/ioccc"
 if [[ ! -d $TOPDIR ]]; then
     # not on submit server, assume testing in .
@@ -130,7 +131,7 @@ export WAIT_SECS=3
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir] [-w secs]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i submit.rc] [-I] [-t topdir] [-T tmpdir] [-w secs]
 	[-g gen_acct] [-r reg_email] [-e new_user] [-p ioccc_passwd] file
 
 	-h		print help message and exit
@@ -139,6 +140,9 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir] [
 
 	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
+
+	-i submit.rc	Use submit.rc as the rc startup file (def: $SUBMIT_RC)
+	-I		Do not use any rc startup file (def: do)
 
 	-t appdir	app directory path and change tmpdir to appdir/tmp (def: $TOPDIR)
 	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
@@ -156,7 +160,7 @@ Exit codes:
      1         failed to generate at least one new user
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4         topdir is not a directory
+     4         topdir is not a directory or source of submit.rc file failed
      5         missing internal tool
      6         file is not a readable file
  >= 10         internal error
@@ -231,6 +235,38 @@ if [[ -z $FILE ]]; then
 fi
 
 
+# unless -I, verify the submit.rc file, if it exists
+#
+if [[ -z $CAP_I_FLAG ]]; then
+    # if we do not have a readable submit.rc file, remove the SUBMIT_RC value
+    if [[ ! -r $SUBMIT_RC ]]; then
+	SUBMIT_RC=""
+    fi
+else
+    # -I used, remove the SUBMIT_RC value
+    SUBMIT_RC=""
+fi
+
+
+# If we still have an SUBMIT_RC value, source it
+#
+if [[ -n $SUBMIT_RC ]]; then
+    export status=0
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to source $SUBMIT_RC" 1>&2
+    fi
+    # SC1090 (warning): ShellCheck can't follow non-constant source. Use a directive to specify location.
+    # https://www.shellcheck.net/wiki/SC1090
+    # shellcheck disable=SC1090
+    source "$SUBMIT_RC"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: source $SUBMIT_RC failed, error: $status" 1>&2
+	exit 4
+    fi
+fi
+
+
 # print running info if verbose
 #
 # If -v 3 or higher, print exported variables in order that they were exported.
@@ -239,6 +275,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VERSION=$VERSION" 1>&2
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: SUBMIT_RC=$SUBMIT_RC" 1>&2
     echo "$0: debug[3]: TOPDIR=$TOPDIR" 1>&2
     echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2

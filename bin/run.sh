@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="1.0.0 2025-02-17"
+export VERSION="1.0.1 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -105,7 +105,7 @@ export SUDO_USER=
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i ioccc.rc] [-I] [-u user] cmd [args ..]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i submit.rc] [-I] [-u user] cmd [args ..]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -113,7 +113,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i ioccc.rc] [-I] [-u user] c
 
 	-N		do not process anything, just parse arguments (def: process something)
 
-	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $SUBMIT_RC)
+	-i submit.rc	Use submit.rc as the rc startup file (def: $SUBMIT_RC)
 	-I		Do not use any rc startup file (def: do)
 
 	-u user		use sudo to run the command (def: do not use sudo)
@@ -122,13 +122,13 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i ioccc.rc] [-I] [-u user] c
 	[args ..]	args to supply to the cmd
 
 Exit codes:
-     0        all OK
-     1        cmd exited non-zero
-     2        -h and help string printed or -V and version string printed
-     3        command line error
-     4        source of ioccc.rc file failed
-     5        cmd not found or not exeutable
-     6	      sudo not found
+     0         all OK
+     1         cmd exited non-zero
+     2         -h and help string printed or -V and version string printed
+     3         command line error
+     4         source of submit.rc file failed
+     5         cmd not found or not exeutable
+     6	       sudo not found
 
  >= 10        internal error
 
@@ -188,10 +188,10 @@ CMD="$1"
 shift 1
 
 
-# unless -I, verify the ioccc.rc file, if it exists
+# unless -I, verify the submit.rc file, if it exists
 #
 if [[ -z $CAP_I_FLAG ]]; then
-    # if we do not have a readable ioccc.rc file, remove the SUBMIT_RC value
+    # if we do not have a readable submit.rc file, remove the SUBMIT_RC value
     if [[ ! -r $SUBMIT_RC ]]; then
 	SUBMIT_RC=""
     fi
