@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.3 2025-02-17"
+export VERSION="1.0.4 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -425,7 +425,9 @@ fi
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
 #
 if [[ -z $NOOP ]]; then
-    echo "$0: Warning: about to exit $EXIT_CODE" 1>&2
+    if [[ $EXIT_CODE -ne 0 ]]; then
+	echo "$0: Warning: about to exit $EXIT_CODE" 1>&2
+    fi
     rm -f "$TMP_EXIT_CODE"
 elif [[ $V_FLAG -ge 1 ]]; then
     echo  "$0: debug[1]: -n disabled execution of: rm -f $TMP_EXIT_CODE" 1>&2
