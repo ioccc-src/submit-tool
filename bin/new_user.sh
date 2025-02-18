@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.3 2025-02-17"
+export VERSION="1.0.4 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -216,6 +216,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: TOPDIR=$TOPDIR" 1>&2
+    echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2
     echo "$0: debug[3]: REG_EMAIL_SH=$REG_EMAIL_SH" 1>&2
     echo "$0: debug[3]: MAIL_HEAD=$MAIL_HEAD" 1>&2

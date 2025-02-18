@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.1 2025-02-17"
+export VERSION="1.0.2 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -391,7 +391,7 @@ sed -E -e 's/\s*#.*//' -e 's/\s\s*$//' -e 's/^\s\s*//' -e '/^\s*$/d' "$FILE" | w
     # case: -n - do no action
     #
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
+	echo "$0: debug[1]: because of -n, did not run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
     fi
 
 done
