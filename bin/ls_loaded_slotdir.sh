@@ -32,7 +32,7 @@
 
 # setup
 #
-export VERSION="1.0.1 2025-02-04"
+export VERSION="1.0.2 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -56,11 +56,10 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-t topdir]
 
 Exit codes:
      0         all OK
-     1	       some internal tool is missing or exited non-zero
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       topdir is not a directory
-     5	       topdir/users is not a directory
+     4         topdir is not a directory
+     5         topdir/users is not a directory
  >= 10         internal error
 
 $NAME version: $VERSION"

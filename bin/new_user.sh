@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.1 2025-02-16"
+export VERSION="1.0.2 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -134,12 +134,12 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-g gen_acct]
 
 Exit codes:
      0         all OK
-     1	       failed to generate an IOCCC submit server account, or send email to the user
+     1         failed to generate an IOCCC submit server account, or send email to the user
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       topdir is not a directory
-     5	       missing internal tool
-     6	       mail head and/or mail tail not a non-empty readable file
+     4         topdir is not a directory
+     5         missing internal tool
+     6         mail head and/or mail tail not a non-empty readable file
  >= 10         internal error
 
 $NAME version: $VERSION"

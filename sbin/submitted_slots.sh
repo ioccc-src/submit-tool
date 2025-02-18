@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="1.0.0 2025-02-05"
+export VERSION="1.0.1 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -111,10 +111,6 @@ export SERVER="unknown.example.org"
 export RMT_LOADED_SH="/usr/ioccc/bin/ls_loaded_slotdir.sh"
 SSH_TOOL=$(type -P ssh)
 export SSH_TOOL
-if [[ -z "$SSH_TOOL" ]]; then
-    echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
-    exit 5
-fi
 
 
 # usage
@@ -143,12 +139,11 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 
 Exit codes:
      0         all OK
-     1	       some internal tool is missing or exited non-zero
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       source of ioccc.rc file failed
-     5	       some critical executable tool not found
-     6	       remote execution of ls_loaded_slotdir.sh failed
+     4         source of ioccc.rc file failed
+     5         remote execution of ls_loaded_slotdir.sh failed
+     6         some critical local executable tool not found
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -271,7 +266,7 @@ fi
 #
 if [[ ! -x $SSH_TOOL ]]; then
     echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
-    exit 5
+    exit 6
 fi
 
 
@@ -298,7 +293,7 @@ else
 fi
 if [[ $status -ne 0 ]]; then
     echo "$0: ERROR: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_LOADED_SH failed, error: $status" 1>&2
-    exit 6
+    exit 5
 fi
 
 

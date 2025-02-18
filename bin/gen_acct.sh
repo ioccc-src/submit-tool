@@ -89,7 +89,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.2 2025-02-16"
+export VERSION="1.0.3 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -127,11 +127,11 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-p pwtool] e
 
 Exit codes:
      0         all OK
-     1	       failed to generate an IOCCC submit server account
+     1         failed to generate an IOCCC submit server account
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       topdir is not a directory
-     5	       pwtool tool is not executable
+     4         topdir is not a directory
+     5         pwtool tool is not executable
  >= 10         internal error
 
 $NAME version: $VERSION"

@@ -40,7 +40,7 @@
 
 # setup
 #
-export VERSION="2.0.1 2025-01-17"
+export VERSION="2.0.2 2025-01-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -83,9 +83,10 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-t topdir] [-F] [-T type] [outfile
 
 Exit codes:
      0         all OK
-     1	       some internal tool is missing or exited non-zero
+     1         some internal tool exited non-zero
      2         -h and help string printed or -V and version string printed
      3         command line error
+     4         some internal tool is missing
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -182,41 +183,41 @@ case "$GEN_TYPE" in
 openssl)
     if [[ -z $OPENSSL_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not not found along \$PATH" 1>&2
-	exit 1
+	exit 4
     fi
     if [[ ! -x $OPENSSL_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not executable: $OPENSSL_TOOL" 1>&2
-	exit 1
+	exit 4
     fi
     ;;
 pwgen)
     if [[ -z $PWGEN_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not not found along \$PATH" 1>&2
-	exit 1
+	exit 4
     fi
     if [[ ! -x $PWGEN_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not executable: $PWGEN_TOOL" 1>&2
-	exit 1
+	exit 4
     fi
     ;;
 uuidgen)
     if [[ -z $UUIDGEN_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not not found along \$PATH" 1>&2
-	exit 1
+	exit 4
     fi
     if [[ ! -x $UUIDGEN_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not executable: $UUIDGEN_TOOL" 1>&2
-	exit 1
+	exit 4
     fi
     ;;
 base64)
     if [[ -z $BASE64_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not not found along \$PATH" 1>&2
-	exit 1
+	exit 4
     fi
     if [[ ! -x $BASE64_TOOL ]]; then
 	echo "$0: ERROR: $GEN_TYPE tool not executable: $BASE64_TOOL" 1>&2
-	exit 1
+	exit 4
     fi
     ;;
 bash) # of course bash is executable, we are executing it in this script!  :-)
@@ -242,7 +243,7 @@ esac
 rm -f "$SECRET_FILE"
 if [[ -e $SECRET_FILE ]]; then
     echo "$0: ERROR: failed remove $SECRET_FILE" 1>&1
-    exit 1
+    exit 10
 fi
 
 

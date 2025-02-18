@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-08"
+export VERSION="2.0.1 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -116,7 +116,6 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i ioccc.rc] [-I] [-c collect
 
 Exit codes:
      0        all OK
-     1        some internal tool is missing or exited non-zero
      2        -h and help string printed or -V and version string printed
      3        command line error
      4        source of ioccc.rc file failed
@@ -175,7 +174,7 @@ if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
 if [[ $# -ne 0 ]]; then
-    echo "$0: ERROR: expected 0 arg2, found: $#" 1>&2
+    echo "$0: ERROR: expected 0 args, found: $#" 1>&2
     exit 3
 fi
 
