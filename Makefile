@@ -405,7 +405,19 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
+	@if [[ ! -s ${DOCROOT}/${FLASK_KEY} ]]; then \
+	    echo ${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc; \
+	    ${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc; \
+	fi
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${ETC_RW_SRC} ${DOCROOT}/etc
+	@if [[ ! -s ${DOCROOT}/${PW} ]]; then \
+	    echo ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${PW} ${DOCROOT}/etc; \
+	    ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${PW} ${DOCROOT}/etc; \
+	fi
+	@if [[ ! -s ${DOCROOT}/${STATE} ]]; then \
+	    echo ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${STATE} ${DOCROOT}/etc; \
+	    ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${STATE} ${DOCROOT}/etc; \
+	fi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${STATIC_SRC} ${DOCROOT}/static
@@ -416,7 +428,6 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/unexpected
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/wsgi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
 	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${TOUCH} ${IOCCC_SYSLOG}
