@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="1.0.2 2025-02-17"
+export VERSION="1.0.3 2025-02-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -116,6 +116,12 @@ if [[ -z $NEW_USER_SH ]]; then
     NEW_USER_SH="bin/new_user.sh"
 fi
 #
+IOCCC_PASSWD=$(type -P ioccc_passwd.py)
+export IOCCC_PASSWD
+if [[ -z $IOCCC_PASSWD ]]; then
+    IOCCC_PASSWD="bin/ioccc_passwd.py"
+fi
+#
 export NOOP=
 export DO_NOT_PROCESS=
 export EXIT_CODE=0
@@ -124,8 +130,8 @@ export WAIT_SECS=3
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir]
-	[-w secs] [-g gen_acct] [-r reg_email] [-e new_user] file
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir] [-w secs]
+	[-g gen_acct] [-r reg_email] [-e new_user] [-p ioccc_passwd] file
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -141,6 +147,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir]
 	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
 	-r reg_email	tool to send a IOCCC submit server registration email (def: $REG_EMAIL_SH)
 	-e new_user	tool to create account and send notification Email (def: $REG_EMAIL_SH)
+	-p ioccc_passwd	tool to create accounts in the IOCCC submit server (def: $IOCCC_PASSWD)
 
 	file		fail with a list of 0 or more email addresses, one per line
 
@@ -159,7 +166,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:T:g:r:e:w: flag; do
+while getopts :hv:VnNt:T:w:g:r:e:p: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -178,13 +185,15 @@ while getopts :hv:VnNt:T:g:r:e:w: flag; do
 	;;
     T) TMPDIR="$OPTARG"
 	;;
+    w) WAIT_SECS="$OPTARG"
+	;;
     g) GEN_ACCT_SH="$OPTARG"
 	;;
     r) REG_EMAIL_SH="$OPTARG"
 	;;
     e) NEW_USER_SH="$OPTARG"
 	;;
-    w) WAIT_SECS="$OPTARG"
+    p) IOCCC_PASSWD="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -235,6 +244,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2
     echo "$0: debug[3]: REG_EMAIL_SH=$REG_EMAIL_SH" 1>&2
     echo "$0: debug[3]: NEW_USER_SH=$NEW_USER_SH" 1>&2
+    echo "$0: debug[3]: IOCCC_PASSWD=$IOCCC_PASSWD" 1>&2
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: EXIT_CODE=$EXIT_CODE" 1>&2
@@ -284,7 +294,7 @@ fi
 # gen_acct.sh must be executable
 #
 if [[ ! -x $GEN_ACCT_SH ]]; then
-    echo "$0: ERROR: gen_acct.sh not exeutable: $GEN_ACCT_SH" 1>&2
+    echo "$0: ERROR: gen_acct.sh not executable: $GEN_ACCT_SH" 1>&2
     exit 5
 fi
 
@@ -292,7 +302,7 @@ fi
 # reg_email.sh must be executable
 #
 if [[ ! -x $REG_EMAIL_SH ]]; then
-    echo "$0: ERROR: reg_email.sh not exeutable: $REG_EMAIL_SH" 1>&2
+    echo "$0: ERROR: reg_email.sh not executable: $REG_EMAIL_SH" 1>&2
     exit 5
 fi
 
@@ -300,7 +310,15 @@ fi
 # new_user.sh must be executable
 #
 if [[ ! -x $NEW_USER_SH ]]; then
-    echo "$0: ERROR: reg_email.sh not exeutable: $NEW_USER_SH" 1>&2
+    echo "$0: ERROR: reg_email.sh not executable: $NEW_USER_SH" 1>&2
+    exit 5
+fi
+
+
+# new_user.sh must be executable
+#
+if [[ ! -x $IOCCC_PASSWD ]]; then
+    echo "$0: ERROR: ioccc_passwd.py not executable: $IOCCC_PASSWD" 1>&2
     exit 5
 fi
 
@@ -368,12 +386,12 @@ sed -E -e 's/\s*#.*//' -e 's/\s\s*$//' -e 's/^\s\s*//' -e '/^\s*$/d' "$FILE" | w
 	# generate an account and email for this email address
 	#
 	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[3]: about to run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
+	    echo "$0: debug[3]: about to run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH -p $IOCCC_PASSWD $EMAIL" 1>&2
 	fi
-	"$NEW_USER_SH" -v "$V_FLAG" -t "$TOPDIR" -T "$TMPDIR" -g "$GEN_ACCT_SH" -r "$REG_EMAIL_SH" "$EMAIL"
+	"$NEW_USER_SH" -v "$V_FLAG" -t "$TOPDIR" -T "$TMPDIR" -g "$GEN_ACCT_SH" -r "$REG_EMAIL_SH" -p "$IOCCC_PASSWD" "$EMAIL"
 	status="$?"
 	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL failed, error: $status" 1>&2
+	    echo "$0: ERROR: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH -p $IOCCC_PASSWD $EMAIL failed, error: $status" 1>&2
 	    echo 1 > "$TMP_EXIT_CODE" # exit 1
 	fi
 
@@ -391,7 +409,7 @@ sed -E -e 's/\s*#.*//' -e 's/\s\s*$//' -e 's/^\s\s*//' -e '/^\s*$/d' "$FILE" | w
     # case: -n - do no action
     #
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH $EMAIL" 1>&2
+	echo "$0: debug[1]: because of -n, did not run: $NEW_USER_SH -v $V_FLAG -t $TOPDIR -T $TMPDIR -g $GEN_ACCT_SH -r $REG_EMAIL_SH -p $IOCCC_PASSWD $EMAIL" 1>&2
     fi
 
 done
