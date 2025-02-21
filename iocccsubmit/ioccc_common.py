@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.8 2025-02-17"
+VERSION_IOCCC_COMMON = "2.6.9 2025-02-21"
 
 # force password change grace time
 #
@@ -1462,6 +1462,62 @@ def read_pwfile():
     #
     debug(f'{me}: end: loaded password file: {PW_FILE}')
     return pw_dict
+
+
+def copy_pwfile_under_lock(newfile):
+    """
+    Make a copy of the password file.
+
+    Obtain a lock for password file before copying the file elsewhere.
+    We release the lock for the password file afterwards.
+
+    We copy while locked so that we know that our copied file
+    was not modified while being copied.
+
+    Given:
+        newfile     filename to become a password file copy.
+
+    Returns:
+        False ==> unable copy the password file
+        True ==> password file successfully copied
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall - check arg
+    #
+    if not isinstance(newfile, str):
+        ioccc_last_errmsg = f'ERROR: {me}: newfile arg not a string'
+        error(f'{me}: newfile arg not a string')
+        return False
+
+    # Lock the password file
+    #
+    pw_lock_fd = ioccc_file_lock(PW_LOCK)
+    if not pw_lock_fd:
+        error(f'{me}: failed to lock file for PW_LOCK: {PW_LOCK}')
+        return False
+
+    # copy the password file
+    #
+    try:
+        shutil.copy2(PW_FILE, newfile, follow_symlinks=True)
+    except OSError as errcode:
+        ioccc_last_errmsg = f'ERROR: {me}:  cannot cp -p {PW_FILE} {newfile} failed: <<{errcode}>>'
+        error(f'{me}: cp -p {PW_FILE} {newfile} failed: <<{errcode}>>')
+        ioccc_file_unlock()
+        return False
+
+    # password file copied
+    #
+    ioccc_file_unlock()
+    debug(f'{me}: end: copied password file: {PW_FILE} to: {newfile}')
+    return True
 
 
 def replace_pwfile(pw_dict):

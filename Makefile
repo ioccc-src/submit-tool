@@ -56,7 +56,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.13.5
+VERSION= 0.13.6
 
 # Python package name
 #
@@ -149,7 +149,7 @@ SELINUX_UNSET= bin/selinux.unset.sh
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
 	 bin/ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh bin/stage.py \
 	 bin/email_pr.py bin/reg_email.sh bin/gen_acct.sh bin/new_user.sh bin/run.sh \
-	 bin/multi_new_user.sh ${SELINUX_SET} ${SELINUX_UNSET}
+	 bin/multi_new_user.sh bin/cp_passwd.py ${SELINUX_SET} ${SELINUX_UNSET}
 
 # scripts that are not run, nor installed on the submit server
 #

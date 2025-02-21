@@ -197,7 +197,7 @@ done
 
 # pylint critical bin files
 #
-for i in bin/email_pr.py bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py \
+for i in bin/cp_passwd.py bin/email_pr.py bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py \
 	 bin/ioccc_passwd.py bin/set_slot_status.py ; do
 
     # announce

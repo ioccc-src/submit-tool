@@ -20,6 +20,7 @@ import os
 from iocccsubmit import \
         change_startup_appdir, \
         error, \
+        prerr, \
         read_state, \
         return_last_errmsg, \
         setup_logger, \
@@ -30,7 +31,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.0 2025-01-26"
+VERSION = "2.3.1 2025-02-21"
 
 
 def main():
@@ -84,7 +85,7 @@ def main():
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
             error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
-            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # determine the IOCCC start and IOCCC end dates
@@ -92,11 +93,11 @@ def main():
     start_datetime, stop_datetime = read_state()
     if not start_datetime:
         error(f'{program}: read_state for start_datetime failed: {return_last_errmsg()}')
-        print(f'{program}: read_state for start_datetime failed: {return_last_errmsg()}')
+        prerr(f'{program}: read_state for start_datetime failed: {return_last_errmsg()}')
         sys.exit(4)
     if not stop_datetime:
         error(f'{program}: read_state for stop_datetime failed: {return_last_errmsg()}')
-        print(f'{program}: read_state for stop_datetime failed: {return_last_errmsg()}')
+        prerr(f'{program}: read_state for stop_datetime failed: {return_last_errmsg()}')
         sys.exit(5)
 
     # -s - set IOCCC start date
@@ -123,7 +124,7 @@ def main():
         #
         if not update_state(f'{start_datetime}', f'{stop_datetime}'):
             error(f'{program}: update_state failed: {return_last_errmsg()}')
-            print(f'{program}: update_state failed: {return_last_errmsg()}')
+            prerr(f'{program}: update_state failed: {return_last_errmsg()}')
             sys.exit(6)
         else:
             print(f'Notice via print: IOCCC start: {start_datetime} IOCCC stop: {stop_datetime}')

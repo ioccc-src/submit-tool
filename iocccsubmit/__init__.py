@@ -24,6 +24,7 @@ from .ioccc_common import \
         check_slot_num_arg, \
         check_username_arg, \
         contest_open_close, \
+        copy_pwfile_under_lock, \
         debug, \
         delete_username, \
         error, \

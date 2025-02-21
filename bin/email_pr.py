@@ -33,7 +33,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.0.2 2025-02-13"
+VERSION = "1.0.3 2025-02-21"
 
 
 # pylint: disable=too-many-branches
@@ -102,7 +102,7 @@ def main():
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
             error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
-            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # -s {e,u,eu} silence printing (def: print email and username)
@@ -121,7 +121,7 @@ def main():
             print_email = False
             print_username = False
         else:
-            print(f'{program}: -e may only be followed by e, u, eu, or ue')
+            prerr(f'{program}: -e may only be followed by e, u, eu, or ue')
             sys.exit(4)
 
     # -0 - print None when user has no registered email
@@ -153,7 +153,7 @@ def main():
         pw_dict = read_pwfile()
         if not pw_dict:
             error(f'{program}: failed to load the IOCCC submit server password file')
-            print(f'{program}: failed to load the IOCCC submit server password file')
+            prerr(f'{program}: failed to load the IOCCC submit server password file')
             sys.exit(5)
 
         # print information from the entire IOCCC submit server password file

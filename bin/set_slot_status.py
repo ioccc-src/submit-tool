@@ -24,6 +24,7 @@ from iocccsubmit import \
         error, \
         info, \
         lookup_username, \
+        prerr, \
         return_last_errmsg, \
         return_slot_json_filename, \
         setup_logger, \
@@ -34,7 +35,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.2 2025-02-07"
+VERSION = "2.4.3 2025-02-21"
 
 
 def main():
@@ -85,7 +86,7 @@ def main():
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
             error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
-            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # -c - force collected to be set to false
@@ -97,21 +98,21 @@ def main():
     #
     username = args.username
     if not lookup_username(username):
-        print(f'ERROR via print: lookup_username for  username: {username} '
+        prerr(f'ERROR via print: lookup_username for  username: {username} '
               f'failed: {return_last_errmsg()}')
         sys.exit(4)
     slot_num = int(args.slot_num)
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
-        print(f'{program}: invalid slot number: {slot_num} for username: {username}')
-        print(f'{program}: slot numbers must be between 0 and {MAX_SUBMIT_SLOT}')
+        prerr(f'{program}: invalid slot number: {slot_num} for username: {username}')
+        prerr(f'{program}: slot numbers must be between 0 and {MAX_SUBMIT_SLOT}')
         sys.exit(5)
     status = args.status
 
     # update slot JSON file
     #
     if not update_slot_status(username, slot_num, status, set_collected_to_true):
-        print(f'{program}: update_slot_status for username: {username} slot_num: {slot_num} '
+        prerr(f'{program}: update_slot_status for username: {username} slot_num: {slot_num} '
               f'failed: {return_last_errmsg()}')
         sys.exit(6)
 
@@ -119,10 +120,10 @@ def main():
     #
     if set_collected_to_true:
         info(f'{program}: username: {username} slot_num: {slot_num} collected: True status: {status}')
-        print(f'{program}: username: {username} slot_num: {slot_num} collected: True status: {status}')
+        prerr(f'{program}: username: {username} slot_num: {slot_num} collected: True status: {status}')
     else:
         info(f'{program}: username: {username} slot_num: {slot_num} collected: ((unchanged)) status: {status}')
-        print(f'{program}: username: {username} slot_num: {slot_num} collected: ((unchanged)) status: {status}')
+        prerr(f'{program}: username: {username} slot_num: {slot_num} collected: ((unchanged)) status: {status}')
     sys.exit(0)
 
 

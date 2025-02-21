@@ -30,6 +30,7 @@ from iocccsubmit.ioccc_common import \
     TCP_PORT, \
     change_startup_appdir, \
     error, \
+    prerr, \
     return_last_errmsg, \
     setup_logger
 
@@ -38,7 +39,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.3.0 2025-01-26"
+VERSION = "2.3.1 2025-02-21"
 
 
 def main():
@@ -95,7 +96,7 @@ def main():
     if args.topdir:
         if not change_startup_appdir(args.topdir):
             error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
-            print(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
     # launch the application if run from the command line
