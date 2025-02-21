@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -122,12 +122,15 @@ if [[ -z "$SCP_TOOL" ]]; then
     exit 5
 fi
 export RMT_CP_PASSWD="/usr/ioccc/bin/cp_passwd.py"
+export RMT_LOGGER="/usr/local/bin/loggger"
+export RMT_LOG_LEVEL="debug"
 
 
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_tmpdir] [-i ioccc.rc] [-I] 
 	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-c scp_tool] [-P rmt_cp_passwd]
+	[-l rmt_logger] [-L log_level]
 	newfile
 
 	-h		print help message and exit
@@ -151,6 +154,8 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_t
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 
 	-P rmt_cp_passwd    path to cp_passwd.py on the remote server (def: $RMT_CP_PASSWD)
+	-l rmt_logger	    path to logger command on the remote server (def: $RMT_LOGGER)
+	-L log_level	    logging level given to the rmt_logger command (def: $RMT_LOG_LEVEL)
 
 	newfile		copy submit server password file to newfile
 
@@ -172,7 +177,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:T:iLIp:u:H:s:c:P: flag; do
+while getopts :hv:VnNt:T:iIp:u:H:s:c:P:l:L: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -205,6 +210,10 @@ while getopts :hv:VnNt:T:iLIp:u:H:s:c:P: flag; do
     c) SCP_TOOL="$OPTARG"
 	;;
     P) RMT_CP_PASSWD="$OPTARG"
+	;;
+    l) RMT_LOGGER="$OPTARG"
+	;;
+    L) RMT_LOG_LEVEL="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -310,6 +319,8 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: RMT_CP_PASSWD=$RMT_CP_PASSWD" 1>&2
+    echo "$0: debug[3]: RMT_LOGGER=$RMT_LOGGER" 1>&2
+    echo "$0: debug[3]: RMT_LOG_LEVEL=$RMT_LOG_LEVEL" 1>&2
     echo "$0: debug[3]: NEWFILE=$NEWFILE" 1>&2
     echo "$0: debug[3]: RMT_TMPFILE=$RMT_TMPFILE" 1>&2
 fi
@@ -378,6 +389,24 @@ if [[ -z $NOOP ]]; then
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not run: /bin/rm -f $RMT_TMPFILE" 1>&2
 fi
+
+
+# log the removal of the remote temp file for audio purposes
+#
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE'" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_LOGGER" --priority "$RMT_LOG_LEVEL" "'removed $RMT_TMPFILE'" >/dev/null
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE' failed, error: $status" 1>&2
+	exit 6
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE'" 1>&2
+fi
+
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
