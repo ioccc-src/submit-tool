@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 #
-# cp_passwd.py - copy the IOCCC submit server password file
+# cp_passwd.py - copy the submit server IOCCC password file
 
 """
-cp_passwd.py - copy the IOCCC submit server password file
+cp_passwd.py - copy the submit server IOCCC password file
 """
 
 
@@ -38,7 +38,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.0.0 2025-02-21"
+VERSION = "2.0.0 2025-02-21"
 
 
 def main():
@@ -71,7 +71,7 @@ def main():
                         action="store",
                         metavar='dbglvl',
                         type=str)
-    parser.add_argument('newfile', help='copy submit server password file to newfile')
+    parser.add_argument('newfile', help='copy submit server IOCCC password file to newfile')
     args = parser.parse_args()
 
     # setup logging according to -l logtype -L dbglvl
@@ -100,7 +100,7 @@ def main():
         warning(f'{program}: cannot determine if newfile exits: {args.newfile}')
         sys.exit(5)
 
-    # copy IOCCC submit server password file
+    # copy IOCCC submit server IOCCC password file
     #
     if not copy_pwfile_under_lock(args.newfile):
         prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
@@ -110,6 +110,7 @@ def main():
 
     # All Done!!! All Done!!! -- Jessica Noll, Age 2
     #
+    info(f'{program}: copied submit server IOCCC password file to: {args.newfile}')
     sys.exit(0)
 
 

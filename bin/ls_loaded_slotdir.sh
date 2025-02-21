@@ -32,7 +32,7 @@
 
 # setup
 #
-export VERSION="1.0.2 2025-02-17"
+export VERSION="2.0.0 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0

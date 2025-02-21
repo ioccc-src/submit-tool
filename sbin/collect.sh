@@ -86,24 +86,24 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.3.1 2025-02-08"
+export VERSION="2.3.2 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
 export DO_NOT_PROCESS=
 #
-export REMOTE_TOPDIR="/var/spool/ioccc"
+export RMT_TOPDIR="/var/spool/ioccc"
 export IOCCC_RC="$HOME/.ioccc.rc"
 export CAP_I_FLAG=
-export REMOTE_PORT=22
-export REMOTE_USER="nobody"
+export RMT_PORT=22
+export RMT_USER="nobody"
 if [[ -n $USER_NAME ]]; then
-    REMOTE_USER="$USER_NAME"
+    RMT_USER="$USER_NAME"
 else
     USER_NAME=$(id -u -n)
     if [[ -n $USER_NAME ]]; then
-	REMOTE_USER="$USER_NAME"
+	RMT_USER="$USER_NAME"
     fi
 fi
 export SERVER="unknown.example.org"
@@ -423,12 +423,12 @@ function change_slot_comment
     # ssh to remove server to run RMT_SET_SLOT_STATUS_PY to set slot comment and set collected to True
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null" 1>&2
+	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null failed, error: $status" 1>&2
 	return 2
     fi
 
@@ -488,20 +488,20 @@ function unexpected_collect
     # collect all remote files under unexpected
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in unexpected_collect: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/ $ERRORS" 1>&2
+	echo "$0: debug[1]: in unexpected_collect: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/ $ERRORS" 1>&2
     fi
     if [[ -n $USE_GIT ]]; then
 	{
 	    echo
-	    echo "Fetching $UNEXPECTED_COUNT unexpected file(s) from REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/"
+	    echo "Fetching $UNEXPECTED_COUNT unexpected file(s) from RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/"
 	    echo "Output from $RSYNC_TOOL follows:"
 	    echo
 	} | if [[ -n $USE_GIT ]]; then
 	    cat >> "$TMP_GIT_COMMIT"
-	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files -v "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS" >> "$TMP_GIT_COMMIT" 2>&1
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files -v "$RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS" >> "$TMP_GIT_COMMIT" 2>&1
 	else
 	    cat 1>&2
-	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $REMOTE_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$REMOTE_USER@$SERVER:$REMOTE_TOPDIR/unexpected/" "$ERRORS"
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS"
 	fi
     fi
 
@@ -514,8 +514,8 @@ function unexpected_collect
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-s rmt_host]
-	[-T ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz] [-g git_tool] [-G]
+	[-p rmt_port] [-u rmt_user] [-H rmt_host]
+	[-s ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz] [-g git_tool] [-G]
 	[-z txzchk] [-y chkenry] [-S rmt_stage] [-C slot_comment] [-w workdir]
 	rmt_slot_path
 
@@ -525,16 +525,16 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-t rmt_topdir] [-i ioccc.rc] 
 
 	-N		do not process anything, just parse arguments (def: process something)
 
-	-t rmt_topdir   app directory path on server (def: $REMOTE_TOPDIR)
+	-t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
 
 	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
 	-I		Do not use any rc startup file (def: do)
 
-	-p rmt_port	use ssh TCP port (def: $REMOTE_PORT)
-	-u rmt_user	ssh into this user (def: $REMOTE_USER)
-	-s rmt_host	ssh host to use (def: $SERVER)
+	-p rmt_port	use ssh TCP port (def: $RMT_PORT)
+	-u rmt_user	ssh into this user (def: $RMT_USER)
+	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-T ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
+	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
 	-r rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
@@ -573,7 +573,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VNi:Ip:u:s:T:c:2:r:x:g:Gz:y:S:C:w: flag; do
+while getopts :hv:VNt:i:Ip:u:H:s:c:2:r:x:g:Gz:y:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -585,17 +585,19 @@ while getopts :hv:VNi:Ip:u:s:T:c:2:r:x:g:Gz:y:S:C:w: flag; do
 	;;
     N) DO_NOT_PROCESS="-N"
 	;;
+    t) RMT_TOPDIR="$OPTARG"
+	;;
     i) IOCCC_RC="$OPTARG"
 	;;
     I) CAP_I_FLAG="true"
 	;;
-    p) REMOTE_PORT="$OPTARG"
+    p) RMT_PORT="$OPTARG"
 	;;
-    u) REMOTE_USER="$OPTARG"
+    u) RMT_USER="$OPTARG"
 	;;
-    s) SERVER="$OPTARG"
+    H) SERVER="$OPTARG"
 	;;
-    T) SSH_TOOL="$OPTARG"
+    s) SSH_TOOL="$OPTARG"
 	;;
     c) SCP_TOOL="$OPTARG"
 	;;
@@ -701,10 +703,10 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
-    echo "$0: debug[3]: REMOTE_TOPDIR=$REMOTE_TOPDIR" 1>&2
+    echo "$0: debug[3]: RMT_TOPDIR=$RMT_TOPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
-    echo "$0: debug[3]: REMOTE_PORT=$REMOTE_PORT" 1>&2
-    echo "$0: debug[3]: REMOTE_USER=$REMOTE_USER" 1>&2
+    echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
+    echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
@@ -978,9 +980,9 @@ fi
 # run the remote stage.py tool via ssh, on the remote server, and collect the reply
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR" 1>&2
+    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR" 1>&2
 fi
-ANSWER=$("$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
+ANSWER=$("$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
 status="$?"
 if [[ -z $ANSWER ]]; then
     echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH answer was empty" 1>&2
@@ -998,7 +1000,7 @@ if [[ $status -ne 0 ]]; then
     if [[ $status -ne 0 ]]; then
 	{
 	    echo
-	    echo "$0: Warning: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR failed, error: $status"
+	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR failed, error: $status"
 	    echo "$0: Warning: stderr output starts below"
 	    cat "$TMP_STDERR"
 	    echo "$0: Warning: stderr output ends above"
@@ -1013,7 +1015,7 @@ fi
 if [[ -n $USE_GIT ]]; then
     {
 	echo
-	echo "$SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH returned:"
+	echo "$SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_STAGE_PY $RMT_SLOT_PATH returned:"
 	echo
 	echo "$ANSWER"
     } >> "$TMP_GIT_COMMIT"
@@ -1217,16 +1219,16 @@ fi
 # copy remote staged file into the inbound directory
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SCP_TOOL -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST" 1>&2
+    echo "$0: debug[1]: about to: $SCP_TOOL -P $RMT_PORT $RMT_USER@$SERVER:$STAGED_PATH $DEST" 1>&2
 fi
-"$SCP_TOOL" -q -P "$REMOTE_PORT" "$REMOTE_USER@$SERVER:$STAGED_PATH" "$DEST"
+"$SCP_TOOL" -q -P "$RMT_PORT" "$RMT_USER@$SERVER:$STAGED_PATH" "$DEST"
 status="$?"
 if [[ $status -ne 0 ]]; then
-    echo "$0: Warning: $SCP_TOOL -q -P $REMOTE_PORT $REMOTE_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
+    echo "$0: Warning: $SCP_TOOL -q -P $RMT_PORT $RMT_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
 fi
 if [[ ! -r $DEST ]]; then
     # We have no remote file - we can do thing more at this stage
-    echo "$0: ERROR: DEST destination file not found: $DEST" 1>&2
+    echo "$0: ERROR: destination file not found: $DEST" 1>&2
     exit 8
 fi
 
@@ -1309,15 +1311,15 @@ fi
 #
 if [[ $PROBLEM_CODE -eq 0 ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER rm -f $STAGED_PATH" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$REMOTE_PORT" "$REMOTE_USER@$SERVER" rm -f "$STAGED_PATH"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" rm -f "$STAGED_PATH"
     status="$?"
     if [[ $status -ne 0 ]]; then
 	PROBLEM_CODE=12
 	{
 	    echo
-	    echo "$0: Warning: $SSH_TOOL -n -p $REMOTE_PORT $REMOTE_USER@$SERVER rm -f $STAGED_PATH failed, error: $status"
+	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER rm -f $STAGED_PATH failed, error: $status"
 	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
 	} | if [[ -n $USE_GIT ]]; then
 	    cat >> "$TMP_GIT_COMMIT"

@@ -143,20 +143,20 @@ def main():
     #
     argc = len(args.arg)
 
-    # case: no args, process the entire IOCCC submit server password file
+    # case: no args, process the entire submit server IOCCC password file
     #
     exit_code = 0
     if argc <= 0:
 
-        # obtain the IOCCC submit server password file
+        # obtain the submit server IOCCC password file
         #
         pw_dict = read_pwfile()
         if not pw_dict:
-            error(f'{program}: failed to load the IOCCC submit server password file')
-            prerr(f'{program}: failed to load the IOCCC submit server password file')
+            error(f'{program}: failed to load the submit server IOCCC password file')
+            prerr(f'{program}: failed to load the submit server IOCCC password file')
             sys.exit(5)
 
-        # print information from the entire IOCCC submit server password file
+        # print information from the entire submit server IOCCC password file
         #
         for i in pw_dict:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# submitted_slots.sh - remotely run ls_loaded_slotdir.sh to determine paths to slots with submit files
+# scp_passwd.sh - remove copy IOCCC submit server IOCCC password file
 #
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -95,28 +95,40 @@ export NOOP=
 export DO_NOT_PROCESS=
 #
 export RMT_TOPDIR="/var/spool/ioccc"
+export RMT_TMPDIR="/tmp"
 export IOCCC_RC="$HOME/.ioccc.rc"
 export CAP_I_FLAG=
 export RMT_PORT=22
 export RMT_USER="nobody"
-if [[ -n $USER ]]; then
-    RMT_USER="$USER"
+if [[ -n $USER_NAME ]]; then
+    RMT_USER="$USER_NAME"
 else
-    USERNAME=$(id -u -n)
-    if [[ -n $USERNAME ]]; then
-	RMT_USER="$USERNAME"
+    USER_NAME=$(id -u -n)
+    if [[ -n $USER_NAME ]]; then
+	RMT_USER="$USER_NAME"
     fi
 fi
 export SERVER="unknown.example.org"
-export RMT_LOADED_SH="/usr/ioccc/bin/ls_loaded_slotdir.sh"
 SSH_TOOL=$(type -P ssh)
 export SSH_TOOL
+if [[ -z "$SSH_TOOL" ]]; then
+    echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+SCP_TOOL=$(type -P scp)
+export SCP_TOOL
+if [[ -z "$SCP_TOOL" ]]; then
+    echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+export RMT_CP_PASSWD="/usr/ioccc/bin/cp_passwd.py"
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-s rmt_host] [-T ssh_tool] [-S rmt_loaded]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_tmpdir] [-i ioccc.rc] [-I] 
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-c scp_tool] [-P rmt_cp_passwd]
+	newfile
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -126,69 +138,84 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-N		do not process anything, just parse arguments (def: process something)
 
 	-t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
+	-T rmt_tmpdir	form remote temp files under tmpdir (def: $RMT_TMPDIR)
 
 	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
 	-I		Do not use any rc startup file (def: do)
 
 	-p rmt_port	use ssh TCP port (def: $RMT_PORT)
 	-u rmt_user	ssh into this user (def: $RMT_USER)
-	-s rmt_host	ssh host to use (def: $SERVER)
-	-T ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
+	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-S rmt_loaded	path to ls_loaded_slotdir.sh on the remote server (def: $RMT_LOADED_SH)
+	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
+	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
+
+	-P rmt_cp_passwd    path to cp_passwd.py on the remote server (def: $RMT_CP_PASSWD)
+
+	newfile		copy submit server password file to newfile
 
 Exit codes:
-     0         all OK
-     2         -h and help string printed or -V and version string printed
-     3         command line error
-     4         source of ioccc.rc file failed
-     5         remote execution of ls_loaded_slotdir.sh failed
-     6         some critical local executable tool not found
- >= 10         internal error
+     0        all OK
+     1	      copy failed
+     2        -h and help string printed or -V and version string printed
+     3        command line error
+     4        source of ioccc.rc file failed
+     5        some critical local executable tool not found
+     6        remote execution of a tool failed, returned an exit code, or returned a malformed response
+     7	      removal of remote tmp file failed
+     8        scp of remote file(s) or ssh rm -f of file(s) failed
+
+ >= 10        internal error
 
 $NAME version: $VERSION"
 
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:s:T:S: flag; do
+while getopts :hv:VnNt:T:iLIp:u:H:s:c:P: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
-        exit 2
-        ;;
+	exit 2
+	;;
     v) V_FLAG="$OPTARG"
-        ;;
+	;;
     V) echo "$VERSION"
-        exit 2
-        ;;
+	exit 2
+	;;
     n) NOOP="-n"
         ;;
     N) DO_NOT_PROCESS="-N"
-        ;;
+	;;
+    t) RMT_TOPDIR="$OPTARG"
+	;;
+    T) RMT_TMPDIR="$OPTARG"
+	;;
     i) IOCCC_RC="$OPTARG"
-        ;;
+	;;
     I) CAP_I_FLAG="true"
-        ;;
+	;;
     p) RMT_PORT="$OPTARG"
-        ;;
+	;;
     u) RMT_USER="$OPTARG"
-        ;;
-    s) SERVER="$OPTARG"
-        ;;
-    T) SSH_TOOL="$OPTARG"
-        ;;
-    S) RMT_LOADED_SH="$OPTARG"
-        ;;
+	;;
+    H) SERVER="$OPTARG"
+	;;
+    s) SSH_TOOL="$OPTARG"
+	;;
+    c) SCP_TOOL="$OPTARG"
+	;;
+    P) RMT_CP_PASSWD="$OPTARG"
+	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
+	echo 1>&2
+	echo "$USAGE" 1>&2
+	exit 3
+	;;
     :) echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
+	echo 1>&2
+	echo "$USAGE" 1>&2
+	exit 3
+	;;
     *) echo "$0: ERROR: unexpected value from getopts: $flag" 1>&2
 	echo 1>&2
 	echo "$USAGE" 1>&2
@@ -204,10 +231,11 @@ shift $(( OPTIND - 1 ));
 if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
-if [[ $# -ne 0 ]]; then
-    echo "$0: ERROR: expected 0 args, found: $#" 1>&2
+if [[ $# -ne 1 ]]; then
+    echo "$0: ERROR: expected 1 arg, found: $#" 1>&2
     exit 3
 fi
+NEWFILE="$1"
 
 
 # unless -I, verify the ioccc.rc file, if it exists
@@ -242,6 +270,27 @@ if [[ -n $IOCCC_RC ]]; then
 fi
 
 
+# guess at a remove temporary filename
+#
+export RMT_TMPFILE="$RMT_TMPDIR/.tmp.$NAME.TMPFILE.$$.tmp"
+
+
+# firewall - SSH_TOOL must be executable
+#
+if [[ ! -x $SSH_TOOL ]]; then
+    echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - SCP_TOOL must be executable
+#
+if [[ ! -x $SCP_TOOL ]]; then
+    echo "$0: ERROR: scp tool not executable: $SCP_TOOL" 1>&2
+    exit 5
+fi
+
+
 # print running info if verbose
 #
 # If -v 3 or higher, print exported variables in order that they were exported.
@@ -253,20 +302,16 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: RMT_TOPDIR=$RMT_TOPDIR" 1>&2
+    echo "$0: debug[3]: RMT_TMPDIR=$RMT_TMPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_LOADED_SH=$RMT_LOADED_SH" 1>&2
-fi
-
-
-# firewall - SSH_TOOL must be executable
-#
-if [[ ! -x $SSH_TOOL ]]; then
-    echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
-    exit 6
+    echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
+    echo "$0: debug[3]: RMT_CP_PASSWD=$RMT_CP_PASSWD" 1>&2
+    echo "$0: debug[3]: NEWFILE=$NEWFILE" 1>&2
+    echo "$0: debug[3]: RMT_TMPFILE=$RMT_TMPFILE" 1>&2
 fi
 
 
@@ -280,20 +325,58 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 fi
 
 
-# ssh the RMT_LOADED_SH tool on the remote server and collect the reply
+# ssh to remove server to run RMT_CP_PASSWD to copy the submit server IOCCC password file to a remote temp file
 #
-if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOADED_SH" 1>&2
-fi
 if [[ -z $NOOP ]]; then
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_LOADED_SH"
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_CP_PASSWD" "$RMT_TMPFILE" >/dev/null
     status="$?"
-else
-    status=0
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE failed, error: $status" 1>&2
+	exit 6
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE" 1>&2
 fi
-if [[ $status -ne 0 ]]; then
-    echo "$0: ERROR: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOADED_SH failed, error: $status" 1>&2
-    exit 5
+
+
+# scp the copy the submit server IOCCC password in a remote temp file to the local newfile
+#
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SCP_TOOL -P $RMT_PORT $RMT_USER@$SERVER:$RMT_TMPFILE $NEWFILE" 1>&2
+    fi
+    "$SCP_TOOL" -q -P "$RMT_PORT" "$RMT_USER@$SERVER:$RMT_TMPFILE" "$NEWFILE"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: $SCP_TOOL -q -P $RMT_PORT $RMT_USER@$SERVER:$RMT_TMPFILE $NEWFILE failed, error: $status" 1>&2
+    fi
+    if [[ ! -r $NEWFILE ]]; then
+	# We have no remote file - we can do thing more at this stage
+	echo "$0: ERROR: destination file not found: $NEWFILE" 1>&2
+	exit 8
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: $SCP_TOOL -P $RMT_PORT $RMT_USER@$SERVER:$RMT_TMPFILE $NEWFILE" 1>&2
+fi
+
+
+# remove the remote temp file
+#
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER /bin/rm -f $RMT_TMPFILE" 1>&2
+    fi
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" /bin/rm -f "$RMT_TMPFILE" >/dev/null
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER /bin/rm -f $RMT_TMPFILE failed, error: $status" 1>&2
+	exit 7
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: /bin/rm -f $RMT_TMPFILE" 1>&2
 fi
 
 
