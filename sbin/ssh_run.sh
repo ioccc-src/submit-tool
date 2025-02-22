@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# run.sh - run command under a given user
+# ssh_run.sh - run the run.sh command on a remote server
 #
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -86,49 +86,76 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-21"
+export VERSION="2.0.0 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
+export NOOP=
 export DO_NOT_PROCESS=
 #
-export SUBMIT_RC="$HOME/.submit.rc"
-SUDO_CMD=$(type -P sudo)
-export SUDO_CMD
-if [[ -z $SUDO_CMD ]]; then
-    echo "$0: ERROR: sudo command not in \$PATH" 1>&2
-    exit 6
+export IOCCC_RC="$HOME/.ioccc.rc"
+#
+export RMT_PORT=22
+export RMT_USER="nobody"
+if [[ -n $USER_NAME ]]; then
+    RMT_USER="$USER_NAME"
+else
+    USER_NAME=$(id -u -n)
+    if [[ -n $USER_NAME ]]; then
+	RMT_USER="$USER_NAME"
+    fi
 fi
-export SUDO_USER=
+export SERVER="unknown.example.org"
+SSH_TOOL=$(type -P ssh)
+export SSH_TOOL
+if [[ -z "$SSH_TOOL" ]]; then
+    echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+SCP_TOOL=$(type -P scp)
+export SCP_TOOL
+if [[ -z "$SCP_TOOL" ]]; then
+    echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
+    exit 5
+fi
+export RMT_RUN="/usr/ioccc/bin/run.sh"
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-i submit.rc] [-I] [-u user] cmd [args ..]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user] 
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-r rmt_run]
+	cmd [args ..]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
+	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
-	-i submit.rc	Use submit.rc as the rc startup file (def: $SUBMIT_RC)
+	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
 	-I		Do not use any rc startup file (def: do)
 
-	-u user		use sudo to run the command (def: do not use sudo)
+	-p rmt_port	use ssh TCP port (def: $RMT_PORT)
+	-u rmt_user	ssh into this user (def: $RMT_USER)
+	-H rmt_host	ssh host to use (def: $SERVER)
+
+	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
+	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN)
 
 	cmd		command to run
 	[args ..]	args to supply to the cmd
 
 Exit codes:
-     0         all OK
-     1         cmd exited non-zero
-     2         -h and help string printed or -V and version string printed
-     3         command line error
-     4         source of submit.rc file failed
-     5         cmd not found or not exeutable
-     6	       sudo not found
+     0        all OK
+     1        cmd exited non-zero
+     2        -h and help string printed or -V and version string printed
+     3        command line error
+     4        source of submit.rc file failed
+     5        some critical local executable tool not found
+     6        remote execution of a tool failed, returned an exit code, or returned a malformed response
 
  >= 10        internal error
 
@@ -137,7 +164,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VNi:Iu: flag; do
+while getopts :hv:VnNi:Ip:u:H:s:: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -147,13 +174,21 @@ while getopts :hv:VNi:Iu: flag; do
     V) echo "$VERSION"
 	exit 2
 	;;
+    n) NOOP="-n"
+        ;;
     N) DO_NOT_PROCESS="-N"
 	;;
-    i) SUBMIT_RC="$OPTARG"
+    i) IOCCC_RC="$OPTARG"
 	;;
     I) CAP_I_FLAG="true"
 	;;
-    u) SUDO_USER="$OPTARG"
+    p) RMT_PORT="$OPTARG"
+	;;
+    u) RMT_USER="$OPTARG"
+	;;
+    H) SERVER="$OPTARG"
+	;;
+    s) SSH_TOOL="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -188,50 +223,43 @@ CMD="$1"
 shift 1
 
 
-# unless -I, verify the submit.rc file, if it exists
+# unless -I, verify the ioccc.rc file, if it exists
 #
 if [[ -z $CAP_I_FLAG ]]; then
-    # if we do not have a readable submit.rc file, remove the SUBMIT_RC value
-    if [[ ! -r $SUBMIT_RC ]]; then
-	SUBMIT_RC=""
+    # if we do not have a readable ioccc.rc file, remove the IOCCC_RC value
+    if [[ ! -r $IOCCC_RC ]]; then
+	IOCCC_RC=""
     fi
 else
-    # -I used, remove the SUBMIT_RC value
-    SUBMIT_RC=""
+    # -I used, remove the IOCCC_RC value
+    IOCCC_RC=""
 fi
 
 
-# If we still have an SUBMIT_RC value, source it
+# If we still have an IOCCC_RC value, source it
 #
-if [[ -n $SUBMIT_RC ]]; then
+if [[ -n $IOCCC_RC ]]; then
     export status=0
     if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to source $SUBMIT_RC" 1>&2
+	echo "$0: debug[3]: about to source $IOCCC_RC" 1>&2
     fi
     # SC1090 (warning): ShellCheck can't follow non-constant source. Use a directive to specify location.
     # https://www.shellcheck.net/wiki/SC1090
     # shellcheck disable=SC1090
-    source "$SUBMIT_RC"
+    source "$IOCCC_RC"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: source $SUBMIT_RC failed, error: $status" 1>&2
+	echo "$0: ERROR: source $IOCCC_RC failed, error: $status" 1>&2
 	exit 4
     fi
 fi
 
 
-# firewall - CMD must be executable
+# firewall - SSH_TOOL must be executable
 #
-if [[ ! -x $CMD ]]; then
-
-    # search for the command on the path
-    CMD_ON_PATH=$(type -P "$CMD")
-    if [[ -z $CMD_ON_PATH ]]; then
-	echo "$0: ERROR: cmd not executable: $CMD" 1>&2
-	exit 5
-    else
-	CMD="$CMD_ON_PATH"
-    fi
+if [[ ! -x $SSH_TOOL ]]; then
+    echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
+    exit 5
 fi
 
 
@@ -243,42 +271,35 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VERSION=$VERSION" 1>&2
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
-    echo "$0: debug[3]: SUBMIT_RC=$SUBMIT_RC" 1>&2
+    echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
+    echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
+    echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
+    echo "$0: debug[3]: SERVER=$SERVER" 1>&2
+    echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
+    echo "$0: debug[3]: RMT_RUN=$RMT_RUN" 1>&2
     echo "$0: debug[3]: CMD=$CMD" 1>&2
     echo "$0: debug[3]: args=$*" 1>&2
-    echo "$0: debug[3]: SUDO_CMD=$SUDO_CMD" 1>&2
-    echo "$0: debug[3]: SUDO_USER=$SUDO_USER" 1>&2
 fi
 
 
-# case: run without sudo
+# run the run.sh command on a remote server
 #
-if [[ -z $SUDO_USER ]]; then
-
+if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-        echo "$0: debug[3]: about to run: $CMD $*" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
     fi
-    "$CMD" "$@"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$CMD" "$@"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $CMD $* failed, error: $status" 1>&2
-        exit 1
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $* failed, error: $status" 1>&2
+	exit 6
     fi
-
-else
-
-    if [[ $V_FLAG -ge 1 ]]; then
-        echo "$0: debug[3]: about to run: $SUDO_CMD -u $SUDO_USER $CMD $*" 1>&2
-    fi
-    "$SUDO_CMD" -u "$SUDO_USER" "$CMD" "$@"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $SUDO_CMD -u $SUDO_USER $CMD $* failed, error: $status" 1>&2
-        exit 1
-    fi
-
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
 fi
+
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
