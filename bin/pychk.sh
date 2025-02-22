@@ -87,16 +87,15 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.3.1 2024-02-22"
+export VERSION="2.3.2 2024-02-22"
 NAME=$(basename "$0")
 export NAME
 #
 export TOPDIR
 if [[ -z $TOPDIR ]]; then
-    TOPDIR="/var/ioccc"
-    if [[ ! -d $TOPDIR ]]; then
-	# not on submit server, assume testing in .
-	TOPDIR="."
+    TOPDIR="."
+    if [[ ! -d $TOPDIR/iocccsubmit ]]; then
+	TOPDIR="/var/ioccc"
     fi
 fi
 #
