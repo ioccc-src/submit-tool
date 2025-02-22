@@ -32,15 +32,18 @@
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
-export TOPDIR="/var/ioccc"
-if [[ ! -d $TOPDIR ]]; then
-    # not on submit server, assume testing in .
-    TOPDIR="."
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
 fi
 
 

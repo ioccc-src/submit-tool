@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -95,11 +95,15 @@ export SUBJECT="IOCCC submit server account information"
 #
 export NOOP=
 export DO_NOT_PROCESS=
-S_NAIL=$(type -P s-nail)
+#
 export S_NAIL
 if [[ -z $S_NAIL ]]; then
-    S_NAIL="/bin/s-nail"
+    S_NAIL=$(type -P s-nail)
+    if [[ -z $S_NAIL ]]; then
+	S_NAIL="/bin/s-nail"
+    fi
 fi
+#
 export FROM_ADDR="ioccc-account-bot@ioccc.org"
 export BCC_ADDR="bcc-sent-account@ioccc.org"
 

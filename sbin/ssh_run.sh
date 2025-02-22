@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -96,30 +96,51 @@ export DO_NOT_PROCESS=
 #
 export IOCCC_RC="$HOME/.ioccc.rc"
 #
-export RMT_PORT=22
-export RMT_USER="nobody"
-if [[ -n $USER_NAME ]]; then
-    RMT_USER="$USER_NAME"
-else
-    USER_NAME=$(id -u -n)
-    if [[ -n $USER_NAME ]]; then
+export RMT_PORT
+if [[ -z $RMT_PORT ]]; then
+    RMT_PORT=22
+fi
+#
+export RMT_USER
+if [[ -z $RMT_USER ]]; then
+    export USER_NAME
+    if [[ -z $USER_NAME ]]; then
+	USER_NAME=$(id -u -n)
+    fi
+    if [[ -z $USER_NAME ]]; then
+	RMT_USER="nobody"
+    else
 	RMT_USER="$USER_NAME"
     fi
 fi
-export SERVER="unknown.example.org"
-SSH_TOOL=$(type -P ssh)
+#
+export SERVER
+if [[ -z $SERVER ]]; then
+    SERVER="unknown.example.org"
+fi
+#
 export SSH_TOOL
-if [[ -z "$SSH_TOOL" ]]; then
-    echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $SSH_TOOL ]]; then
+    SSH_TOOL=$(type -P ssh)
+    if [[ -z "$SSH_TOOL" ]]; then
+	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-SCP_TOOL=$(type -P scp)
+#
 export SCP_TOOL
-if [[ -z "$SCP_TOOL" ]]; then
-    echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $SCP_TOOL ]]; then
+    SCP_TOOL=$(type -P scp)
+    if [[ -z "$SCP_TOOL" ]]; then
+	echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-export RMT_RUN="/usr/ioccc/bin/run.sh"
+#
+export RMT_RUN
+if [[ -z $RMT_RUN ]]; then
+    RMT_RUN="/usr/ioccc/bin/run.sh"
+fi
 
 
 # usage

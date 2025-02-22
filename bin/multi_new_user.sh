@@ -88,39 +88,60 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.1 2025-02-21"
+export VERSION="2.0.2 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
-export SUBMIT_RC="$HOME/.submit.rc"
-export TOPDIR="/var/ioccc"
-if [[ ! -d $TOPDIR ]]; then
-    # not on submit server, assume testing in .
-    TOPDIR="."
+#
+export SUBMIT_RC
+if [[ -z $SUBMIT_RC ]]; then
+    SUBMIT_RC="$HOME/.submit.rc"
 fi
-export TMPDIR="$TOPDIR/tmp"
-GEN_ACCT_SH=$(type -P gen_acct.sh)
+#
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
+fi
+#
+export TMPDIR
+if [[ -z $TMPDIR ]]; then
+    TMPDIR="$TOPDIR/tmp"
+fi
+#
 export GEN_ACCT_SH
 if [[ -z $GEN_ACCT_SH ]]; then
-    GEN_ACCT_SH="bin/gen_acct.sh"
+    GEN_ACCT_SH=$(type -P gen_acct.sh)
+    if [[ -z $GEN_ACCT_SH ]]; then
+	GEN_ACCT_SH="bin/gen_acct.sh"
+    fi
 fi
 #
-REG_EMAIL_SH=$(type -P reg_email.sh)
 export REG_EMAIL_SH
 if [[ -z $REG_EMAIL_SH ]]; then
-    REG_EMAIL_SH="bin/reg_email.sh"
+    REG_EMAIL_SH=$(type -P reg_email.sh)
+    if [[ -z $REG_EMAIL_SH ]]; then
+	REG_EMAIL_SH="bin/reg_email.sh"
+    fi
 fi
 #
-NEW_USER_SH=$(type -P new_user.sh)
 export NEW_USER_SH
 if [[ -z $NEW_USER_SH ]]; then
-    NEW_USER_SH="bin/new_user.sh"
+    NEW_USER_SH=$(type -P new_user.sh)
+    if [[ -z $NEW_USER_SH ]]; then
+	NEW_USER_SH="bin/new_user.sh"
+    fi
 fi
 #
-IOCCC_PASSWD=$(type -P ioccc_passwd.py)
 export IOCCC_PASSWD
 if [[ -z $IOCCC_PASSWD ]]; then
-    IOCCC_PASSWD="bin/ioccc_passwd.py"
+    IOCCC_PASSWD=$(type -P ioccc_passwd.py)
+    if [[ -z $IOCCC_PASSWD ]]; then
+	IOCCC_PASSWD="bin/ioccc_passwd.py"
+    fi
 fi
 #
 export NOOP=

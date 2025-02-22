@@ -87,12 +87,23 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.3.0 2024-02-16"
+export VERSION="2.3.1 2024-02-22"
 NAME=$(basename "$0")
 export NAME
-export TOPDIR="."
-SHELLCHECK_TOOL=$(type -P shellcheck)
+#
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
+fi
+#
 export SHELLCHECK_TOOL
+if [[ -z $SHELLCHECK_TOOL ]]; then
+    SHELLCHECK_TOOL=$(type -P shellcheck)
+fi
 # NOTE: If we do not have shellcheck, we will simply bypass shell script checks.
 
 

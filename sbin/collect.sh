@@ -86,77 +86,132 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.3.2 2025-02-21"
+export VERSION="2.3.3 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
 export DO_NOT_PROCESS=
 #
-export RMT_TOPDIR="/var/spool/ioccc"
+export RMT_TOPDIR
+if [[ -z $RMT_TOPDIR ]]; then
+    RMT_TOPDIR="/var/spool/ioccc"
+fi
+#
 export IOCCC_RC="$HOME/.ioccc.rc"
+#
 export CAP_I_FLAG=
-export RMT_PORT=22
-export RMT_USER="nobody"
-if [[ -n $USER_NAME ]]; then
-    RMT_USER="$USER_NAME"
-else
-    USER_NAME=$(id -u -n)
-    if [[ -n $USER_NAME ]]; then
+#
+export RMT_PORT
+if [[ -z $RMT_PORT ]]; then
+    RMT_PORT=22
+fi
+#
+export RMT_USER
+if [[ -z $RMT_USER ]]; then
+    RMT_USER="nobody"
+fi
+#
+export RMT_USER
+if [[ -z $RMT_USER ]]; then
+    export USER_NAME
+    if [[ -z $USER_NAME ]]; then
+	USER_NAME=$(id -u -n)
+    fi
+    if [[ -z $USER_NAME ]]; then
+	RMT_USER="nobody"
+    else
 	RMT_USER="$USER_NAME"
     fi
 fi
-export SERVER="unknown.example.org"
-export RMT_STAGE_PY="/usr/ioccc/bin/stage.py"
-export RMT_SET_SLOT_STATUS_PY="/usr/ioccc/bin/set_slot_status.py"
-SSH_TOOL=$(type -P ssh)
+#
+export SERVER
+if [[ -z $SERVER ]]; then
+    SERVER="unknown.example.org"
+fi
+#
+export RMT_STAGE_PY
+if [[ -z $RMT_STAGE_PY ]]; then
+    RMT_STAGE_PY="/usr/ioccc/bin/stage.py"
+fi
+#
+export RMT_SET_SLOT_STATUS_PY
+if [[ -z $RMT_SET_SLOT_STATUS_PY ]]; then
+    RMT_SET_SLOT_STATUS_PY="/usr/ioccc/bin/set_slot_status.py"
+fi
+#
 export SSH_TOOL
-if [[ -z "$SSH_TOOL" ]]; then
-    echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $SSH_TOOL ]]; then
+    SSH_TOOL=$(type -P ssh)
+    if [[ -z "$SSH_TOOL" ]]; then
+	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-SCP_TOOL=$(type -P scp)
+#
 export SCP_TOOL
-if [[ -z "$SCP_TOOL" ]]; then
-    echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $SCP_TOOL ]]; then
+    SCP_TOOL=$(type -P scp)
+    if [[ -z "$SCP_TOOL" ]]; then
+	echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-SHA256_TOOL=$(type -P sha256sum)
+#
 export SHA256_TOOL
-if [[ -z "$SHA256_TOOL" ]]; then
-    echo "$0: FATAL: sha256sum tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $SHA256_TOOL ]]; then
+    SHA256_TOOL=$(type -P sha256sum)
+    if [[ -z "$SHA256_TOOL" ]]; then
+	echo "$0: FATAL: sha256sum tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-RSYNC_TOOL=$(type -P rsync)
+#
 export RSYNC_TOOL
-if [[ -z "$RSYNC_TOOL" ]]; then
-    echo "$0: FATAL: rsync tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $RSYNC_TOOL ]]; then
+    RSYNC_TOOL=$(type -P rsync)
+    if [[ -z "$RSYNC_TOOL" ]]; then
+	echo "$0: FATAL: rsync tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-TXZCHK_TOOL=$(type -P txzchk)
+#
 export TXZCHK_TOOL
-if [[ -z "$TXZCHK_TOOL" ]]; then
-    echo "$0: FATAL: txzchk tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $TXZCHK_TOOL ]]; then
+    TXZCHK_TOOL=$(type -P txzchk)
+    if [[ -z "$TXZCHK_TOOL" ]]; then
+	echo "$0: FATAL: txzchk tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-CHKENTRY_TOOL=$(type -P chkentry)
+#
 export CHKENTRY_TOOL
-if [[ -z "$CHKENTRY_TOOL" ]]; then
-    echo "$0: FATAL: chkentry tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $CHKENTRY_TOOL ]]; then
+    CHKENTRY_TOOL=$(type -P chkentry)
+    if [[ -z "$CHKENTRY_TOOL" ]]; then
+	echo "$0: FATAL: chkentry tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-XZ_TOOL=$(type -P xz)
+#
 export XZ_TOOL
-if [[ -z "$XZ_TOOL" ]]; then
-    echo "$0: FATAL: xz tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $XZ_TOOL ]]; then
+    XZ_TOOL=$(type -P xz)
+    if [[ -z "$XZ_TOOL" ]]; then
+	echo "$0: FATAL: xz tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
-GIT_TOOL=$(type -P git)
+#
 export GIT_TOOL
-if [[ -z "$GIT_TOOL" ]]; then
-    echo "$0: FATAL: git tool is not installed or not in \$PATH" 1>&2
-    exit 5
+if [[ -z $GIT_TOOL ]]; then
+    GIT_TOOL=$(type -P git)
+    if [[ -z "$GIT_TOOL" ]]; then
+	echo "$0: FATAL: git tool is not installed or not in \$PATH" 1>&2
+	exit 5
+    fi
 fi
+#
 export USE_GIT="true"
 export WORKDIR="."
 

@@ -40,23 +40,43 @@
 
 # setup
 #
-export VERSION="2.0.2 2025-01-17"
+export VERSION="2.0.3 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
-OPENSSL_TOOL=$(type -P openssl)
-PWGEN_TOOL=$(type -P pwgen)
-UUIDGEN_TOOL=$(type -P uuidgen)
-BASE64_TOOL=$(type -P base64)
-export PWGEN_TOOL OPENSSL_TOOL UUIDGEN_TOOL BASE64_TOOL
+export OPENSSL_TOOL
+if [[ -z $OPENSSL_TOOL ]]; then
+    OPENSSL_TOOL=$(type -P openssl)
+fi
+#
+export PWGEN_TOOL
+if [[ -z $PWGEN_TOOL ]]; then
+    PWGEN_TOOL=$(type -P pwgen)
+fi
+#
+export UUIDGEN_TOOL
+if [[ -z $UUIDGEN_TOOL ]]; then
+    UUIDGEN_TOOL=$(type -P uuidgen)
+fi
+#
+export BASE64_TOOL
+if [[ -z $BASE64_TOOL ]]; then
+    BASE64_TOOL=$(type -P base64)
+fi
+#
 export GEN_TYPE=""
 export FORCE_WRITE=""
-export TOPDIR="/var/ioccc"
-if [[ ! -d $TOPDIR ]]; then
-    # not on submit server, assume testing in .
-    TOPDIR="."
+#
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
 fi
+#
 export SECRET_FILE="$TOPDIR/etc/.secret"
 
 

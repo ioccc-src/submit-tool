@@ -86,7 +86,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-21"
+export VERSION="2.0.2 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -94,13 +94,17 @@ export V_FLAG=0
 export DO_NOT_PROCESS=
 #
 export SUBMIT_RC="$HOME/.submit.rc"
-SUDO_CMD=$(type -P sudo)
+#
 export SUDO_CMD
 if [[ -z $SUDO_CMD ]]; then
-    echo "$0: ERROR: sudo command not in \$PATH" 1>&2
-    exit 6
+    SUDO_CMD=$(type -P sudo)
+    if [[ -z $SUDO_CMD ]]; then
+	echo "$0: ERROR: sudo command not in \$PATH" 1>&2
+	exit 6
+    fi
 fi
-export SUDO_USER=
+#
+export SUDO_USER
 
 
 # usage

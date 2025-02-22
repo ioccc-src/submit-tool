@@ -88,35 +88,58 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
-export TOPDIR="/var/ioccc"
-if [[ ! -d $TOPDIR ]]; then
-    # not on submit server, assume testing in .
-    TOPDIR="."
+#
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
 fi
-export TMPDIR="$TOPDIR/tmp"
-GEN_ACCT_SH=$(type -P gen_acct.sh)
+#
+export TMPDIR
+if [[ -z $TMPDIR ]]; then
+    TMPDIR="$TOPDIR/tmp"
+fi
+#
 export GEN_ACCT_SH
 if [[ -z $GEN_ACCT_SH ]]; then
-    GEN_ACCT_SH="bin/gen_acct.sh"
+    GEN_ACCT_SH=$(type -P gen_acct.sh)
+    if [[ -z $GEN_ACCT_SH ]]; then
+	GEN_ACCT_SH="bin/gen_acct.sh"
+    fi
 fi
-REG_EMAIL_SH=$(type -P reg_email.sh)
+#
 export REG_EMAIL_SH
 if [[ -z $REG_EMAIL_SH ]]; then
-    REG_EMAIL_SH="bin/reg_email.sh"
+    REG_EMAIL_SH=$(type -P reg_email.sh)
+    if [[ -z $REG_EMAIL_SH ]]; then
+	REG_EMAIL_SH="bin/reg_email.sh"
+    fi
 fi
 #
-IOCCC_PASSWD=$(type -P ioccc_passwd.py)
 export IOCCC_PASSWD
 if [[ -z $IOCCC_PASSWD ]]; then
-    IOCCC_PASSWD="bin/ioccc_passwd.py"
+    IOCCC_PASSWD=$(type -P ioccc_passwd.py)
+    if [[ -z $IOCCC_PASSWD ]]; then
+	IOCCC_PASSWD="bin/ioccc_passwd.py"
+    fi
 fi
 #
-export MAIL_HEAD="etc/mail.head"
-export MAIL_TAIL="etc/mail.tail"
+export MAIL_HEAD
+if [[ -z $MAIL_HEAD ]]; then
+    MAIL_HEAD="$TOPDIR/etc/mail.head"
+fi
+#
+export MAIL_TAIL
+if [[ -z $MAIL_TAIL ]]; then
+    MAIL_TAIL="$TOPDIR/etc/mail.tail"
+fi
 #
 export NOOP=
 export DO_NOT_PROCESS=

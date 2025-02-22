@@ -86,17 +86,30 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.2 2025-02-17"
+export VERSION="2.0.3 2025-02-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
 export DO_NOT_PROCESS=
 #
-export TMPDIR="/var/tmp"
+#
+export TMPDIR
+if [[ -z $TMPDIR ]]; then
+    TMPDIR="/var/tmp"
+fi
+#
 export IOCCC_RC="$HOME/.ioccc.rc"
-export COLLECT_SH="/usr/ioccc/bin/collect.sh"
-export SUBMITTED_SLOTS_SH="/usr/ioccc/bin/submitted_slots.sh"
+#
+export COLLECT_SH
+if [[ -z $COLLECT_SH ]]; then
+    COLLECT_SH="/usr/ioccc/bin/collect.sh"
+fi
+#
+export SUBMITTED_SLOTS_SH
+if [[ -z $SUBMITTED_SLOTS_SH ]]; then
+    SUBMITTED_SLOTS_SH="/usr/ioccc/bin/submitted_slots.sh"
+fi
 
 
 # usage

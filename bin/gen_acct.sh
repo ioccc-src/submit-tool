@@ -89,19 +89,26 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
-export TOPDIR="/var/ioccc"
-if [[ ! -d $TOPDIR ]]; then
-    # not on submit server, assume testing in .
-    TOPDIR="."
+#
+export TOPDIR
+if [[ -z $TOPDIR ]]; then
+    TOPDIR="/var/ioccc"
+    if [[ ! -d $TOPDIR ]]; then
+	# not on submit server, assume testing in .
+	TOPDIR="."
+    fi
 fi
-IOCCC_PASSWD_PY=$(type -P ioccc_passwd.py)
-export IOCCC_PASSWD_PY
-if [[ -z $IOCCC_PASSWD_PY ]]; then
-    IOCCC_PASSWD_PY="bin/ioccc_passwd.py"
+#
+export IOCCC_PASSWD
+if [[ -z $IOCCC_PASSWD ]]; then
+    IOCCC_PASSWD=$(type -P ioccc_passwd.py)
+    if [[ -z $IOCCC_PASSWD ]]; then
+	IOCCC_PASSWD="bin/ioccc_passwd.py"
+    fi
 fi
 #
 export NOOP=
@@ -121,7 +128,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-p pwtool] e
 
 	-t appdir	app directory path (def: $TOPDIR)
 
-	-p pwtool	tool to create an IOCCC submit server account (def: $IOCCC_PASSWD_PY)
+	-p pwtool	tool to create an IOCCC submit server account (def: $IOCCC_PASSWD)
 
 	email		email address that we registed with the IOCCC
 
@@ -155,7 +162,7 @@ while getopts :hv:VnNt:p: flag; do
 	;;
     t) TOPDIR="$OPTARG"
 	;;
-    p) IOCCC_PASSWD_PY="$OPTARG"
+    p) IOCCC_PASSWD="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -202,7 +209,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
     echo "$0: debug[3]: TOPDIR=$TOPDIR" 1>&2
-    echo "$0: debug[3]: IOCCC_PASSWD_PY=$IOCCC_PASSWD_PY" 1>&2
+    echo "$0: debug[3]: IOCCC_PASSWD=$IOCCC_PASSWD" 1>&2
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: EMAIL=$EMAIL" 1>&2
@@ -221,8 +228,8 @@ fi
 
 # pwtool must be executable
 #
-if [[ ! -x $IOCCC_PASSWD_PY ]]; then
-    echo "$0: ERROR: not exeutable: $IOCCC_PASSWD_PY" 1>&2
+if [[ ! -x $IOCCC_PASSWD ]]; then
+    echo "$0: ERROR: not exeutable: $IOCCC_PASSWD" 1>&2
     exit 5
 fi
 
@@ -241,16 +248,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to run: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL" 1>&1
+	echo "$0: debug[1]: about to run: $IOCCC_PASSWD -U -E -c -e $EMAIL" 1>&1
     fi
-    "$IOCCC_PASSWD_PY" -U -E -c -e "$EMAIL"
+    "$IOCCC_PASSWD" -U -E -c -e "$EMAIL"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL failed, error: $status" 1>&2
+	echo "$0: ERROR: $IOCCC_PASSWD -U -E -c -e $EMAIL failed, error: $status" 1>&2
 	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $IOCCC_PASSWD_PY -U -E -c -e $EMAIL" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $IOCCC_PASSWD -U -E -c -e $EMAIL" 1>&2
 fi
 
 
