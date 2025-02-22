@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.0 2025-02-21"
+export VERSION="2.0.1 2025-02-21"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -132,7 +132,7 @@ export WAIT_SECS=3
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i submit.rc] [-I] [-t topdir] [-T tmpdir] [-w secs]
-	[-g gen_acct] [-r reg_email] [-e new_user] [-p ioccc_passwd] file
+	[-g gen_acct] [-r reg_email] [-e new_user] [-p ioccc_passwd] [file]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -153,7 +153,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i submit.rc] [-I] [-t t
 	-e new_user	tool to create account and send notification Email (def: $REG_EMAIL_SH)
 	-p ioccc_passwd	tool to create accounts in the IOCCC submit server (def: $IOCCC_PASSWD)
 
-	file		fail with a list of 0 or more email addresses, one per line
+	[file]		list of 0 or more email addresses, one per line (def: read stdin)
 
 Exit codes:
      0         all OK
@@ -224,14 +224,17 @@ shift $(( OPTIND - 1 ));
 if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
-if [[ $# -ne 1 ]]; then
-    echo "$0: ERROR: expected 1 arg, found: $#" 1>&2
+if [[ $# -gt 1 ]]; then
+    echo "$0: ERROR: expected 0 or 1 args, found: $#" 1>&2
     exit 3
 fi
-export FILE="$1"
+export FILE=
+if [[ $# -eq 1 ]]; then
+    FILE="$1"
+fi
 if [[ -z $FILE ]]; then
-    echo "$0: ERROR: file arg is empty" 1>&2
-    exit 3
+    # read email address from stdin
+    FILE="-"
 fi
 
 
@@ -360,19 +363,21 @@ if [[ ! -x $IOCCC_PASSWD ]]; then
 fi
 
 
-# file must be a readable file (OK if empty)
+# file must be a readable file (OK if empty), if not -
 #
-if [[ ! -e $FILE ]]; then
-    echo "$0: ERROR: file does not exist: $FILE" 1>&2
-    exit 6
-fi
-if [[ ! -f $FILE ]]; then
-    echo "$0: ERROR: file does not a file: $FILE" 1>&2
-    exit 6
-fi
-if [[ ! -e $FILE ]]; then
-    echo "$0: ERROR: file does not a readable file: $FILE" 1>&2
-    exit 6
+if [[ $FILE != - ]]; then
+    if [[ ! -e $FILE ]]; then
+	echo "$0: ERROR: file does not exist: $FILE" 1>&2
+	exit 6
+    fi
+    if [[ ! -f $FILE ]]; then
+	echo "$0: ERROR: file does not a file: $FILE" 1>&2
+	exit 6
+    fi
+    if [[ ! -e $FILE ]]; then
+	echo "$0: ERROR: file does not a readable file: $FILE" 1>&2
+	exit 6
+    fi
 fi
 
 
