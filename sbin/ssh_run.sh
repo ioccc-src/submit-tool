@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 #
-# ssh_run.sh - run the run.sh command on a remote server
+# ssh_run.sh - run the run.sh command on a remote IOCCC submit server
+#
+# Using ssh, we execute on the remote IOCCC submit server, the `run.sh`
+# tool, which may in turn do a sudo, in order to run some command with
+# optional options and args.
+#
+# NOTE: For nearly environment variables initialized in the "setup" section,
+#	those environment variables default any value found in the environment.
+#	If no such environment variable exists, or it is empty, then
+#	the variables initialized to a default value in the "setup" section.
+#
+# NOTE: Later, after command line processing, the "ioccc.rc" file is sourced
+#	(usually "$HOME/.ioccc.rc" or as modified by "-i ioccc.rc") where any
+#	environment variables will override any existing environment variables.
+#	unless "-I" was which in which case the "ioccc.rc" file is ignored.
 #
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -86,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-22"
+export VERSION="2.0.2 2025-02-23"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -94,7 +108,10 @@ export V_FLAG=0
 export NOOP=
 export DO_NOT_PROCESS=
 #
-export IOCCC_RC="$HOME/.ioccc.rc"
+export IOCCC_RC
+if [[ -z $IOCCC_RC ]]; then
+    IOCCC_RC="$HOME/.ioccc.rc"
+fi
 #
 export RMT_PORT
 if [[ -z $RMT_PORT ]]; then
@@ -145,7 +162,7 @@ fi
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user] 
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user]
 	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-r rmt_run]
 	cmd [args ..]
 
@@ -295,6 +312,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
+    echo "$0: debug[3]: CAP_I_FLAG=$CAP_I_FLAG" 1>&2
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2

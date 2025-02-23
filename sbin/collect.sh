@@ -2,6 +2,21 @@
 #
 # collect.sh - remotely stage a submit file and collect it
 #
+# For a given slot directory path on the remote IOCCC submit server, we
+# collect the submit file into a local directory, perform tests and un-tar it,
+# and update the status of the slot on remote IOCCC submit server accordingly.
+# The file changes under the local workdir are checked into git.
+#
+# NOTE: For nearly environment variables initialized in the "setup" section,
+#	those environment variables default any value found in the environment.
+#	If no such environment variable exists, or it is empty, then
+#	the variables initialized to a default value in the "setup" section.
+#
+# NOTE: Later, after command line processing, the "ioccc.rc" file is sourced
+#	(usually "$HOME/.ioccc.rc" or as modified by "-i ioccc.rc") where any
+#	environment variables will override any existing environment variables.
+#	unless "-I" was which in which case the "ioccc.rc" file is ignored.
+#
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
@@ -86,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.3.3 2025-02-22"
+export VERSION="2.3.4 2025-02-23"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -98,18 +113,16 @@ if [[ -z $RMT_TOPDIR ]]; then
     RMT_TOPDIR="/var/spool/ioccc"
 fi
 #
-export IOCCC_RC="$HOME/.ioccc.rc"
+export IOCCC_RC
+if [[ -z $IOCCC_RC ]]; then
+    IOCCC_RC="$HOME/.ioccc.rc"
+fi
 #
 export CAP_I_FLAG=
 #
 export RMT_PORT
 if [[ -z $RMT_PORT ]]; then
     RMT_PORT=22
-fi
-#
-export RMT_USER
-if [[ -z $RMT_USER ]]; then
-    RMT_USER="nobody"
 fi
 #
 export RMT_USER
@@ -760,6 +773,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: RMT_TOPDIR=$RMT_TOPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
+    echo "$0: debug[3]: CAP_I_FLAG=$CAP_I_FLAG" 1>&2
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2

@@ -2,6 +2,25 @@
 #
 # scp_passwd.sh - remove copy IOCCC submit server IOCCC password file
 #
+# Copy the IOCCC submit server IOCCC password file to a local file.
+# On the remote IOCCC submit server, the etc/iocccpasswd.json file
+# is first copied into a remote temporary file while under lock,
+# so that the IOCCC password file obtained is coherent (not in the
+# middle of a file update).  Then that remote temporary file is copied
+# to a local file.  Last, the remote temporary file is removed.
+# Both the copy into a remote temporary file and the remote temporary file
+# removal are logged in the remote server.
+#
+# NOTE: For nearly environment variables initialized in the "setup" section,
+#	those environment variables default any value found in the environment.
+#	If no such environment variable exists, or it is empty, then
+#	the variables initialized to a default value in the "setup" section.
+#
+# NOTE: Later, after command line processing, the "ioccc.rc" file is sourced
+#	(usually "$HOME/.ioccc.rc" or as modified by "-i ioccc.rc") where any
+#	environment variables will override any existing environment variables.
+#	unless "-I" was which in which case the "ioccc.rc" file is ignored.
+#
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
@@ -86,7 +105,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.2 2025-02-22"
+export VERSION="2.0.3 2025-02-23"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -104,7 +123,11 @@ if [[ -z $RMT_TMPDIR ]]; then
     RMT_TMPDIR="/tmp"
 fi
 #
-export IOCCC_RC="$HOME/.ioccc.rc"
+export IOCCC_RC
+if [[ -z $IOCCC_RC ]]; then
+    IOCCC_RC="$HOME/.ioccc.rc"
+fi
+#
 export CAP_I_FLAG=
 #
 export RMT_PORT
@@ -166,7 +189,7 @@ fi
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_tmpdir] [-i ioccc.rc] [-I] 
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_tmpdir] [-i ioccc.rc] [-I]
 	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-c scp_tool] [-P rmt_cp_passwd]
 	[-l rmt_logger] [-L log_level]
 	newfile
@@ -351,6 +374,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_TOPDIR=$RMT_TOPDIR" 1>&2
     echo "$0: debug[3]: RMT_TMPDIR=$RMT_TMPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
+    echo "$0: debug[3]: CAP_I_FLAG=$CAP_I_FLAG" 1>&2
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
