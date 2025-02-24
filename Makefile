@@ -140,11 +140,11 @@ DOCROOT= /var/ioccc
 SELINUX_SET= bin/selinux.set.sh
 SELINUX_UNSET= bin/selinux.unset.sh
 
-# executable scripts that are not part of the python module
+# executable scripts to be install on the IOCCC submit server
 #
 # Executable files to install under ${DESTDIR}.
 #
-# NOTE: bin/pychk.sh is only needed for testing and thus is not needed under ${DESTDIR}.
+# NOTE: Optional ~/.submit.org and select optional environment variables may help control these commands.
 #
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
 	 bin/ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh bin/stage.py \
@@ -152,10 +152,12 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 	 bin/multi_new_user.sh bin/cp_passwd.py bin/last_email_msg.sh \
 	 ${SELINUX_SET} ${SELINUX_UNSET}
 
-# scripts that are not run, nor installed on the submit server
+# scripts that are not run, not installed on the submit server
+#
+# NOTE: Optional ~/.ioccc.org and select optional environment variables may help control these commands.
 #
 SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_passwd.sh \
-	   sbin/ssh_run.sh
+	   sbin/ssh_run.sh sbin/who_extract.sh sbin/who_extract.sh
 
 # tool to generate the secret Flask key
 #

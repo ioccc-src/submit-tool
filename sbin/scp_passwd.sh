@@ -305,7 +305,7 @@ if [[ $# -ne 1 ]]; then
     echo "$0: ERROR: expected 1 arg, found: $#" 1>&2
     exit 3
 fi
-NEWFILE="$1"
+export NEWFILE="$1"
 
 
 # unless -I, verify the ioccc.rc file, if it exists

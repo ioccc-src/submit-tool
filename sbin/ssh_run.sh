@@ -257,7 +257,7 @@ if [[ $# -le 0 ]]; then
     echo "$0: ERROR: expected 1 args, found: $#" 1>&2
     exit 3
 fi
-CMD="$1"
+export CMD="$1"
 shift 1
 
 
