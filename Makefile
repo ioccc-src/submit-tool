@@ -157,7 +157,7 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 # NOTE: Optional ~/.ioccc.org and select optional environment variables may help control these commands.
 #
 SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_passwd.sh \
-	   sbin/ssh_run.sh sbin/who_extract.sh sbin/who_extract.sh
+	   sbin/ssh_run.sh sbin/who_extract.sh sbin/who_extract.sh sbin/ssh_email_pr.sh
 
 # tool to generate the secret Flask key
 #
