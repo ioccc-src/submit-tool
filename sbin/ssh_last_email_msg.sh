@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# ssh_run.sh - run the run.sh command on a remote IOCCC submit server
+# ssh_last_email_msg.sh - print last email message for a remote user on remote server
 #
-# Using ssh, we execute on the remote IOCCC submit server, the `run.sh`
-# tool, which may in turn do a sudo, in order to run some command with
-# optional options and args.
+# Using ssh, we execute on the remote IOCCC submit server, the `last_email_msg.sh` tool
+# for a given remote user, on a remote server.  We only print the last email message,
+# if any exists, and we delete all previous email messages.
 #
 # NOTE: For nearly environment variables initialized in the "setup" section,
 #	those environment variables default any value found in the environment.
@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.3 2025-02-24"
+export VERSION="2.0.2 2025-02-23"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -145,26 +145,26 @@ if [[ -z $SSH_TOOL ]]; then
     fi
 fi
 #
-export SCP_TOOL
-if [[ -z $SCP_TOOL ]]; then
-    SCP_TOOL=$(type -P scp)
-    if [[ -z "$SCP_TOOL" ]]; then
-	echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
-	exit 5
-    fi
+export RMT_LAST_EMAIL_MSG
+if [[ -z $RMT_LAST_EMAIL_MSG ]]; then
+    RMT_LAST_EMAIL_MSG="/usr/ioccc/bin/last_email_msg.sh"
 fi
 #
-export RMT_RUN
-if [[ -z $RMT_RUN ]]; then
-    RMT_RUN="/usr/ioccc/bin/run.sh"
+export RMT_EMAIL_USER
+if [[ -z $RMT_EMAIL_USER ]]; then
+    RMT_EMAIL_USER="nobody"
+fi
+#
+export RMT_SUDO
+if [[ -z $RMT_SUDO ]]; then
+    RMT_SUDO="/bin/sudo"
 fi
 
 
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user]
-	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-r rmt_run]
-	cmd [args ..]
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-S rmt_sudo] [-l rmt_last_email_msg] [-m rmt_user]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -180,20 +180,18 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u us
 	-u rmt_user	ssh into this user (def: $RMT_USER)
 	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
-	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN)
-
-	cmd		command to run
-	[args ..]	args to supply to the cmd
+	-s ssh_tool		use local ssh_tool to ssh (def: $SSH_TOOL)
+	-S rmt_sudo		path to sudo on the remote server (def: $RMT_SUDO)
+	-l rmt_last_email_msg	path to last_email_msg.sh on the remote server (def: $RMT_LAST_EMAIL_MSG)
+	-m rmt_user		read last email message from rmt_user (def: $RMT_EMAIL_USER)
 
 Exit codes:
      0        all OK
-     1        cmd exited non-zero
+     1        remote execution of rmt_last_email_msg exited non-zero
      2        -h and help string printed or -V and version string printed
      3        command line error
      4        source of submit.rc file failed
      5        some critical local executable tool not found
-     6        remote execution of a tool failed, returned an exit code, or returned a malformed response
 
  >= 10        internal error
 
@@ -202,7 +200,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:H:s:r: flag; do
+while getopts :hv:VnNi:Ip:u:H:s:S:l:m: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -228,7 +226,11 @@ while getopts :hv:VnNi:Ip:u:H:s:r: flag; do
 	;;
     s) SSH_TOOL="$OPTARG"
 	;;
-    r) RMT_RUN="$OPTARG"
+    S) RMT_SUDO="$OPTARG"
+	;;
+    l) RMT_LAST_EMAIL_MSG="$OPTARG"
+	;;
+    m) RMT_EMAIL_USER="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -255,12 +257,10 @@ shift $(( OPTIND - 1 ));
 if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
-if [[ $# -le 0 ]]; then
-    echo "$0: ERROR: expected 1 args, found: $#" 1>&2
+if [[ $# -ne 0 ]]; then
+    echo "$0: ERROR: expected 0 args, found: $#" 1>&2
     exit 3
 fi
-export CMD="$1"
-shift 1
 
 
 # unless -I, verify the ioccc.rc file, if it exists
@@ -319,28 +319,30 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_RUN=$RMT_RUN" 1>&2
-    echo "$0: debug[3]: CMD=$CMD" 1>&2
-    echo "$0: debug[3]: args=$*" 1>&2
+    echo "$0: debug[3]: RMT_SUDO=$RMT_SUDO" 1>&2
+    echo "$0: debug[3]: RMT_LAST_EMAIL_MSG=$RMT_LAST_EMAIL_MSG" 1>&2
+    echo "$0: debug[3]: RMT_EMAIL_USER=$RMT_EMAIL_USER" 1>&2
 fi
 
 
-# run the run.sh command on a remote server
+# run the last_email_msg.sh under sudo on a remote server
+#
+# NOTE: We cannot use ssh_run.sh because we need to sudo to the remote email user, not
+#	on behalf SUDO_USER on the remote server's ~/.submit.rc file.
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$CMD" "$@"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_SUDO" -u "$RMT_EMAIL_USER" "$RMT_LAST_EMAIL_MSG" -m "$RMT_EMAIL_USER"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $* failed, error: $status" 1>&2
-	exit 6
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER failed, error: $status" 1>&2
+	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER" 1>&2
 fi
-
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
