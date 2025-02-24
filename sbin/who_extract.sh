@@ -65,15 +65,6 @@ if [[ -z $TMPDIR ]]; then
     TMPDIR="$TOPDIR/tmp"
 fi
 #
-export TOPDIR
-if [[ -z $TOPDIR ]]; then
-    TOPDIR="/var/ioccc"
-    if [[ ! -d $TOPDIR ]]; then
-	# not on submit server, assume testing in .
-	TOPDIR="."
-    fi
-fi
-#
 export IOCCC_RC
 if [[ -z $IOCCC_RC ]]; then
     IOCCC_RC="$HOME/.ioccc.rc"
@@ -173,20 +164,6 @@ if [[ $# -ne 2 ]]; then
 fi
 export WHO_IOCCC="$1"
 export FREELISTS_LST="$2"
-
-
-# move to the top of the registration tree
-#
-export CD_FAILED=""
-cd "$TOPDIR" || CD_FAILED="true"
-if [[ -n $CD_FAILED ]]; then
-    echo "$0: ERROR: cd $TOPDIR failed" 1>&2
-    exit 4
-fi
-if [[ ! -d users ]]; then
-    echo "$0: ERROR: $TOPDIR/users not a directory" 1>&2
-    exit 4
-fi
 
 
 # unless -I, verify the ioccc.rc file, if it exists

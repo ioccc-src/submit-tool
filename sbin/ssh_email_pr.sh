@@ -110,7 +110,7 @@ export DO_NOT_PROCESS=
 #
 export TMPDIR
 if [[ -z $TMPDIR ]]; then
-    TMPDIR="$TOPDIR/tmp"
+    TMPDIR="/tmp"
 fi
 #
 export IOCCC_RC
@@ -165,7 +165,6 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t appdir] [-T tmpdir] [
 	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
-	-t appdir	app directory path (def: $TOPDIR)
 	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
 
 	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
@@ -197,7 +196,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:T:i:Ip:u:H:s:r:c: flag; do
+while getopts :hv:VnNT:i:Ip:u:H:s:r:c: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -210,8 +209,6 @@ while getopts :hv:VnNt:T:i:Ip:u:H:s:r:c: flag; do
     n) NOOP="-n"
         ;;
     N) DO_NOT_PROCESS="-N"
-	;;
-    t) TOPDIR="$OPTARG"
 	;;
     T) TMPDIR="$OPTARG"
 	;;
@@ -259,20 +256,6 @@ if [[ $# -ne 1 ]]; then
     exit 3
 fi
 export IOCCCPASSWD_LST="$1"
-
-
-# move to the top of the registration tree
-#
-export CD_FAILED=""
-cd "$TOPDIR" || CD_FAILED="true"
-if [[ -n $CD_FAILED ]]; then
-    echo "$0: ERROR: cd $TOPDIR failed" 1>&2
-    exit 7
-fi
-if [[ ! -d users ]]; then
-    echo "$0: ERROR: $TOPDIR/users not a directory" 1>&2
-    exit 7
-fi
 
 
 # unless -I, verify the ioccc.rc file, if it exists
