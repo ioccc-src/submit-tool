@@ -99,7 +99,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.2 2025-02-23"
+export VERSION="2.0.3 2025-02-24"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -149,6 +149,11 @@ if [[ -z $SSH_TOOL ]]; then
 	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
 	exit 5
     fi
+fi
+#
+export RMT_LOADED_SH
+if [[ -z $RMT_LOADED_SH ]]; then
+    RMT_LOADED_SH="/usr/ioccc/bin/ls_loaded_slotdir.sh"
 fi
 
 
