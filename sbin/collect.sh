@@ -1086,9 +1086,11 @@ fi
 ANSWER=$("$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
 status="$?"
 if [[ -z $ANSWER ]]; then
-    echo "$0: ERROR: $RMT_STAGE_PY $RMT_SLOT_PATH answer was empty" 1>&2
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: $RMT_STAGE_PY $RMT_SLOT_PATH answer was empty" 1>&2
+    fi
     # we have no response from RMT_STAGE_PY - we can do thing more at this stage
-    exit 6
+    exit 0
 fi
 if [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: stage.py returned: $ANSWER" 1>&2
