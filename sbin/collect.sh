@@ -101,11 +101,12 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.3.4 2025-02-23"
+export VERSION="2.3.5 2025-02-24"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
+export NOOP=
 export DO_NOT_PROCESS=
 #
 export RMT_TOPDIR
@@ -581,7 +582,7 @@ function unexpected_collect
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
 	[-p rmt_port] [-u rmt_user] [-H rmt_host]
 	[-s ssh_tool] [-c scp_tool] [-s sha256_tool] [-r rsync_root] [-x xz] [-g git_tool] [-G]
 	[-z txzchk] [-y chkenry] [-S rmt_stage] [-C slot_comment] [-w workdir]
@@ -591,6 +592,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-t rmt_topdir] [-i ioccc.rc] 
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
+	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
 	-t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
@@ -641,7 +643,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VNt:i:Ip:u:H:s:c:2:r:x:g:Gz:y:S:C:w: flag; do
+while getopts :hv:VnNt:i:Ip:u:H:s:c:2:r:x:g:Gz:y:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -650,6 +652,8 @@ while getopts :hv:VNt:i:Ip:u:H:s:c:2:r:x:g:Gz:y:S:C:w: flag; do
 	;;
     V) echo "$VERSION"
 	exit 2
+	;;
+    n) NOOP="-n"
 	;;
     N) DO_NOT_PROCESS="-N"
 	;;
@@ -770,6 +774,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VERSION=$VERSION" 1>&2
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: RMT_TOPDIR=$RMT_TOPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
@@ -881,41 +886,49 @@ fi
 
 # form temporary git commit message if git is to be used
 #
-if [[ -n $USE_GIT ]]; then
-    export TMP_GIT_COMMIT="$WORKDIR/.tmp.$NAME.GIT_COMMIT.$$.tmp"
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo  "$0: debug[3]: temporary git commit message file: $TMP_GIT_COMMIT" 1>&2
+export TMP_GIT_COMMIT="$WORKDIR/.tmp.$NAME.GIT_COMMIT.$$.tmp"
+if [[ -z $NOOP ]]; then
+    if [[ -n $USE_GIT ]]; then
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo  "$0: debug[3]: temporary git commit message file: $TMP_GIT_COMMIT" 1>&2
+	fi
+	trap 'rm -f $TMP_GIT_COMMIT; exit' 0 1 2 3 15
+	rm -f "$TMP_GIT_COMMIT"
+	if [[ -e $TMP_GIT_COMMIT ]]; then
+	    echo "$0: ERROR: cannot remove git commit message file: $TMP_GIT_COMMIT" 1>&2
+	    exit 10
+	fi
+	: >  "$TMP_GIT_COMMIT"
+	if [[ ! -e $TMP_GIT_COMMIT ]]; then
+	    echo "$0: ERROR: cannot create git commit message file: $TMP_GIT_COMMIT" 1>&2
+	    exit 11
+	fi
     fi
-    trap 'rm -f $TMP_GIT_COMMIT; exit' 0 1 2 3 15
-    rm -f "$TMP_GIT_COMMIT"
-    if [[ -e $TMP_GIT_COMMIT ]]; then
-	echo "$0: ERROR: cannot remove git commit message file: $TMP_GIT_COMMIT" 1>&2
-	exit 10
-    fi
-    : >  "$TMP_GIT_COMMIT"
-    if [[ ! -e $TMP_GIT_COMMIT ]]; then
-	echo "$0: ERROR: cannot create git commit message file: $TMP_GIT_COMMIT" 1>&2
-	exit 11
-    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not form git commit message: $TMP_GIT_COMMIT" 1>&2
 fi
 
 
 # form temporary stderr collection file
 #
 export TMP_STDERR="$WORKDIR/.tmp.$NAME.STDERR.$$.tmp"
-if [[ $V_FLAG -ge 3 ]]; then
-    echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
-fi
-trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
-rm -f "$TMP_STDERR"
-if [[ -e $TMP_STDERR ]]; then
-    echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
-    exit 12
-fi
-: >  "$TMP_STDERR"
-if [[ ! -e $TMP_STDERR ]]; then
-    echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
-    exit 13
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
+    fi
+    trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
+    rm -f "$TMP_STDERR"
+    if [[ -e $TMP_STDERR ]]; then
+	echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
+	exit 12
+    fi
+    : >  "$TMP_STDERR"
+    if [[ ! -e $TMP_STDERR ]]; then
+	echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
+	exit 13
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not form temporary stderr collection file: $TMP_STDERR" 1>&2
 fi
 
 
@@ -1025,6 +1038,16 @@ fi
 if [[ -n $DO_NOT_PROCESS ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo "$0: debug[3]: arguments parsed, -N given, exiting 0" 1>&2
+    fi
+    exit 0
+fi
+
+
+# -n also stops early before any processing is performed because adding NOOP to individual code is too complex
+#
+if [[ -n $NOOP ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: arguments parsed, -n given, exiting 0" 1>&2
     fi
     exit 0
 fi

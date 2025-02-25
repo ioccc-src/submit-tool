@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.5 2025-02-24"
+export VERSION="2.0.6 2025-02-24"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -163,7 +163,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VNi:Ic:s: flag; do
+while getopts :hv:VnNi:Ic:s: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -172,6 +172,8 @@ while getopts :hv:VNi:Ic:s: flag; do
 	;;
     V) echo "$VERSION"
 	exit 2
+	;;
+    n) NOOP="-n"
 	;;
     N) DO_NOT_PROCESS="-N"
 	;;
