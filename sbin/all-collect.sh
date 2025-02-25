@@ -100,11 +100,12 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.4 2025-02-23"
+export VERSION="2.0.5 2025-02-24"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
+export NOOP=
 export DO_NOT_PROCESS=
 #
 #
@@ -137,6 +138,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-N] [-T tmpdir] [-i ioccc.rc] [-I]
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
+	-n		go thru the actions, but do not update any files (def: do the action)
 	-N		do not process anything, just parse arguments (def: process something)
 
 	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
@@ -252,6 +254,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VERSION=$VERSION" 1>&2
     echo "$0: debug[3]: NAME=$NAME" 1>&2
     echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: NOOP=$NOOP" 1>&2
     echo "$0: debug[3]: DO_NOT_PROCESS=$DO_NOT_PROCESS" 1>&2
     echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
@@ -261,31 +264,45 @@ if [[ $V_FLAG -ge 3 ]]; then
 fi
 
 
+# -N stops early before any processing is performed
+#
+if [[ -n $DO_NOT_PROCESS ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: arguments parsed, -N given, exiting 0" 1>&2
+    fi
+    exit 0
+fi
+
+
 # tmpdir must be a writable directory
 #
-if [[ ! -d $TMPDIR ]]; then
-    mkdir -p "$TMPDIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mkdir -p $TMPDIR failed, error: $status" 1>&2
-	exit 10
+if [[ -z $NOOP ]]; then
+    if [[ ! -d $TMPDIR ]]; then
+	mkdir -p "$TMPDIR"
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: mkdir -p $TMPDIR failed, error: $status" 1>&2
+	    exit 10
+	fi
     fi
-fi
-if [[ ! -d $TMPDIR ]]; then
-    echo "$0: ERROR: cannot create TMPDIR directory: $TMPDIR" 1>&2
-    exit 11
-fi
-if [[ ! -w $TMPDIR ]]; then
-    chmod 2770 "$TMPDIR"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-        echo "$0: ERROR: chmod 2770 $TMPDIR ailed, error: $status" 1>&2
-	exit 12
+    if [[ ! -d $TMPDIR ]]; then
+	echo "$0: ERROR: cannot create TMPDIR directory: $TMPDIR" 1>&2
+	exit 11
     fi
-fi
-if [[ ! -w $TMPDIR ]]; then
-    echo "$0: ERROR: cannot make TMPDIR directory writable: $TMPDIR" 1>&2
-    exit 13
+    if [[ ! -w $TMPDIR ]]; then
+	chmod 2770 "$TMPDIR"
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: chmod 2770 $TMPDIR ailed, error: $status" 1>&2
+	    exit 12
+	fi
+    fi
+    if [[ ! -w $TMPDIR ]]; then
+	echo "$0: ERROR: cannot make TMPDIR directory writable: $TMPDIR" 1>&2
+	exit 13
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not verify that tmpdir must be a writable directory" 1>&2
 fi
 
 
@@ -308,19 +325,23 @@ fi
 # form temporary stderr collection file
 #
 export TMP_STDERR="$TMPDIR/.tmp.$NAME.STDERR.$$.tmp"
-if [[ $V_FLAG -ge 3 ]]; then
-    echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
-fi
-trap 'rm -f $TMP_STDERR; exit' 0 1 2 3 15
-rm -f "$TMP_STDERR"
-if [[ -e $TMP_STDERR ]]; then
-    echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
-    exit 10
-fi
-: >  "$TMP_STDERR"
-if [[ ! -e $TMP_STDERR ]]; then
-    echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
-    exit 11
+if [[ -z $NOOP ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
+    fi
+    trap 'rm -f $TMP_STDERR; exit' 0 1 2 3 15
+    rm -f "$TMP_STDERR"
+    if [[ -e $TMP_STDERR ]]; then
+	echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
+	exit 10
+    fi
+    : >  "$TMP_STDERR"
+    if [[ ! -e $TMP_STDERR ]]; then
+	echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
+	exit 11
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: because of -n, did not form temporary stderr collection file: $TMP_STDERR" 1>&2
 fi
 
 
@@ -337,16 +358,20 @@ for slot_path in "${SLOT[@]}"; do
 
     # process this slot path
     #
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to collect from $slot_path" 1>&2
-    fi
-    "$COLLECT_SH" "$slot_path" > "$TMP_STDERR" 2>&1
-    status="$?"
-    if [[ $status -ne 0 || -s $TMP_STDERR ]]; then
-	echo "$0: Warning: $COLLECT_SH $slot_path failed, error: $status" 1>&2
-	echo "$0: Warning: stdout and stderr output starts below"
-	cat "$TMP_STDERR"
-	echo "$0: Warning: stdout and stderr output ends above"
+    if [[ -z $NOOP ]]; then
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to collect from $slot_path" 1>&2
+	fi
+	"$COLLECT_SH" "$slot_path" > "$TMP_STDERR" 2>&1
+	status="$?"
+	if [[ $status -ne 0 || -s $TMP_STDERR ]]; then
+	    echo "$0: Warning: $COLLECT_SH $slot_path failed, error: $status" 1>&2
+	    echo "$0: Warning: stdout and stderr output starts below"
+	    cat "$TMP_STDERR"
+	    echo "$0: Warning: stdout and stderr output ends above"
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not collect from $slot_path" 1>&2
     fi
 done
 
