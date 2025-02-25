@@ -497,12 +497,12 @@ function change_slot_comment
     # ssh to remove server to run RMT_SET_SLOT_STATUS_PY to set slot comment and set collected to True
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null" 1>&2
+	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null 2>&1
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' > /dev/null failed, error: $status" 1>&2
+	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1 failed, error: $status" 1>&2
 	return 2
     fi
 
