@@ -154,6 +154,8 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 
 # scripts that are not run, not installed on the submit server
 #
+# Executable files to install under ${DESTSDIR}.
+#
 # NOTE: Optional ~/.ioccc.org and select optional environment variables may help control these commands.
 #
 SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_passwd.sh \
@@ -175,6 +177,7 @@ FLASK_KEY= etc/.secret
 # We install ${BIN_SRC} executables under this directory.
 #
 DESTDIR= /usr/local/bin
+DESTSDIR= /usr/local/sbin
 
 # user to root_install under
 #
@@ -374,8 +377,8 @@ sbin_install: ${SBIN_SRC}
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
-	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
-	${INSTALL} -o root -g root -m 0555 ${SBIN_SRC} ${DESTDIR}
+	${INSTALL} -o root -g root -m 0755 -d ${DESTSDIR}
+	${INSTALL} -o root -g root -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${V} echo DEBUG =-= $@ start =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
