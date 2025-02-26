@@ -373,12 +373,16 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
+# sbin_install is for installing on hosts OTHER THAN the submit server
+#
+# macOS does not have a group called root, so we use the GID 0 (-g 0) instead
+#
 sbin_install: ${SBIN_SRC}
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
-	${INSTALL} -o root -g root -m 0755 -d ${DESTSDIR}
-	${INSTALL} -o root -g root -m 0555 ${SBIN_SRC} ${DESTSDIR}
+	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSDIR}
+	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${V} echo DEBUG =-= $@ start =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
