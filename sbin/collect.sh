@@ -430,7 +430,7 @@ function mv_to_errors
     # firewall - file must exist
     #
     if [[ ! -e $FILE ]]; then
-        echo "$0: Warning: in mv_to_errors: does not exist: $MSG_FILE" 1>&2
+        echo "$0: Warning: in mv_to_errors: does not exist: $FILE" 1>&2
         return 2
     fi
 
