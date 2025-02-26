@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.6 2025-02-24"
+export VERSION="2.0.7 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -368,9 +368,11 @@ for slot_path in "${SLOT[@]}"; do
 	status="$?"
 	if [[ $status -ne 0 || -s $TMP_STDERR ]]; then
 	    echo "$0: Warning: $COLLECT_SH $slot_path failed, error: $status" 1>&2
-	    echo "$0: Warning: stdout and stderr output starts below"
-	    cat "$TMP_STDERR"
-	    echo "$0: Warning: stdout and stderr output ends above"
+	    if [[ -s $TMP_STDERR ]]; then
+		echo "$0: Warning: stdout and stderr output starts below" 1>&2
+		cat "$TMP_STDERR" 1>&2
+		echo "$0: Warning: stdout and stderr output ends above" 1>&2
+	    fi
 	fi
     elif [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: because of -n, did not collect from $slot_path" 1>&2

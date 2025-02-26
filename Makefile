@@ -408,7 +408,7 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	# was: python3 setup.py install
 	${PYTHON} -m pip install --force-reinstall .
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
 	@if [[ ! -s ${DOCROOT}/${FLASK_KEY} ]]; then \
 	    echo ${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc; \
@@ -423,14 +423,14 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	    echo ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${STATE} ${DOCROOT}/etc; \
 	    ${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${STATE} ${DOCROOT}/etc; \
 	fi
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/staged
+	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/staged
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${STATIC_SRC} ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/templates
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
 	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/tmp
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/users
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/unexpected
+	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/users
+	${INSTALL} -o ${USER} -g ${GROUP} -m 2770 -d ${DOCROOT}/unexpected
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/wsgi
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}

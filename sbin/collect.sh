@@ -101,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.4.0 2025-02-24"
+export VERSION="2.4.1 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -126,12 +126,13 @@ if [[ -z $RMT_PORT ]]; then
     RMT_PORT=22
 fi
 #
+export USER_NAME
+if [[ -z $USER_NAME ]]; then
+    USER_NAME=$(id -u -n)
+fi
+#
 export RMT_USER
 if [[ -z $RMT_USER ]]; then
-    export USER_NAME
-    if [[ -z $USER_NAME ]]; then
-	USER_NAME=$(id -u -n)
-    fi
     if [[ -z $USER_NAME ]]; then
 	RMT_USER="nobody"
     else
@@ -562,20 +563,20 @@ function unexpected_collect
     # collect all remote files under unexpected
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in unexpected_collect: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/ $ERRORS" 1>&2
+	echo "$0: debug[1]: in unexpected_collect: about to: $RSYNC_TOOL -z -e \"$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20\" -a -S -0 --no-motd --remove-source-files $USER_NAME@$SERVER:$RMT_TOPDIR/unexpected/ $ERRORS" 1>&2
     fi
     if [[ -n $USE_GIT ]]; then
 	{
 	    echo
-	    echo "Fetching $UNEXPECTED_COUNT unexpected file(s) from RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/"
+	    echo "Fetching $UNEXPECTED_COUNT unexpected file(s) from $USER_NAME@$SERVER:$RMT_TOPDIR/unexpected/"
 	    echo "Output from $RSYNC_TOOL follows:"
 	    echo
 	} | if [[ -n $USE_GIT ]]; then
 	    cat >> "$TMP_GIT_COMMIT"
-	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files -v "$RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS" >> "$TMP_GIT_COMMIT" 2>&1
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files -v "$USER_NAME@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS" >> "$TMP_GIT_COMMIT" 2>&1
 	else
 	    cat 1>&2
-	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$RMT_USER@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS"
+	    "$RSYNC_TOOL" -z -e "$SSH_TOOL -a -T -p $RMT_PORT -q -x -o Compression=no -o ConnectionAttempts=20" -a -S -0 --no-motd --remove-source-files "$USER_NAME@$SERVER:$RMT_TOPDIR/unexpected/" "$ERRORS"
 	fi
     fi
 
@@ -738,8 +739,8 @@ RMT_SLOT_PATH="$1"
 SLOT_NUM=$(basename "$RMT_SLOT_PATH")
 export SLOT_NUM
 RMT_SLOT_DIRNAME=$(dirname "$RMT_SLOT_PATH")
-USERNAME=$(basename "$RMT_SLOT_DIRNAME")
-export USERNAME
+IOCCC_USERNAME=$(basename "$RMT_SLOT_DIRNAME")
+export IOCCC_USERNAME
 
 
 # unless -I, verify the ioccc.rc file, if it exists
@@ -788,6 +789,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
     echo "$0: debug[3]: CAP_I_FLAG=$CAP_I_FLAG" 1>&2
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
+    echo "$0: debug[3]: USER_NAME=$USER_NAME" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
@@ -805,7 +807,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: WORKDIR=$WORKDIR" 1>&2
     echo "$0: debug[3]: RMT_SLOT_PATH=$RMT_SLOT_PATH" 1>&2
     echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM" 1>&2
-    echo "$0: debug[3]: USERNAME=$USERNAME" 1>&2
+    echo "$0: debug[3]: IOCCC_USERNAME=$IOCCC_USERNAME" 1>&2
 fi
 
 
@@ -1265,7 +1267,7 @@ if [[ $STAGED_PATH == "." || $PROBLEM_CODE -ne 0 ]]; then
 
     # update the slot comment on the remote server to note the submit file corrupted on the server!
     #
-    change_slot_comment "$USERNAME" "$SLOT_NUM" "server slot error code: $PROBLEM_CODE! Use mkiocccentry to rebuild and resubmit to this slot."
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "server slot error code: $PROBLEM_CODE! Use mkiocccentry to rebuild and resubmit to this slot."
 
     # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
     #
@@ -1372,7 +1374,7 @@ if [[ $DEST_HEXDIGEST == "$HEXDIGEST" ]]; then
 
     # update the slot comment on the remote server to note the submit file was fetched
     #
-    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge. The format test is pending."
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge. The format test is pending."
 
 # case: SHA256 hex digest hash of destination file is wrong
 #
@@ -1390,11 +1392,11 @@ else
 
     # update the slot comment on the remote server to note the submit file corrupted on the server!
     #
-    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file corrupted on the server! Use mkiocccentry to rebuild and resubmit to this slot."
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file corrupted on the server! Use mkiocccentry to rebuild and resubmit to this slot."
 
     # move staged path file under ERRORS
     #
-    mv_to_errors "$STAGED_PATH"
+    mv_to_errors "$DEST"
 
     # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
     #
@@ -1439,7 +1441,7 @@ if [[ $PROBLEM_CODE -ne 0 && -f $DEST ]]; then
 
     # move staged path file under ERRORS
     #
-    mv_to_errors "$STAGED_PATH"
+    mv_to_errors "$DEST"
 
     # if using git, add ERRORS
     #
@@ -1476,7 +1478,7 @@ elif [[ -f $DEST ]]; then
 
 	# update the slot comment on the remote server to note txxchk test failure
 	#
-	change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed the txxchk test! Use mkiocccentry to rebuild and resubmit to this slot."
+	change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed the txxchk test! Use mkiocccentry to rebuild and resubmit to this slot."
 
 	# move destination under ERRORS
 	#
@@ -1587,7 +1589,7 @@ elif [[ -f $DEST ]]; then
 
 		    # update the slot comment on the remote server to note untar faulure
 		    #
-		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed to untar! Use mkiocccentry to rebuild and resubmit to this slot."
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed to untar! Use mkiocccentry to rebuild and resubmit to this slot."
 
 		    # move destination under ERRORS
 		    #
@@ -1730,7 +1732,7 @@ elif [[ -f $DEST ]]; then
 
 			# update the slot comment on the remote server to note chkentry faulure
 			#
-			change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
+			change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
 
 			# move destination under ERRORS
 			#
@@ -1798,7 +1800,7 @@ elif [[ -f $DEST ]]; then
 
 		    # report submission success
 		    #
-		    change_slot_comment "$USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
 		fi
 	    fi
 	fi
