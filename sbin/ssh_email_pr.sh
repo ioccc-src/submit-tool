@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-26"
+export VERSION="2.0.2 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -156,7 +156,7 @@ fi
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t appdir] [-T tmpdir] [-i ioccc.rc] [-I]
 	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_run]
-	[-c email_pr.py] iocccpasswd.lst
+	[-c email_pr] iocccpasswd.lst
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -176,7 +176,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t appdir] [-T tmpdir] [
 
 	-s ssh_run	use local ssh_run to ssh (def: $SSH_RUN_SH)
 
-	-c email_pr.py	remote email_pr.py tool on the remote server (def: $RMT_EMAIL_PR_PY)
+	-c email_pr	remote email_pr.py tool on the remote server (def: $RMT_EMAIL_PR_PY)
 
 	iocccpasswd.lst	replace iocccpasswd.lst if email addresses found in remote IOCCC password file
 

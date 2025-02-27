@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.3 2025-02-26"
+export VERSION="2.0.4 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -164,7 +164,7 @@ fi
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user]
-	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-S rmt_sudo] [-l rmt_last_email_msg] [-m rmt_user]
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-S rmt_sudo] [-l rmt_last_email_msg] [-m rmt_email_user]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -183,7 +183,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u us
 	-s ssh_tool		use local ssh_tool to ssh (def: $SSH_TOOL)
 	-S rmt_sudo		path to sudo on the remote server (def: $RMT_SUDO)
 	-l rmt_last_email_msg	path to last_email_msg.sh on the remote server (def: $RMT_LAST_EMAIL_MSG_SH)
-	-m rmt_user		read last email message from rmt_user (def: $RMT_EMAIL_USER)
+	-m rmt_email_user	read last email message from rmt_email_user (def: $RMT_EMAIL_USER)
 
 Exit codes:
      0        all OK

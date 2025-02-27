@@ -3,7 +3,7 @@
 # multi_new_user.sh - create multiple IOCCC submit server accounts and send notification Emails
 #
 # We will use new_user.sh to generate zero or more IOCCC submit server accounts,
-# and for those accounts created, send send notification Emails
+# and for those accounts created, send send notification Emails.
 #
 # Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.3 2025-02-26"
+export VERSION="2.0.4 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -171,7 +171,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i submit.rc] [-I] [-t t
 
 	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
 	-r reg_email	tool to send a IOCCC submit server registration email (def: $REG_EMAIL_SH)
-	-e new_user	tool to create account and send notification Email (def: $REG_EMAIL_SH)
+	-e new_user	tool to create account and send notification Email (def: $NEW_USER_SH)
 	-p ioccc_passwd	tool to create accounts in the IOCCC submit server (def: $IOCCC_PASSWD_PY)
 
 	[file]		list of 0 or more email addresses, one per line (def: read stdin)

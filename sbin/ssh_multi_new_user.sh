@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #
-# ssh_run.sh - run the run.sh command on a remote IOCCC submit server
+# ssh_multi_new_user.sh - create multiple IOCCC submit server accounts and send email no remote server
 #
-# Using ssh, we execute on the remote IOCCC submit server, the `run.sh`
-# tool, which may in turn do a sudo, in order to run some command with
-# optional options and args.
+# On the remote server, we will use multi_new_user.sh generate zero or more IOCCC submit server accounts,
+# and for those accounts created, send send notification Emails.
+#
+# When we call multi_new_user.sh on the remote server, we will do so without a file argument.
+# If we are given a file argument, we will feed that file as stdin.
 #
 # NOTE: For nearly environment variables initialized in the "setup" section,
 #	those environment variables default any value found in the environment.
@@ -100,7 +102,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.5 2025-02-26"
+export VERSION="2.0.0 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -136,37 +138,31 @@ if [[ -z $SERVER ]]; then
     SERVER="unknown.example.org"
 fi
 #
-export SSH_TOOL
-if [[ -z $SSH_TOOL ]]; then
-    SSH_TOOL=$(type -P ssh)
-    if [[ -z "$SSH_TOOL" ]]; then
+export SSH_RUN_SH
+if [[ -z $SSH_RUN_SH ]]; then
+    SSH_RUN_SH=$(type -P ssh)
+    if [[ -z "$SSH_RUN_SH" ]]; then
 	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
 	exit 5
     fi
 fi
 #
-export SCP_TOOL
-if [[ -z $SCP_TOOL ]]; then
-    SCP_TOOL=$(type -P scp)
-    if [[ -z "$SCP_TOOL" ]]; then
-	echo "$0: FATAL: scp tool is not installed or not in \$PATH" 1>&2
-	exit 5
-    fi
+export RMT_MULTI_NEW_USER_SH
+if [[ -z $RMT_MULTI_NEW_USER_SH ]]; then
+    RMT_MULTI_NEW_USER_SH="/usr/ioccc/bin/last_email_msg.sh"
 fi
 #
-export RMT_RUN_SH
-if [[ -z $RMT_RUN_SH ]]; then
-    RMT_RUN_SH="/usr/ioccc/bin/run.sh"
+export RMT_SUDO
+if [[ -z $RMT_SUDO ]]; then
+    RMT_SUDO="/bin/sudo"
 fi
-#
-export SSH_N_FLAG="-n"
 
 
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u user]
-	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-r rmt_run] [-S]
-	cmd [args ..]
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_run]
+	[-c multi_new_user] [email.lst]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -182,21 +178,19 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u us
 	-u rmt_user	ssh into this user (def: $RMT_USER)
 	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
-	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN_SH)
-	-S		do not add -n flag to ssh (def: do)
+	-s ssh_run	use local ssh_run to ssh (def: $SSH_RUN_SH)
 
-	cmd		command to run
-	[args ..]	args to supply to the cmd
+	-c multi_new_user	remote multi_new_user tool on the remote server (def: $RMT_MULTI_NEW_USER_SH)
+
+	[email.lst]	list of email addresses, one per line, to process (def: read from stdin)
 
 Exit codes:
      0        all OK
-     1        cmd exited non-zero
+     1        remote execution of multi_new_user exited non-zero
      2        -h and help string printed or -V and version string printed
      3        command line error
      4        source of submit.rc file failed
      5        some critical local executable tool not found
-     6        remote execution of a tool failed, returned an exit code, or returned a malformed response
 
  >= 10        internal error
 
@@ -205,7 +199,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ip:u:H:s:r:S flag; do
+while getopts :hv:VnNi:Ip:u:H:s:c: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -229,11 +223,9 @@ while getopts :hv:VnNi:Ip:u:H:s:r:S flag; do
 	;;
     H) SERVER="$OPTARG"
 	;;
-    s) SSH_TOOL="$OPTARG"
+    s) SSH_RUN_SH="$OPTARG"
 	;;
-    r) RMT_RUN_SH="$OPTARG"
-	;;
-    S) SSH_N_FLAG=""
+    c) RMT_MULTI_NEW_USER_SH="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -260,12 +252,14 @@ shift $(( OPTIND - 1 ));
 if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
-if [[ $# -le 0 ]]; then
-    echo "$0: ERROR: expected 1 args, found: $#" 1>&2
-    exit 3
-fi
-export CMD="$1"
-shift 1
+export EMAIL_LIST=
+case "$#" in
+0) ;;
+1) EMAIL_LIST="$1" ;;
+*) echo "$0: ERROR: expected 0 or 1 args, found: $#" 1>&2
+  exit 3
+  ;;
+esac
 
 
 # unless -I, verify the ioccc.rc file, if it exists
@@ -300,10 +294,10 @@ if [[ -n $IOCCC_RC ]]; then
 fi
 
 
-# firewall - SSH_TOOL must be executable
+# firewall - SSH_RUN_SH must be executable
 #
-if [[ ! -x $SSH_TOOL ]]; then
-    echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
+if [[ ! -x $SSH_RUN_SH ]]; then
+    echo "$0: ERROR: ssh tool not executable: $SSH_RUN_SH" 1>&2
     exit 5
 fi
 
@@ -323,47 +317,48 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
-    echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_RUN_SH=$RMT_RUN_SH" 1>&2
-    echo "$0: debug[3]: SSH_N_FLAG=$SSH_N_FLAG" 1>&2
-    echo "$0: debug[3]: CMD=$CMD" 1>&2
-    echo "$0: debug[3]: args=$*" 1>&2
+    echo "$0: debug[3]: SSH_RUN_SH=$SSH_RUN_SH" 1>&2
+    echo "$0: debug[3]: RMT_SUDO=$RMT_SUDO" 1>&2
+    echo "$0: debug[3]: RMT_MULTI_NEW_USER_SH=$RMT_MULTI_NEW_USER_SH" 1>&2
+    echo "$0: debug[3]: EMAIL_LIST=$EMAIL_LIST" 1>&2
 fi
 
 
-# run the run.sh command on a remote server
+# run the last_email_msg.sh under sudo on a remote server
+#
+# NOTE: We cannot use ssh_run.sh because we need to sudo to the remote email user, not
+#	on behalf SUDO_USER on the remote server's ~/.submit.rc file.
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	if [[ -z $SSH_N_FLAG ]]; then
-	    echo "$0: debug[1]: about to: $SSH_TOOL -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
+	if [[ -z $EMAIL_LIST ]]; then
+	    echo "$0: debug[1]: about to: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH" 1>&2
 	else
-	    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
+	    echo "$0: debug[1]: about to: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH < $EMAIL_LIST" 1>&2
 	fi
     fi
-    if [[ -z $SSH_N_FLAG ]]; then
-	"$SSH_TOOL" -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" "$CMD" "$@"
+    if [[ -z $EMAIL_LIST ]]; then
+	"$SSH_RUN_SH" -S "$RMT_MULTI_NEW_USER_SH"
 	status="$?"
     else
-	"$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" "$CMD" "$@"
+	"$SSH_RUN_SH" -S "$RMT_MULTI_NEW_USER_SH" < "$EMAIL_LIST"
 	status="$?"
     fi
     if [[ $status -ne 0 ]]; then
-	if [[ -z $SSH_N_FLAG ]]; then
-	    echo "$0: Warning: $SSH_TOOL -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $* failed, error: $status" 1>&2
+	if [[ -z $EMAIL_LIST ]]; then
+	    echo "$0: Warning: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH failed, error: $status" 1>&2
 	else
-	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $* failed, error: $status" 1>&2
+	    echo "$0: Warning: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH < $EMAIL_LIST failed, error: $status" 1>&2
 	fi
-	exit 6
+	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    if [[ -z $SSH_N_FLAG ]]; then
-	echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
+    if [[ -z $EMAIL_LIST ]]; then
+	echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH" 1>&2
     else
-	echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
+	echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH -S $RMT_MULTI_NEW_USER_SH < $EMAIL_LIST" 1>&2
     fi
 fi
-
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
