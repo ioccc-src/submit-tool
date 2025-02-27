@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.3 2025-02-24"
+export VERSION="2.0.4 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -154,9 +154,9 @@ if [[ -z $SCP_TOOL ]]; then
     fi
 fi
 #
-export RMT_RUN
-if [[ -z $RMT_RUN ]]; then
-    RMT_RUN="/usr/ioccc/bin/run.sh"
+export RMT_RUN_SH
+if [[ -z $RMT_RUN_SH ]]; then
+    RMT_RUN_SH="/usr/ioccc/bin/run.sh"
 fi
 
 
@@ -181,7 +181,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u us
 	-H rmt_host	ssh host to use (def: $SERVER)
 
 	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
-	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN)
+	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN_SH)
 
 	cmd		command to run
 	[args ..]	args to supply to the cmd
@@ -228,7 +228,7 @@ while getopts :hv:VnNi:Ip:u:H:s:r: flag; do
 	;;
     s) SSH_TOOL="$OPTARG"
 	;;
-    r) RMT_RUN="$OPTARG"
+    r) RMT_RUN_SH="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -319,7 +319,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_RUN=$RMT_RUN" 1>&2
+    echo "$0: debug[3]: RMT_RUN_SH=$RMT_RUN_SH" 1>&2
     echo "$0: debug[3]: CMD=$CMD" 1>&2
     echo "$0: debug[3]: args=$*" 1>&2
 fi
@@ -329,16 +329,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$CMD" "$@"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" "$CMD" "$@"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $* failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $* failed, error: $status" 1>&2
 	exit 6
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $CMD $*" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $CMD $*" 1>&2
 fi
 
 

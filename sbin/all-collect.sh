@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.7 2025-02-26"
+export VERSION="2.0.8 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -121,12 +121,12 @@ fi
 #
 export COLLECT_SH
 if [[ -z $COLLECT_SH ]]; then
-    COLLECT_SH="/usr/ioccc/bin/collect.sh"
+    COLLECT_SH="/usr/ioccc/sbin/collect.sh"
 fi
 #
 export SUBMITTED_SLOTS_SH
 if [[ -z $SUBMITTED_SLOTS_SH ]]; then
-    SUBMITTED_SLOTS_SH="/usr/ioccc/bin/submitted_slots.sh"
+    SUBMITTED_SLOTS_SH="/usr/ioccc/sbin/submitted_slots.sh"
 fi
 
 

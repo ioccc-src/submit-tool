@@ -88,7 +88,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup
 #
-export VERSION="2.0.1 2025-02-22"
+export VERSION="2.0.2 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -123,11 +123,11 @@ if [[ -z $REG_EMAIL_SH ]]; then
     fi
 fi
 #
-export IOCCC_PASSWD
-if [[ -z $IOCCC_PASSWD ]]; then
-    IOCCC_PASSWD=$(type -P ioccc_passwd.py)
-    if [[ -z $IOCCC_PASSWD ]]; then
-	IOCCC_PASSWD="bin/ioccc_passwd.py"
+export IOCCC_PASSWD_PY
+if [[ -z $IOCCC_PASSWD_PY ]]; then
+    IOCCC_PASSWD_PY=$(type -P ioccc_passwd.py)
+    if [[ -z $IOCCC_PASSWD_PY ]]; then
+	IOCCC_PASSWD_PY="/usr/ioccc/bin/ioccc_passwd.py"
     fi
 fi
 #
@@ -162,7 +162,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t topdir] [-T tmpdir]
 
 	-g gen_acct	tool to generate a new IOCCC submit server account (def: $GEN_ACCT_SH)
 	-r reg_email	tool to send a IOCCC submit server registration email (def: $REG_EMAIL_SH)
-	-p ioccc_passwd	tool to create accounts in the IOCCC submit server (def: $IOCCC_PASSWD)
+	-p ioccc_passwd	tool to create accounts in the IOCCC submit server (def: $IOCCC_PASSWD_PY)
 
 	email		email address that we registed with the IOCCC
 
@@ -203,7 +203,7 @@ while getopts :hv:VnNt:T:g:r:p: flag; do
 	;;
     r) REG_EMAIL_SH="$OPTARG"
 	;;
-    p) IOCCC_PASSWD="$OPTARG"
+    p) IOCCC_PASSWD_PY="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -253,7 +253,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: TMPDIR=$TMPDIR" 1>&2
     echo "$0: debug[3]: GEN_ACCT_SH=$GEN_ACCT_SH" 1>&2
     echo "$0: debug[3]: REG_EMAIL_SH=$REG_EMAIL_SH" 1>&2
-    echo "$0: debug[3]: IOCCC_PASSWD=$IOCCC_PASSWD" 1>&2
+    echo "$0: debug[3]: IOCCC_PASSWD_PY=$IOCCC_PASSWD_PY" 1>&2
     echo "$0: debug[3]: MAIL_HEAD=$MAIL_HEAD" 1>&2
     echo "$0: debug[3]: MAIL_TAIL=$MAIL_TAIL" 1>&2
     echo "$0: debug[3]: NOOP=$NOOP" 1>&2
@@ -318,8 +318,8 @@ fi
 
 # new_user.sh must be executable
 #
-if [[ ! -x $IOCCC_PASSWD ]]; then
-    echo "$0: ERROR: ioccc_passwd.py not executable: $IOCCC_PASSWD" 1>&2
+if [[ ! -x $IOCCC_PASSWD_PY ]]; then
+    echo "$0: ERROR: ioccc_passwd.py not executable: $IOCCC_PASSWD_PY" 1>&2
     exit 5
 fi
 
@@ -412,9 +412,9 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to run: $GEN_ACCT_SH -p $IOCCC_PASSWD $EMAIL > $TMP_NEW_ACCT_INFO" 1>&1
+	echo "$0: debug[1]: about to run: $GEN_ACCT_SH -p $IOCCC_PASSWD_PY $EMAIL > $TMP_NEW_ACCT_INFO" 1>&1
     fi
-    "$GEN_ACCT_SH" -p "$IOCCC_PASSWD" "$EMAIL" > "$TMP_NEW_ACCT_INFO"
+    "$GEN_ACCT_SH" -p "$IOCCC_PASSWD_PY" "$EMAIL" > "$TMP_NEW_ACCT_INFO"
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: $GEN_ACCT_SH $EMAIL failed, error: $status" 1>&2
@@ -425,7 +425,7 @@ if [[ -z $NOOP ]]; then
 	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $GEN_ACCT_SH -p $IOCCC_PASSWD $EMAIL > $TMP_NEW_ACCT_INFO" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $GEN_ACCT_SH -p $IOCCC_PASSWD_PY $EMAIL > $TMP_NEW_ACCT_INFO" 1>&2
 fi
 
 

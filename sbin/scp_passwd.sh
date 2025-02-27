@@ -105,7 +105,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.3 2025-02-23"
+export VERSION="2.0.4 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -171,9 +171,9 @@ if [[ -z $SCP_TOOL ]]; then
     fi
 fi
 #
-export RMT_CP_PASSWD
-if [[ -z $RMT_CP_PASSWD ]]; then
-    RMT_CP_PASSWD="/usr/ioccc/bin/cp_passwd.py"
+export RMT_CP_PASSWD_PY
+if [[ -z $RMT_CP_PASSWD_PY ]]; then
+    RMT_CP_PASSWD_PY="/usr/ioccc/bin/cp_passwd.py"
 fi
 #
 export RMT_LOGGER
@@ -214,7 +214,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_t
 	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 
-	-P rmt_cp_passwd    path to cp_passwd.py on the remote server (def: $RMT_CP_PASSWD)
+	-P rmt_cp_passwd    path to cp_passwd.py on the remote server (def: $RMT_CP_PASSWD_PY)
 	-l rmt_logger	    path to logger command on the remote server (def: $RMT_LOGGER)
 	-L log_level	    logging level given to the rmt_logger command (def: $RMT_LOG_LEVEL)
 
@@ -270,7 +270,7 @@ while getopts :hv:VnNt:T:iIp:u:H:s:c:P:l:L: flag; do
 	;;
     c) SCP_TOOL="$OPTARG"
 	;;
-    P) RMT_CP_PASSWD="$OPTARG"
+    P) RMT_CP_PASSWD_PY="$OPTARG"
 	;;
     l) RMT_LOGGER="$OPTARG"
 	;;
@@ -380,7 +380,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_CP_PASSWD=$RMT_CP_PASSWD" 1>&2
+    echo "$0: debug[3]: RMT_CP_PASSWD_PY=$RMT_CP_PASSWD_PY" 1>&2
     echo "$0: debug[3]: RMT_LOGGER=$RMT_LOGGER" 1>&2
     echo "$0: debug[3]: RMT_LOG_LEVEL=$RMT_LOG_LEVEL" 1>&2
     echo "$0: debug[3]: NEWFILE=$NEWFILE" 1>&2
@@ -398,20 +398,20 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 fi
 
 
-# ssh to remove server to run RMT_CP_PASSWD to copy the submit server IOCCC password file to a remote temp file
+# ssh to remove server to run RMT_CP_PASSWD_PY to copy the submit server IOCCC password file to a remote temp file
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_CP_PASSWD" "$RMT_TMPFILE" >/dev/null
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_CP_PASSWD_PY" "$RMT_TMPFILE" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE failed, error: $status" 1>&2
 	exit 6
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD $RMT_TMPFILE" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE" 1>&2
 fi
 
 

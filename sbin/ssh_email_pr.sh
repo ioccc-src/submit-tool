@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-23"
+export VERSION="2.0.1 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -141,14 +141,14 @@ if [[ -z $SERVER ]]; then
     SERVER="unknown.example.org"
 fi
 #
-export SSH_RUN
-if [[ -z $SSH_RUN ]]; then
-    SSH_RUN="/usr/ioccc/bin/ssh_run.sh"
+export SSH_RUN_SH
+if [[ -z $SSH_RUN_SH ]]; then
+    SSH_RUN_SH="/usr/ioccc/sbin/ssh_run.sh"
 fi
 #
-export RMT_EMAIL_PR
-if [[ -z $RMT_EMAIL_PR ]]; then
-    RMT_EMAIL_PR="/usr/ioccc/bin/email_pr.py"
+export RMT_EMAIL_PR_PY
+if [[ -z $RMT_EMAIL_PR_PY ]]; then
+    RMT_EMAIL_PR_PY="/usr/ioccc/bin/email_pr.py"
 fi
 
 
@@ -174,9 +174,9 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t appdir] [-T tmpdir] [
 	-u rmt_user	ssh into this user (def: $RMT_USER)
 	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-s ssh_run	use local ssh_run to ssh (def: $SSH_RUN)
+	-s ssh_run	use local ssh_run to ssh (def: $SSH_RUN_SH)
 
-	-c email_pr.py	remote email_pr.py tool on the remote server (def: $RMT_EMAIL_PR)
+	-c email_pr.py	remote email_pr.py tool on the remote server (def: $RMT_EMAIL_PR_PY)
 
 	iocccpasswd.lst	replace iocccpasswd.lst if email addresses found in remote IOCCC password file
 
@@ -222,9 +222,9 @@ while getopts :hv:VnNT:i:Ip:u:H:s:r:c: flag; do
 	;;
     H) SERVER="$OPTARG"
 	;;
-    s) SSH_RUN="$OPTARG"
+    s) SSH_RUN_SH="$OPTARG"
 	;;
-    c) RMT_EMAIL_PR="$OPTARG"
+    c) RMT_EMAIL_PR_PY="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -290,10 +290,10 @@ if [[ -n $IOCCC_RC ]]; then
 fi
 
 
-# firewall - SSH_RUN must be executable
+# firewall - SSH_RUN_SH must be executable
 #
-if [[ ! -x $SSH_RUN ]]; then
-    echo "$0: ERROR: ssh tool not executable: $SSH_RUN" 1>&2
+if [[ ! -x $SSH_RUN_SH ]]; then
+    echo "$0: ERROR: ssh tool not executable: $SSH_RUN_SH" 1>&2
     exit 5
 fi
 
@@ -313,8 +313,8 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
-    echo "$0: debug[3]: SSH_RUN=$SSH_RUN" 1>&2
-    echo "$0: debug[3]: RMT_EMAIL_PR=$RMT_EMAIL_PR" 1>&2
+    echo "$0: debug[3]: SSH_RUN_SH=$SSH_RUN_SH" 1>&2
+    echo "$0: debug[3]: RMT_EMAIL_PR_PY=$RMT_EMAIL_PR_PY" 1>&2
     echo "$0: debug[3]: IOCCCPASSWD_LST=$IOCCCPASSWD_LST" 1>&2
 fi
 
@@ -370,16 +370,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about run to: $SSH_RUN -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR -s u > $TMP_OUTPUT" 1>&2
+	echo "$0: debug[1]: about run to: $SSH_RUN_SH -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR_PY -s u > $TMP_OUTPUT" 1>&2
     fi
-    "$SSH_RUN" -p "$RMT_PORT" -u "$RMT_USER" -H "$SERVER" -- "$RMT_EMAIL_PR" -s u > "$TMP_OUTPUT"
+    "$SSH_RUN_SH" -p "$RMT_PORT" -u "$RMT_USER" -H "$SERVER" -- "$RMT_EMAIL_PR_PY" -s u > "$TMP_OUTPUT"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_RUN -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR -s u > $TMP_OUTPUT failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_RUN_SH -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR_PY -s u > $TMP_OUTPUT failed, error: $status" 1>&2
 	exit 6
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_RUN -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR -s u > $TMP_OUTPUT" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH -p $RMT_PORT -u $RMT_USER -H $SERVER -- $RMT_EMAIL_PR_PY -s u > $TMP_OUTPUT" 1>&2
 fi
 
 

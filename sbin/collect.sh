@@ -101,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.4.1 2025-02-26"
+export VERSION="2.4.2 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -164,9 +164,9 @@ if [[ -z $SSH_TOOL ]]; then
     fi
 fi
 #
-export RMT_RUN
-if [[ -z $RMT_RUN ]]; then
-    RMT_RUN="/usr/ioccc/bin/run.sh"
+export RMT_RUN_SH
+if [[ -z $RMT_RUN_SH ]]; then
+    RMT_RUN_SH="/usr/ioccc/bin/run.sh"
 fi
 #
 export SCP_TOOL
@@ -233,7 +233,7 @@ if [[ -z $GIT_TOOL ]]; then
 fi
 #
 export USE_GIT="true"
-export WORKDIR="."
+export WORKDIR="/usr/ioccc/ioccc-work"
 
 
 # add_git - If we are using git, add file to git
@@ -498,12 +498,12 @@ function change_slot_comment
     # ssh to remove server to run RMT_SET_SLOT_STATUS_PY to set slot comment and set collected to True
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1" 1>&2
+	echo "$0: debug[1]: in change_slot_comment: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null 2>&1
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" "$RMT_SET_SLOT_STATUS_PY" -c "$IOCCC_USER" "$SLOT" "'$COMMENT'" >/dev/null 2>&1
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1 failed, error: $status" 1>&2
+	echo "$0: Warning: in change_slot_comment: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $RMT_SET_SLOT_STATUS_PY -c $IOCCC_USER $SLOT '$COMMENT' >/dev/null 2>&1 failed, error: $status" 1>&2
 	return 2
     fi
 
@@ -611,7 +611,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
 	-H rmt_host	ssh host to use (def: $SERVER)
 
 	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
-	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN)
+	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN_SH)
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
 	-R rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
@@ -678,7 +678,7 @@ while getopts :hv:VnNt:i:Ip:u:H:s:r:c:2:R:x:g:Gz:y:S:C:w: flag; do
 	;;
     s) SSH_TOOL="$OPTARG"
 	;;
-    r) RMT_RUN="$OPTARG"
+    r) RMT_RUN_SH="$OPTARG"
 	;;
     c) SCP_TOOL="$OPTARG"
 	;;
@@ -793,7 +793,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
-    echo "$0: debug[3]: RMT_RUN=$RMT_RUN" 1>&2
+    echo "$0: debug[3]: RMT_RUN_SH=$RMT_RUN_SH" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: SHA256_TOOL=$SHA256_TOOL" 1>&2
     echo "$0: debug[3]: RSYNC_TOOL=$RSYNC_TOOL" 1>&2
@@ -1083,9 +1083,9 @@ fi
 # run the remote stage.py tool via ssh, on the remote server, and collect the reply
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR" 1>&2
+    echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR" 1>&2
 fi
-ANSWER=$("$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
+ANSWER=$("$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" "$RMT_STAGE_PY" "$RMT_SLOT_PATH" 2>"$TMP_STDERR")
 status="$?"
 if [[ -z $ANSWER ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
@@ -1105,7 +1105,7 @@ if [[ $status -ne 0 ]]; then
     if [[ $status -ne 0 ]]; then
 	{
 	    echo
-	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR failed, error: $status"
+	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $RMT_STAGE_PY $RMT_SLOT_PATH 2>$TMP_STDERR failed, error: $status"
 	    echo "$0: Warning: stderr output starts below"
 	    cat "$TMP_STDERR"
 	    echo "$0: Warning: stderr output ends above"
@@ -1120,7 +1120,7 @@ fi
 if [[ -n $USE_GIT ]]; then
     {
 	echo
-	echo "$SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN $RMT_STAGE_PY $RMT_SLOT_PATH returned:"
+	echo "$SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH $RMT_STAGE_PY $RMT_SLOT_PATH returned:"
 	echo
 	echo "$ANSWER"
     } >> "$TMP_GIT_COMMIT"
@@ -1416,15 +1416,15 @@ fi
 #
 if [[ $PROBLEM_CODE -eq 0 ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN rm -f $STAGED_PATH" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH rm -f $STAGED_PATH" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN" rm -f "$STAGED_PATH"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" rm -f "$STAGED_PATH"
     status="$?"
     if [[ $status -ne 0 ]]; then
 	PROBLEM_CODE=12
 	{
 	    echo
-	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN rm -f $STAGED_PATH failed, error: $status"
+	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH rm -f $STAGED_PATH failed, error: $status"
 	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
 	} | if [[ -n $USE_GIT ]]; then
 	    cat >> "$TMP_GIT_COMMIT"

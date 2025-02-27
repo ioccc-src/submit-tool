@@ -100,7 +100,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.2 2025-02-23"
+export VERSION="2.0.3 2025-02-26"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -145,9 +145,9 @@ if [[ -z $SSH_TOOL ]]; then
     fi
 fi
 #
-export RMT_LAST_EMAIL_MSG
-if [[ -z $RMT_LAST_EMAIL_MSG ]]; then
-    RMT_LAST_EMAIL_MSG="/usr/ioccc/bin/last_email_msg.sh"
+export RMT_LAST_EMAIL_MSG_SH
+if [[ -z $RMT_LAST_EMAIL_MSG_SH ]]; then
+    RMT_LAST_EMAIL_MSG_SH="/usr/ioccc/bin/last_email_msg.sh"
 fi
 #
 export RMT_EMAIL_USER
@@ -182,7 +182,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I] [-u us
 
 	-s ssh_tool		use local ssh_tool to ssh (def: $SSH_TOOL)
 	-S rmt_sudo		path to sudo on the remote server (def: $RMT_SUDO)
-	-l rmt_last_email_msg	path to last_email_msg.sh on the remote server (def: $RMT_LAST_EMAIL_MSG)
+	-l rmt_last_email_msg	path to last_email_msg.sh on the remote server (def: $RMT_LAST_EMAIL_MSG_SH)
 	-m rmt_user		read last email message from rmt_user (def: $RMT_EMAIL_USER)
 
 Exit codes:
@@ -228,7 +228,7 @@ while getopts :hv:VnNi:Ip:u:H:s:S:l:m: flag; do
 	;;
     S) RMT_SUDO="$OPTARG"
 	;;
-    l) RMT_LAST_EMAIL_MSG="$OPTARG"
+    l) RMT_LAST_EMAIL_MSG_SH="$OPTARG"
 	;;
     m) RMT_EMAIL_USER="$OPTARG"
 	;;
@@ -320,7 +320,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
     echo "$0: debug[3]: RMT_SUDO=$RMT_SUDO" 1>&2
-    echo "$0: debug[3]: RMT_LAST_EMAIL_MSG=$RMT_LAST_EMAIL_MSG" 1>&2
+    echo "$0: debug[3]: RMT_LAST_EMAIL_MSG_SH=$RMT_LAST_EMAIL_MSG_SH" 1>&2
     echo "$0: debug[3]: RMT_EMAIL_USER=$RMT_EMAIL_USER" 1>&2
 fi
 
@@ -332,16 +332,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER" 1>&2
+	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG_SH -m $RMT_EMAIL_USER" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_SUDO" -u "$RMT_EMAIL_USER" "$RMT_LAST_EMAIL_MSG" -m "$RMT_EMAIL_USER"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_SUDO" -u "$RMT_EMAIL_USER" "$RMT_LAST_EMAIL_MSG_SH" -m "$RMT_EMAIL_USER"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG_SH -m $RMT_EMAIL_USER failed, error: $status" 1>&2
 	exit 1
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG -m $RMT_EMAIL_USER" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_SUDO -u $RMT_EMAIL_USER $RMT_LAST_EMAIL_MSG_SH -m $RMT_EMAIL_USER" 1>&2
 fi
 
 
