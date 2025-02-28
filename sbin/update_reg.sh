@@ -104,7 +104,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.1 2025-02-27"
+export VERSION="2.0.2 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -435,7 +435,7 @@ function git_exit
 
     # parse args
     #
-    if [[ $# -le 2 ]]; then
+    if [[ $# -lt 2 ]]; then
         echo "$0: Warning: in git_exit: expected 2 or more args, found $#" 1>&2
         echo "$0: ERROR: in git_exit: forcing exit 200" 1>&2
         exit 200
@@ -621,6 +621,7 @@ while getopts :hv:VnNt:T:i:Ip:u:H:l:s:e:m:w:f:c:L:S:r: flag; do
     n) NOOP="-n"
 	;;
     N) DO_NOT_PROCESS="-N"
+       NOOP="-n"
 	;;
     t) RMT_TOPDIR="$OPTARG"
 	;;
@@ -719,6 +720,13 @@ if [[ -n $IOCCC_RC ]]; then
 fi
 
 
+# -N turns on NOOP (-n)
+#
+if [[ -n $DO_NOT_PROCESS ]]; then
+    NOOP="-n"
+fi
+
+
 # -n turns off git operations
 #
 if [[ -n $NOOP ]]; then
@@ -737,6 +745,16 @@ DATE_UTC=$(date -u '+%F %T.%N UTC')
 SECS=$(date '+%s')
 
 
+# firewall - Must have these writable sub-directories
+#
+for i in etc list mail tmp work; do
+    if [[ ! -d $REG_DIR/$i || ! -w $REG_DIR/$i ]]; then
+	echo "$0: ERROR: not a directory: $REG_DIR/$i" 1>&2
+	exit 6
+    fi
+done
+
+
 # set important paths under REG_DIR
 #
 export IOCCCPASSWD_JSON="$REG_DIR/etc/iocccpasswd.json"
@@ -745,7 +763,7 @@ if [[ ! -f $IOCCCPASSWD_JSON && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $IOCCCPASSWD_JSON failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 #
@@ -755,7 +773,7 @@ if [[ ! -f $WHO_IOCCC && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $WHO_IOCCC failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 #
@@ -765,7 +783,7 @@ if [[ ! -f $FREELISTS_LST && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $FREELISTS_LST failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 #
@@ -775,7 +793,7 @@ if [[ ! -f $FILTER_SED && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $FILTER_SED failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 #
@@ -785,7 +803,7 @@ if [[ ! -f $REGISTER_LST && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $REGISTER_LST failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 #
@@ -795,14 +813,20 @@ if [[ ! -f $IOCCCPASSWD_LST && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $IOCCCPASSWD_LST failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
+fi
+#
+export TMP_DIR="$REG_DIR/tmp"
+if [[ ! -d $TMP_DIR ]]; then
+    echo "$0: ERROR: tmp is not a directory: $TMP_DIR" 1>&2
+    exit 6
 fi
 #
 export WORK_DIR="$REG_DIR/work"
 if [[ ! -d $WORK_DIR ]]; then
     echo "$0: ERROR: work is not a directory: $WORK_DIR" 1>&2
-    exit 1
+    exit 6
 fi
 #
 # NOTE: We will create the run list of email addresses later on
@@ -814,7 +838,7 @@ if [[ ! -f $LOCK && -z $NOOP ]]; then
     status="$?"
     if [[ $status -ne 0 ]]; then
 	echo "$0: ERROR: cannot touch $LOCK failed, error: $status" 1>&2
-	exit 1
+	exit 6
     fi
 fi
 
@@ -859,6 +883,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: FILTER_SED=$FILTER_SED" 1>&2
     echo "$0: debug[3]: REGISTER_LST=$REGISTER_LST" 1>&2
     echo "$0: debug[3]: IOCCCPASSWD_LST=$IOCCCPASSWD_LST" 1>&2
+    echo "$0: debug[3]: TMP_DIR=$TMP_DIR" 1>&2
     echo "$0: debug[3]: WORK_DIR=$WORK_DIR" 1>&2
     echo "$0: debug[3]: RUN=$RUN" 1>&2
     echo "$0: debug[3]: LOCK=$LOCK" 1>&2
@@ -987,16 +1012,6 @@ if [[ ! -d $REG_DIR ]]; then
     exit 6
 fi
 
-#
-# firewall - Must have these writable sub-directories
-#
-for i in etc list mail work; do
-    if [[ ! -d $i || ! -w $i ]]; then
-	echo "$0: ERROR: not a directory: $REG_DIR/$i" 1>&2
-	exit 6
-    fi
-done
-
 
 # Must have a non-empty DO.NOT.DISTRIBUTE readable file
 #
@@ -1042,7 +1057,7 @@ fi
 
 # form temporary stderr collection file
 #
-export TMP_STDERR="$TMPDIR/.tmp.$NAME.STDERR.$$.tmp"
+export TMP_STDERR="$TMP_DIR/.tmp.$NAME.STDERR.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary stderr collection file: $TMP_STDERR" 1>&2
@@ -1068,7 +1083,7 @@ fi
 
 # form temporary git commit message
 #
-export TMP_GIT_COMMIT="$REG_DIR/.tmp.$NAME.GIT_COMMIT.$$.tmp"
+export TMP_GIT_COMMIT="$TMP_DIR/.tmp.$NAME.GIT_COMMIT.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary git commit message file: $TMP_GIT_COMMIT" 1>&2
@@ -1101,7 +1116,7 @@ fi
 
 # form temporary iocccpasswd.json file
 #
-export TMP_IOCCCPASSWD_JSON="$REG_DIR/.tmp.$NAME.IOCCCPASSWD_JSON.$$.tmp"
+export TMP_IOCCCPASSWD_JSON="$TMP_DIR/.tmp.$NAME.IOCCCPASSWD_JSON.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary iocccpasswd.json file: $TMP_IOCCCPASSWD_JSON" 1>&2
@@ -1143,7 +1158,7 @@ fi
 
 # form temporary iocccpasswd.lst file
 #
-export TMP_IOCCCPASSWD_LST="$REG_DIR/.tmp.$NAME.IOCCCPASSWD_LST.$$.tmp"
+export TMP_IOCCCPASSWD_LST="$TMP_DIR/.tmp.$NAME.IOCCCPASSWD_LST.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary iocccpasswd.lst file: $TMP_IOCCCPASSWD_LST" 1>&2
@@ -1185,7 +1200,7 @@ fi
 
 # form temporary who-ioccc file
 #
-export TMP_WHO_IOCCC="$REG_DIR/.tmp.$NAME.WHO_IOCCC.$$.tmp"
+export TMP_WHO_IOCCC="$TMP_DIR/.tmp.$NAME.WHO_IOCCC.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary who-ioccc file: $TMP_WHO_IOCCC" 1>&2
@@ -1227,7 +1242,7 @@ fi
 
 # form temporary freelists.lst file
 #
-export TMP_FREELISTS_LST="$REG_DIR/.tmp.$NAME.FREELISTS_LST.$$.tmp"
+export TMP_FREELISTS_LST="$TMP_DIR/.tmp.$NAME.FREELISTS_LST.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary freelists.lst file: $TMP_FREELISTS_LST" 1>&2
@@ -1269,7 +1284,7 @@ fi
 
 # form temporary regsier.lst file
 #
-export TMP_REGISTER_LST="$REG_DIR/.tmp.$NAME.REGISTER_LST.$$.tmp"
+export TMP_REGISTER_LST="$TMP_DIR/.tmp.$NAME.REGISTER_LST.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary regsier.lst file: $TMP_REGISTER_LST" 1>&2
@@ -1311,7 +1326,7 @@ fi
 
 # form temporary run file
 #
-export TMP_RUN_LST="$WORK_DIR/.tmp.$NAME.RUN.$$.tmp"
+export TMP_RUN_LST="$TMP_DIR/.tmp.$NAME.RUN.$$.tmp"
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: temporary run file: $TMP_RUN_LST" 1>&2
@@ -1416,7 +1431,7 @@ if [[ -z $NOOP ]]; then
 	fi
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not git_commit $$TMP_GIT_COMMIT" 1>&2
+    echo "$0: debug[1]: because of -n, did not git_commit $TMP_GIT_COMMIT" 1>&2
 fi
 
 
@@ -1591,7 +1606,7 @@ if [[ -z $NOOP ]]; then
 	fi
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not again: git_commit $$TMP_GIT_COMMIT" 1>&2
+    echo "$0: debug[1]: because of -n, did not again: git_commit $TMP_GIT_COMMIT" 1>&2
 fi
 
 

@@ -102,7 +102,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.0 2025-02-26"
+export VERSION="2.0.1 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -140,9 +140,9 @@ fi
 #
 export SSH_RUN_SH
 if [[ -z $SSH_RUN_SH ]]; then
-    SSH_RUN_SH=$(type -P ssh)
+    SSH_RUN_SH=$(type -P ssh_run.sh)
     if [[ -z "$SSH_RUN_SH" ]]; then
-	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+	echo "$0: FATAL: ssh_run.sh tool is not installed or not in \$PATH" 1>&2
 	exit 5
     fi
 fi
@@ -150,11 +150,6 @@ fi
 export RMT_MULTI_NEW_USER_SH
 if [[ -z $RMT_MULTI_NEW_USER_SH ]]; then
     RMT_MULTI_NEW_USER_SH="/usr/ioccc/bin/last_email_msg.sh"
-fi
-#
-export RMT_SUDO
-if [[ -z $RMT_SUDO ]]; then
-    RMT_SUDO="/bin/sudo"
 fi
 
 
@@ -318,7 +313,6 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
     echo "$0: debug[3]: SSH_RUN_SH=$SSH_RUN_SH" 1>&2
-    echo "$0: debug[3]: RMT_SUDO=$RMT_SUDO" 1>&2
     echo "$0: debug[3]: RMT_MULTI_NEW_USER_SH=$RMT_MULTI_NEW_USER_SH" 1>&2
     echo "$0: debug[3]: EMAIL_LIST=$EMAIL_LIST" 1>&2
 fi

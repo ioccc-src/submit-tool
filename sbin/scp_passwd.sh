@@ -105,7 +105,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.4 2025-02-26"
+export VERSION="2.0.5 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -153,11 +153,11 @@ if [[ -z $SERVER ]]; then
     SERVER="unknown.example.org"
 fi
 #
-export SSH_TOOL
-if [[ -z $SSH_TOOL ]]; then
-    SSH_TOOL=$(type -P ssh)
-    if [[ -z "$SSH_TOOL" ]]; then
-	echo "$0: FATAL: ssh tool is not installed or not in \$PATH" 1>&2
+export SSH_RUN_SH
+if [[ -z $SSH_RUN_SH ]]; then
+    SSH_RUN_SH=$(type -P ssh_run.sh)
+    if [[ -z "$SSH_RUN_SH" ]]; then
+	echo "$0: FATAL: ssh_run.sh tool is not installed or not in \$PATH" 1>&2
 	exit 5
     fi
 fi
@@ -190,7 +190,7 @@ fi
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_tmpdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_tool] [-c scp_tool] [-P rmt_cp_passwd]
+	[-p rmt_port] [-u rmt_user] [-H rmt_host] [-s ssh_run] [-c scp_tool] [-P rmt_cp_passwd]
 	[-l rmt_logger] [-L log_level]
 	newfile
 
@@ -211,7 +211,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-T rmt_t
 	-u rmt_user	ssh into this user (def: $RMT_USER)
 	-H rmt_host	ssh host to use (def: $SERVER)
 
-	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
+	-s ssh_run	use local ssh_run to ssh (def: $SSH_RUN_SH)
 	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
 
 	-P rmt_cp_passwd    path to cp_passwd.py on the remote server (def: $RMT_CP_PASSWD_PY)
@@ -266,7 +266,7 @@ while getopts :hv:VnNt:T:iIp:u:H:s:c:P:l:L: flag; do
 	;;
     H) SERVER="$OPTARG"
 	;;
-    s) SSH_TOOL="$OPTARG"
+    s) SSH_RUN_SH="$OPTARG"
 	;;
     c) SCP_TOOL="$OPTARG"
 	;;
@@ -345,10 +345,10 @@ fi
 export RMT_TMPFILE="$RMT_TMPDIR/.tmp.$NAME.TMPFILE.$$.tmp"
 
 
-# firewall - SSH_TOOL must be executable
+# firewall - SSH_RUN_SH must be executable
 #
-if [[ ! -x $SSH_TOOL ]]; then
-    echo "$0: ERROR: ssh tool not executable: $SSH_TOOL" 1>&2
+if [[ ! -x $SSH_RUN_SH ]]; then
+    echo "$0: ERROR: ssh_run.sh tool not executable: $SSH_RUN_SH" 1>&2
     exit 5
 fi
 
@@ -378,7 +378,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RMT_PORT=$RMT_PORT" 1>&2
     echo "$0: debug[3]: RMT_USER=$RMT_USER" 1>&2
     echo "$0: debug[3]: SERVER=$SERVER" 1>&2
-    echo "$0: debug[3]: SSH_TOOL=$SSH_TOOL" 1>&2
+    echo "$0: debug[3]: SSH_RUN_SH=$SSH_RUN_SH" 1>&2
     echo "$0: debug[3]: SCP_TOOL=$SCP_TOOL" 1>&2
     echo "$0: debug[3]: RMT_CP_PASSWD_PY=$RMT_CP_PASSWD_PY" 1>&2
     echo "$0: debug[3]: RMT_LOGGER=$RMT_LOGGER" 1>&2
@@ -402,16 +402,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE" 1>&2
+	echo "$0: debug[1]: about to: $SSH_RUN_SH $RMT_CP_PASSWD_PY $RMT_TMPFILE >/dev/null" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_CP_PASSWD_PY" "$RMT_TMPFILE" >/dev/null
+    "$SSH_RUN_SH" "$RMT_CP_PASSWD_PY" "$RMT_TMPFILE" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_RUN_SH $RMT_CP_PASSWD_PY $RMT_TMPFILE >/dev/null failed, error: $status" 1>&2
 	exit 6
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_CP_PASSWD_PY $RMT_TMPFILE" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH $RMT_CP_PASSWD_PY $RMT_TMPFILE >/dev/null" 1>&2
 fi
 
 
@@ -440,16 +440,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER /bin/rm -f $RMT_TMPFILE" 1>&2
+	echo "$0: debug[1]: about to: $SSH_RUN_SH /bin/rm -f $RMT_TMPFILE" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" /bin/rm -f "$RMT_TMPFILE" >/dev/null
+    "$SSH_RUN_SH" /bin/rm -f "$RMT_TMPFILE" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER /bin/rm -f $RMT_TMPFILE failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_RUN_SH /bin/rm -f $RMT_TMPFILE failed, error: $status" 1>&2
 	exit 7
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: /bin/rm -f $RMT_TMPFILE" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH /bin/rm -f $RMT_TMPFILE" 1>&2
 fi
 
 
@@ -457,16 +457,16 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE'" 1>&2
+	echo "$0: debug[1]: about to: $SSH_RUN_SH $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE' >/dev/null" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_LOGGER" --priority "$RMT_LOG_LEVEL" "'removed $RMT_TMPFILE'" >/dev/null
+    "$SSH_RUN_SH" "$RMT_LOGGER" --priority "$RMT_LOG_LEVEL" "'removed $RMT_TMPFILE'" >/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE' failed, error: $status" 1>&2
+	echo "$0: Warning: $SSH_RUN_SH $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE' failed, error: $status" 1>&2
 	exit 6
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: because of -n, did not run: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE'" 1>&2
+    echo "$0: debug[1]: because of -n, did not run: $SSH_RUN_SH $RMT_LOGGER --priority $RMT_LOG_LEVEL 'removed $RMT_TMPFILE'" 1>&2
 fi
 
 
