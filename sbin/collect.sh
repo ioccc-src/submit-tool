@@ -101,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.4.2 2025-02-26"
+export VERSION="2.4.3 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -236,10 +236,10 @@ export USE_GIT="true"
 export WORKDIR="/usr/ioccc/ioccc-work"
 
 
-# add_git - If we are using git, add file to git
+# git_add - If we are using git, add file to git
 #
 # usage:
-#   add_git file
+#   git_add file
 #
 #   file - file to add to git
 #
@@ -249,7 +249,7 @@ export WORKDIR="/usr/ioccc/ioccc-work"
 #
 # NOTE: This function does nothing if we are not using git.
 #
-function add_git
+function git_add
 {
     local FILE  # file to add to git
 
@@ -263,7 +263,7 @@ function add_git
     # parse args
     #
     if [[ $# -ne 1 ]]; then
-        echo "$0: Warning: in add_git: expected 1 arg, found $#" 1>&2
+        echo "$0: Warning: in git_add: expected 1 arg, found $#" 1>&2
         return 1
     fi
     FILE="$1"
@@ -271,19 +271,19 @@ function add_git
     # firewall - file must exist
     #
     if [[ ! -e $FILE ]]; then
-        echo "$0: Warning: in add_git: does not exist: $MSG_FILE" 1>&2
+        echo "$0: Warning: in git_add: does not exist: $MSG_FILE" 1>&2
         return 2
     fi
 
     # git add
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in add_git: about to: $GIT_TOOL add $FILE" 1>&2
+	echo "$0: debug[1]: in git_add: about to: $GIT_TOOL add $FILE" 1>&2
     fi
     "$GIT_TOOL" add "$FILE"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in add_git: $GIT_TOOL add $FILE failed, error: $status" 1>&2
+	echo "$0: Warning: in git_add: $GIT_TOOL add $FILE failed, error: $status" 1>&2
 	return 3
     fi
 
@@ -293,10 +293,10 @@ function add_git
 }
 
 
-# commit_git - If we are using git, commit changes with a commit message
+# git_commit - If we are using git, commit changes with a commit message
 #
 # usage:
-#   commit_git msg_file
+#   git_commit msg_file
 #
 #   msg_file - file containing the text for the commit message
 #
@@ -306,7 +306,7 @@ function add_git
 #
 # NOTE: This function does nothing if we are not using git.
 #
-function commit_git
+function git_commit
 {
     local MSG_FILE  # file containing the text for the commit message
 
@@ -320,7 +320,7 @@ function commit_git
     # parse args
     #
     if [[ $# -ne 1 ]]; then
-        echo "$0: Warning: in commit_git: expected 1 arg, found $#" 1>&2
+        echo "$0: Warning: in git_commit: expected 1 arg, found $#" 1>&2
         return 1
     fi
     MSG_FILE="$1"
@@ -328,19 +328,19 @@ function commit_git
     # firewall - file containing the text for the commit message must not be empty
     #
     if [[ ! -s $MSG_FILE ]]; then
-        echo "$0: Warning: in commit_git: MSG_FILE is not a non-empty file: $MSG_FILE" 1>&2
+        echo "$0: Warning: in git_commit: MSG_FILE is not a non-empty file: $MSG_FILE" 1>&2
         return 2
     fi
 
     # git commit
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in commit_git: about to: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE" 1>&2
+	echo "$0: debug[1]: in git_commit: about to: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE" 1>&2
     fi
     "$GIT_TOOL" commit --allow-empty -q -F "$MSG_FILE"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in commit_git: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE failed, error: $status" 1>&2
+	echo "$0: Warning: in git_commit: $GIT_TOOL commit --allow-empty -q -F $MSG_FILE failed, error: $status" 1>&2
 	return 3
     fi
 
@@ -350,10 +350,10 @@ function commit_git
 }
 
 
-# push_git - If we are using git, push commit(s) to repo
+# git_push - If we are using git, push commit(s) to repo
 #
 # usage:
-#   push_git .
+#   git_push .
 #
 #   NOTE: The argument to this function is ignored.
 #	  We have an argument to silence shellcheck warning 2120 and note 2119.
@@ -364,7 +364,7 @@ function commit_git
 #
 # NOTE: This function does nothing if we are not using git.
 #
-function push_git
+function git_push
 {
     local IGNORED   # ignored argument
 
@@ -378,7 +378,7 @@ function push_git
     # parse args
     #
     if [[ $# -ne 1 ]]; then
-        echo "$0: Warning: in push_git: expected 1 arg, found $#" 1>&2
+        echo "$0: Warning: in git_push: expected 1 arg, found $#" 1>&2
         return 1
     fi
     IGNORED="$1"
@@ -386,16 +386,16 @@ function push_git
     # git push
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in push_git: about to: $GIT_TOOL push 2>/dev/null" 1>&2
+	echo "$0: debug[1]: in git_push: about to: $GIT_TOOL push 2>/dev/null" 1>&2
     fi
     if [[ $V_FLAG -ge 5 ]]; then
 	# This debug message is to silence shellcheck warning 2034
-	echo "$0: debug[5]: in push_git: ignored arg is: $IGNORED" 1>&2
+	echo "$0: debug[5]: in git_push: ignored arg is: $IGNORED" 1>&2
     fi
     "$GIT_TOOL" push 2>/dev/null
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in push_git: $GIT_TOOL push 2>/dev/null  failed, error: $status" 1>&2
+	echo "$0: Warning: in git_push: $GIT_TOOL push 2>/dev/null  failed, error: $status" 1>&2
 	return 2
     fi
 
@@ -1275,15 +1275,15 @@ if [[ $STAGED_PATH == "." || $PROBLEM_CODE -ne 0 ]]; then
 
     # if using git, add ERRORS
     #
-    add_git "$ERRORS"
+    git_add "$ERRORS"
 
     # if using git, commit the files that have been added
     #
-    commit_git "$TMP_GIT_COMMIT"
+    git_commit "$TMP_GIT_COMMIT"
 
     # if using git, push any commits
     #
-    push_git .
+    git_push .
 
     # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
     #
@@ -1404,7 +1404,7 @@ else
 
     # if using git, add ERRORS
     #
-    add_git "$ERRORS"
+    git_add "$ERRORS"
 
     # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
     #
@@ -1445,7 +1445,7 @@ if [[ $PROBLEM_CODE -ne 0 && -f $DEST ]]; then
 
     # if using git, add ERRORS
     #
-    add_git "$ERRORS"
+    git_add "$ERRORS"
 
 # case: no problem and a staged path file
 #
@@ -1490,15 +1490,15 @@ elif [[ -f $DEST ]]; then
 
 	# if using git, add ERRORS
 	#
-	add_git "$ERRORS"
+	git_add "$ERRORS"
 
 	# if using git, commit the files that have been added
 	#
-	commit_git "$TMP_GIT_COMMIT"
+	git_commit "$TMP_GIT_COMMIT"
 
 	# if using git, push any commits
 	#
-	push_git .
+	git_push .
 
 	# exit non-zero due to txzchk failure - we can do thing more at this stage
 	#
@@ -1601,15 +1601,15 @@ elif [[ -f $DEST ]]; then
 
 		    # if using git, add ERRORS
 		    #
-		    add_git "$ERRORS"
+		    git_add "$ERRORS"
 
 		    # if using git, commit the files that have been added
 		    #
-		    commit_git "$TMP_GIT_COMMIT"
+		    git_commit "$TMP_GIT_COMMIT"
 
 		    # if using git, push any commits
 		    #
-		    push_git .
+		    git_push .
 
 		    # exit non-zero due to untar failure - we can do thing more at this stage
 		    #
@@ -1744,15 +1744,15 @@ elif [[ -f $DEST ]]; then
 
 			# if using git, add ERRORS
 			#
-			add_git "$ERRORS"
+			git_add "$ERRORS"
 
 			# if using git, commit the files that have been added
 			#
-			commit_git "$TMP_GIT_COMMIT"
+			git_commit "$TMP_GIT_COMMIT"
 
 			# if using git, push any commits
 			#
-			push_git .
+			git_push .
 
 			# exit non-zero due to chkentry failure - we can do thing more at this stage
 			#
@@ -1795,8 +1795,8 @@ elif [[ -f $DEST ]]; then
 			    echo "Formed: $DEST_TARBALL"
 			} >> "$TMP_GIT_COMMIT"
 		    fi
-		    add_git "$SUBMIT_DIR"
-		    add_git "$DEST_TARBALL"
+		    git_add "$SUBMIT_DIR"
+		    git_add "$DEST_TARBALL"
 
 		    # report submission success
 		    #
@@ -1815,12 +1815,12 @@ unexpected_collect "$UNEXPECTED_COUNT"
 
 # if using git, add ERRORS
 #
-add_git "$ERRORS"
+git_add "$ERRORS"
 
 
 # if using git, display the commit message
 #
-commit_git "$TMP_GIT_COMMIT"
+git_commit "$TMP_GIT_COMMIT"
 if [[ $V_FLAG -ge 1 && -s $TMP_GIT_COMMIT ]]; then
     echo "$0: debug[1]: git commit message starts below" 1>&2
     cat "$TMP_GIT_COMMIT" 1>&2
@@ -1830,7 +1830,7 @@ fi
 
 # if using git, push any commits
 #
-push_git .
+git_push .
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2

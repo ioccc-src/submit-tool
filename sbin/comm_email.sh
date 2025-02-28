@@ -32,7 +32,7 @@
 
 # setup
 #
-export VERSION="2.0.0 2025-02-24"
+export VERSION="2.0.1 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -366,14 +366,14 @@ elif [[ -s $TMP_OUTPUT ]]; then
     exit 1
 
 
-# case: output.lst arg NOT given and same email addresses in files
+# case: output.lst arg NOT given and same email addresses in both files
 #
 else
 
     # case: files the same
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: no output.lst arg, same email addresses in files" 1>&2
+	echo "$0: debug[1]: no output.lst arg, same email addresses in both files" 1>&2
     fi
 fi
 
