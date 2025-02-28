@@ -26,6 +26,7 @@ from pathlib import Path
 from iocccsubmit import \
         change_startup_appdir, \
         copy_pwfile_under_lock, \
+        dbg, \
         error, \
         info, \
         prerr, \
@@ -38,7 +39,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.0 2025-02-21"
+VERSION = "2.0.1 2025-02-28"
 
 
 def main():
@@ -110,7 +111,7 @@ def main():
 
     # All Done!!! All Done!!! -- Jessica Noll, Age 2
     #
-    info(f'{program}: copied submit server IOCCC password file to: {args.newfile}')
+    dbg(f'{program}: copied submit server IOCCC password file to: {args.newfile}')
     sys.exit(0)
 
 
