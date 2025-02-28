@@ -160,7 +160,8 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 #
 SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_passwd.sh \
 	   sbin/ssh_run.sh sbin/who_extract.sh sbin/ssh_email_pr.sh sbin/filter.sh \
-	   sbin/ssh_last_email_msg.sh sbin/comm_email.sh sbin/ssh_multi_new_user.sh
+	   sbin/ssh_last_email_msg.sh sbin/comm_email.sh sbin/ssh_multi_new_user.sh \
+	   sbin/who_email.awk sbin/update_reg.sh
 
 # tool to generate the secret Flask key
 #

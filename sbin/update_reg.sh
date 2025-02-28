@@ -104,7 +104,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.0.2 2025-02-27"
+export VERSION="2.0.3 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -514,7 +514,7 @@ function replace_file_git_add
 
     # parse args
     #
-    if [[ $# -le 2 ]]; then
+    if [[ $# -lt 2 ]]; then
         git_exit 202 "$0: Warning: in replace_file_git_add: expected 2 or more args, found $#" 1>&2
     fi
     SRC="$1"
@@ -534,7 +534,7 @@ function replace_file_git_add
 
     # update dest if different
     #
-    if ! cmp "$SRC" "$DEST"; then
+    if ! cmp -s "$SRC" "$DEST"; then
 
 	# replace dest with src
 	#
@@ -1184,12 +1184,12 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SCP_PASSWD_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR" 1>&2
+	echo "$0: debug[1]: about to: $SSH_EMAIL_PR_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR" 1>&2
     fi
     "$SSH_EMAIL_PR_SH" "$TMP_IOCCCPASSWD_LST" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	git_exit 1 "$0: ERROR: $SCP_PASSWD_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR failed, error: $status"
+	git_exit 1 "$0: ERROR: $SSH_EMAIL_PR_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR failed, error: $status"
     fi
     replace_file_git_add "$TMP_IOCCCPASSWD_LST" "$IOCCCPASSWD_LST"
     rm -f "$TMP_IOCCCPASSWD_LST" # temp file no longer needed
@@ -1226,12 +1226,12 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $SCP_PASSWD_SH > $TMP_WHO_IOCCC 2>$TMP_STDERR" 1>&2
+	echo "$0: debug[1]: about to: $SSH_LAST_EMAIL_MSG_SH > $TMP_WHO_IOCCC 2>$TMP_STDERR" 1>&2
     fi
-    "$SSH_EMAIL_PR_SH" > "$TMP_WHO_IOCCC" 2>"$TMP_STDERR"
+    "$SSH_LAST_EMAIL_MSG_SH" > "$TMP_WHO_IOCCC" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	git_exit 1 "$0: ERROR: $SCP_PASSWD_SH > $TMP_WHO_IOCCC 2>$TMP_STDERR failed, error: $status"
+	git_exit 1 "$0: ERROR: $SSH_LAST_EMAIL_MSG_SH > $TMP_WHO_IOCCC 2>$TMP_STDERR failed, error: $status"
     fi
     replace_file_git_add "$TMP_WHO_IOCCC" "$WHO_IOCCC"
     rm -f "$TMP_WHO_IOCCC" # temp file no longer needed
@@ -1310,12 +1310,12 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: $FILTER_SH $FREELISTS_LST $FILTER_SED > $REGISTER_LST 2>$TMP_STDERR" 1>&2
+	echo "$0: debug[1]: about to: $FILTER_SH $FREELISTS_LST $FILTER_SED >$TMP_REGISTER_LST 2>$TMP_STDERR" 1>&2
     fi
-    "$FILTER_SH" "$FREELISTS_LST" "$FILTER_SED" > "$REGISTER_LST" 2>"$TMP_STDERR"
+    "$FILTER_SH" "$FREELISTS_LST" "$FILTER_SED" >"$TMP_REGISTER_LST" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	git_exit 1 "$0: ERROR: $FILTER_SH $FREELISTS_LST $FILTER_SED > $REGISTER_LST 2>$TMP_STDERR failed, error: $status"
+	git_exit 1 "$0: ERROR: $FILTER_SH $FREELISTS_LST $FILTER_SED >$TMP_REGISTER_LST 2>$TMP_STDERR failed, error: $status"
     fi
     replace_file_git_add "$TMP_REGISTER_LST" "$REGISTER_LST"
     rm -f "$TMP_REGISTER_LST" # temp file no longer needed
@@ -1403,9 +1403,11 @@ if [[ -z $NOOP ]]; then
 	    git_exit 1 "$0: ERROR: $SAVELOG -c 0 -T $RUN 2>$TMP_STDERR failed, error: $status"
 	fi
 
-	# remove the TMP_RUN_LST list
+	# having just saved the run log with savelog, we no longer a now empty run log
 	#
-	rm -f "$TMP_RUN_LST"
+	if [[ -f $RUN && ! -s $RUN ]]; then
+	    rm -f "$RUN"
+	fi
 
 	# put and all files under WORK_DIR under git now that the work has been completed
 	#
@@ -1415,6 +1417,11 @@ if [[ -z $NOOP ]]; then
     elif [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: the run list if empty: $TMP_RUN_LST" 1>&2
     fi
+
+    # remove the TMP_RUN_LST list
+    #
+    rm -f "$TMP_RUN_LST"
+
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not process run list: $TMP_RUN_LST" 1>&2
 fi
@@ -1438,9 +1445,16 @@ fi
 # if using git, display the commit message
 #
 if [[ $V_FLAG -ge 1 && -s $TMP_GIT_COMMIT ]]; then
-    echo "$0: debug[1]: git commit message starts below" 1>&2
-    cat "$TMP_GIT_COMMIT" 1>&2
-    echo "$0: debug[1]: git commit message ends above" 1>&2
+    if [[ -z $GIT_COMMIT_NEEDED ]]; then
+	echo "$0: debug[1]: git commit message starts below" 1>&2
+	cat "$TMP_GIT_COMMIT" 1>&2
+	echo "$0: debug[1]: git commit message ends above" 1>&2
+    else
+	echo "$0: debug[1]: not git commit was needed" 1>&2
+    fi
+fi
+if [[ -z $GIT_COMMIT_NEEDED ]]; then
+    exit 0
 fi
 
 
@@ -1482,7 +1496,7 @@ if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: again: temporary iocccpasswd.json file: $TMP_IOCCCPASSWD_JSON" 1>&2
     fi
-    trap 'rm -f $LOCK $TMP_STDERR $TMP_GIT_COMMIT $TMP_IOCCCPASSWD_JSON; exit' 0 1 2 3 15
+    trap 'rm -f $LOCK $TMP_STDERR $TMP_GIT_COMMIT $TMP_RUN_LST $TMP_IOCCCPASSWD_JSON; exit' 0 1 2 3 15
     rm -f "$TMP_IOCCCPASSWD_JSON"
     if [[ -e $TMP_IOCCCPASSWD_JSON ]]; then
 	git_exit 1 "$0: ERROR: cannot re-remove iocccpasswd.json file: $TMP_IOCCCPASSWD_JSON"
@@ -1520,7 +1534,7 @@ if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo  "$0: debug[3]: again: temporary iocccpasswd.lst file: $TMP_IOCCCPASSWD_LST" 1>&2
     fi
-    trap 'rm -f $LOCK $TMP_STDERR $TMP_GIT_COMMIT $TMP_IOCCCPASSWD_LST; exit' 0 1 2 3 15
+    trap 'rm -f $LOCK $TMP_STDERR $TMP_GIT_COMMIT $TMP_RUN_LST $TMP_IOCCCPASSWD_LST; exit' 0 1 2 3 15
     rm -f "$TMP_IOCCCPASSWD_LST"
     if [[ -e $TMP_IOCCCPASSWD_LST ]]; then
 	git_exit 1 "$0: ERROR: cannot re-remove iocccpasswd.lst file: $TMP_IOCCCPASSWD_LST"
@@ -1538,12 +1552,12 @@ fi
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: again: $SCP_PASSWD_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR" 1>&2
+	echo "$0: debug[1]: about to: again: $SSH_EMAIL_PR_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR" 1>&2
     fi
     "$SSH_EMAIL_PR_SH" "$TMP_IOCCCPASSWD_LST" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	git_exit 1 "$0: ERROR: again: $SCP_PASSWD_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR failed, error: $status"
+	git_exit 1 "$0: ERROR: again: $SSH_EMAIL_PR_SH $TMP_IOCCCPASSWD_LST 2>$TMP_STDERR failed, error: $status"
     fi
     replace_file_git_add "$TMP_IOCCCPASSWD_LST" "$IOCCCPASSWD_LST"
     rm -f "$TMP_IOCCCPASSWD_LST" # temp file no longer needed
@@ -1555,9 +1569,6 @@ fi
 # verify that all email new addresses collected from the beginning of this job accounts
 #
 if [[ -z $NOOP ]]; then
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: if $COMM_EMAIL_SH $REGISTER_LST $IOCCCPASSWD_LST 2>$TMP_STDERR ..." 1>&2
-    fi
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: again: $COMM_EMAIL_SH $REGISTER_LST $IOCCCPASSWD_LST $TMP_RUN_LST 2>>$TMP_STDERR" 1>&2
     fi
@@ -1588,6 +1599,10 @@ if [[ -z $NOOP ]]; then
 	    echo "All new email addresses successfully processed"
 	} >> "$TMP_GIT_COMMIT"
     fi
+
+    # remove the TMP_RUN_LST list
+    #
+    rm -f "$TMP_RUN_LST"
 
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not compare: $REGISTER_LST and: $IOCCCPASSWD_LST" 1>&2

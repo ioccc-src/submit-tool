@@ -46,7 +46,7 @@
 
 # setup
 #
-export VERSION="2.0.0 2025-02-23"
+export VERSION="2.0.1 2025-02-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -79,11 +79,17 @@ if [[ -z $AWK_TOOL ]]; then
 	AWK_TOOL="/usr/bin/awk"
     fi
 fi
+#
+export WHO_EMAIL_AWK
+if [[ -z $WHO_EMAIL_AWK ]]; then
+    WHO_EMAIL_AWK="/usr/ioccc/sbin/who_email.awk"
+fi
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-t appdir] [-T tmpdir] [-i ioccc.rc] [-I] who-ioccc freelists.lst
+export USAGE="usage: $0 [-h] [-v level] [-V] [-t appdir] [-T tmpdir] [-i ioccc.rc] [-I] [-a awk] [-A who_email]
+	who-ioccc freelists.lst
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
@@ -96,6 +102,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-t appdir] [-T tmpdir] [-i ioccc.r
 	-I		Do not use any rc startup file (def: do)
 
 	-a awk	        use awk tool (def: $AWK_TOOL)
+	-A who_email	use who_email awk script (def: $WHO_EMAIL_AWK)
 
 	who-ioccc	Ecartis email for who command
 	freelists.lst	file to update if email addresses are found in who-ioccc
@@ -106,6 +113,7 @@ Exit codes:
      2         -h and help string printed or -V and version string printed
      3         command line error
      4         topdir is not a directory, or cannot cd to topdir
+     5	       who_email.awk is not a readable file
  >= 10         internal error
 
 $NAME version: $VERSION"
@@ -113,7 +121,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:Vt:T:i:Ia: flag; do
+while getopts :hv:Vt:T:i:Ia:A: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -132,6 +140,8 @@ while getopts :hv:Vt:T:i:Ia: flag; do
     I) CAP_I_FLAG="true"
         ;;
     a) AWK_TOOL="$OPTARG"
+        ;;
+    A) WHO_EMAIL_AWK="$OPTARG"
         ;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -211,6 +221,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: IOCCC_RC=$IOCCC_RC" 1>&2
     echo "$0: debug[3]: CAP_I_FLAG=$CAP_I_FLAG" 1>&2
     echo "$0: debug[3]: AWK_TOOL=$AWK_TOOL" 1>&2
+    echo "$0: debug[3]: WHO_EMAIL_AWK=$WHO_EMAIL_AWK" 1>&2
     echo "$0: debug[3]: WHO_IOCCC=$WHO_IOCCC" 1>&2
     echo "$0: debug[3]: FREELISTS_LST=$FREELISTS_LST" 1>&2
 fi
@@ -272,20 +283,19 @@ if [[ ! -w $TMPDIR ]]; then
 fi
 
 
-# must have readable TOPDIR/sbin/who_email.awk file
+# must have readable who_email.awk file
 #
-export WHO_EMAIL_AWK="$TOPDIR/sbin/who_email.awk"
 if [[ ! -e $WHO_EMAIL_AWK ]]; then
     echo "$0: ERROR: who_email.awk does not exist: $WHO_EMAIL_AWK" 1>&2
-    exit 14
+    exit 5
 fi
 if [[ ! -f $WHO_EMAIL_AWK ]]; then
     echo "$0: ERROR: who_email.awk is not a file: $WHO_EMAIL_AWK" 1>&2
-    exit 15
+    exit 5
 fi
 if [[ ! -r $WHO_EMAIL_AWK ]]; then
     echo "$0: ERROR: who_email.awk is not a readable file: $WHO_EMAIL_AWK" 1>&2
-    exit 16
+    exit 5
 fi
 
 
@@ -293,7 +303,7 @@ fi
 #
 if [[ ! -x $AWK_TOOL ]]; then
     echo "$0: ERROR: cannot find awk executable: $AWK_TOOL" 1>&2
-    exit 17
+    exit 14
 fi
 
 
@@ -307,12 +317,12 @@ trap 'rm -f $TMP_OUTPUT; exit' 0 1 2 3 15
 rm -f "$TMP_OUTPUT"
 if [[ -e $TMP_OUTPUT ]]; then
     echo "$0: ERROR: cannot remove output file: $TMP_OUTPUT" 1>&2
-    exit 18
+    exit 15
 fi
 : >  "$TMP_OUTPUT"
 if [[ ! -e $TMP_OUTPUT ]]; then
     echo "$0: ERROR: cannot create output file: $TMP_OUTPUT" 1>&2
-    exit 19
+    exit 16
 fi
 
 
@@ -325,7 +335,7 @@ fi
 status="$?"
 if [[ $status -ne 0 ]]; then
     echo "$0: ERROR: $AWK_TOOL -f $WHO_EMAIL_AWK $WHO_IOCCC > $TMP_OUTPUT failed, error: $status" 1>&2
-    exit 20
+    exit 17
 fi
 
 
