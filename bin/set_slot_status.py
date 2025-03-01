@@ -35,7 +35,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.3 2025-02-21"
+VERSION = "2.5.0 2025-02-28"
 
 
 def main():

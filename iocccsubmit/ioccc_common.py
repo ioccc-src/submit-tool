@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.6.9 2025-02-21"
+VERSION_IOCCC_COMMON = "2.7.0 2025-02-28"
 
 # force password change grace time
 #

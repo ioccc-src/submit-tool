@@ -21,7 +21,7 @@ BEGIN {
 
     # setup
     #
-    VERSION="2.0.0 2025-02-23";
+    VERSION="2.0.0 2025-02-28";
 
     # if debug is empty, set debug to 0
     #

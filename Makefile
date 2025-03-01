@@ -56,7 +56,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.13.8
+VERSION= 2.0.0
 
 # Python package name
 #

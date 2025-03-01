@@ -78,7 +78,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.6.1 2025-02-17"
+VERSION_IOCCC = "2.7.0 2025-02-28"
 
 
 # Configure the application
