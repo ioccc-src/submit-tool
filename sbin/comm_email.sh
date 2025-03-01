@@ -32,7 +32,7 @@
 
 # setup
 #
-export VERSION="2.0.2 2025-02-27"
+export VERSION="2.0.3 2025-02-28"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -300,26 +300,36 @@ fi
 # sort file1.lst contents
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to run: $SORT_TOOL -f -u $FILE1_LST -o $TMP_SORTED_FILE1_LST" 1>&2
+    echo "$0: debug[1]: about to run: $SORT_TOOL -u $FILE1_LST -o $TMP_SORTED_FILE1_LST" 1>&2
 fi
-"$SORT_TOOL" -f -u "$FILE1_LST" -o "$TMP_SORTED_FILE1_LST"
+"$SORT_TOOL" -u "$FILE1_LST" -o "$TMP_SORTED_FILE1_LST"
 status="$?"
 if [[ $status -ne 0 ]]; then
-    echo "$0: ERROR: $SORT_TOOL -f -u $FILE1_LST -o $TMP_SORTED_FILE1_LST failed, error: $status" 1>&2
+    echo "$0: ERROR: $SORT_TOOL -u $FILE1_LST -o $TMP_SORTED_FILE1_LST failed, error: $status" 1>&2
     exit 4
+fi
+if [[ $V_FLAG -ge 5 ]]; then
+    echo "$0: debug[5]: TMP_SORTED_FILE1_LST from $FILE1_LST starts below" 1>&2
+    cat "$TMP_SORTED_FILE1_LST" 1>&2
+    echo "$0: debug[5]: TMP_SORTED_FILE1_LST from $FILE1_LST ends above" 1>&2
 fi
 
 
 # sort file2.lst contents
 #
 if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to run: $SORT_TOOL -f -u $FILE2_LST -o $TMP_SORTED_FILE2_LST" 1>&2
+    echo "$0: debug[1]: about to run: $SORT_TOOL -u $FILE2_LST -o $TMP_SORTED_FILE2_LST" 1>&2
 fi
-"$SORT_TOOL" -f -u "$FILE2_LST" -o "$TMP_SORTED_FILE2_LST"
+"$SORT_TOOL" -u "$FILE2_LST" -o "$TMP_SORTED_FILE2_LST"
 status="$?"
 if [[ $status -ne 0 ]]; then
-    echo "$0: ERROR: $SORT_TOOL -f -u $FILE2_LST -o $TMP_SORTED_FILE2_LST failed, error: $status" 1>&2
+    echo "$0: ERROR: $SORT_TOOL -u $FILE2_LST -o $TMP_SORTED_FILE2_LST failed, error: $status" 1>&2
     exit 4
+fi
+if [[ $V_FLAG -ge 5 ]]; then
+    echo "$0: debug[5]: TMP_SORTED_FILE2_LST from $FILE2_LST starts below" 1>&2
+    cat "$TMP_SORTED_FILE2_LST" 1>&2
+    echo "$0: debug[5]: TMP_SORTED_FILE2_LST from $FILE2_LST ends above" 1>&2
 fi
 
 
