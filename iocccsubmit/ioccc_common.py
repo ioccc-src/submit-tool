@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.7.0 2025-02-28"
+VERSION_IOCCC_COMMON = "2.8.0 2025-03-01"
 
 # force password change grace time
 #
@@ -315,6 +315,24 @@ MAX_SUBMIT_SLOT = 9
 #   https://github.com/ioccc-src/mkiocccentry/blob/master/soup/limit_ioccc.h
 #
 MAX_TARBALL_LEN = 3999971
+
+# The Flask upload size limit appears to not be exact, possibly because
+# what is being measured by Flask includes some or all HTTP headers.
+# Initial tests show that with a 3999971 limit file uploads are limited
+# to 3999627 bytes, some 344 bytes less than the MAX_TARBALL_LEN.
+#
+# It is possible that the observed Flask file upload size limit difference
+# is HTTP session and browser dependent. Therefore we need to apply a
+# maximum margin so that someone can actually upload a file size
+# of MAX_TARBALL_LEN bytes.
+#
+# At most, the file upload will exceed MAX_TARBALL_LEN bytes by MARGIN_SIZE
+# bytes.  This means, however that the application could receive a file as
+# large as MAX_TARBALL_LEN + MARGIN_SIZE bytes,  Thus, the application will
+# need check the size of the file upload treat any uploaded file that
+# is large then MAX_TARBALL_LEN bytes as a user error.
+#
+MARGIN_SIZE = 8192
 
 # where to stage submit files exporting (remote collection)
 #
@@ -5864,9 +5882,9 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
         if not isinstance(slot_dict['length'], int):
             debug(f'{me}: end: slot length is not an int')
             return 'slot length is not an int'
-        if slot_dict['length'] <= 0:
-            debug(f'{me}: end: slot length not > 0')
-            return 'slot length not > 0'
+        if slot_dict['length'] < 0:
+            debug(f'{me}: end: slot length not >= 0')
+            return 'slot length not >= 0'
     elif slot_dict['length']:
         debug(f'{me}: end: have length w/o filename')
         return 'have length w/o filename'

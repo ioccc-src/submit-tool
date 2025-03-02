@@ -101,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.5.0 2025-02-28"
+export VERSION="2.6.0 2025-03-01"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -1115,6 +1115,7 @@ if [[ $status -ne 0 ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 if [[ -n $USE_GIT ]]; then
@@ -1143,6 +1144,7 @@ if [[ -z $HEXDIGEST ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 if [[ -z $STAGED_PATH ]]; then
@@ -1158,6 +1160,7 @@ if [[ -z $STAGED_PATH ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 if [[ -z $UNEXPECTED_COUNT ]]; then
@@ -1173,6 +1176,7 @@ if [[ -z $UNEXPECTED_COUNT ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 if [[ -n $EXTRA ]]; then
@@ -1187,6 +1191,7 @@ if [[ -n $EXTRA ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 if [[ $V_FLAG -ge 3 ]]; then
@@ -1217,6 +1222,7 @@ if [[ $HEXDIGEST == exit.* ]]; then
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 
@@ -1234,6 +1240,7 @@ if ! [[ $HEXDIGEST =~ ^[0-9a-f]+$ || ${#HEXDIGEST} -ne 64 ]]; then
     else
 	cat 1>&2
     fi
+    # Having noted the problem, try to just carry on
 fi
 
 
@@ -1323,43 +1330,260 @@ fi
 
 # copy remote staged file into the inbound directory
 #
+export SCP_ERROR=
 if [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: about to: $SCP_TOOL -P $RMT_PORT $RMT_USER@$SERVER:$STAGED_PATH $DEST" 1>&2
 fi
-"$SCP_TOOL" -q -P "$RMT_PORT" "$RMT_USER@$SERVER:$STAGED_PATH" "$DEST"
+"$SCP_TOOL" -q -P "$RMT_PORT" "$RMT_USER@$SERVER:$STAGED_PATH" "$DEST" 2>"$TMP_STDERR"
 status="$?"
 if [[ $status -ne 0 ]]; then
     echo "$0: Warning: $SCP_TOOL -q -P $RMT_PORT $RMT_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
 fi
-if [[ ! -r $DEST ]]; then
-    # We have no remote file - we can do thing more at this stage
-    echo "$0: ERROR: destination file not found: $DEST" 1>&2
-    exit 8
-fi
 
-
-# verify SHA256 hex digest
+# case: nothing received from scp
 #
-if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: $SHA256_TOOL $DEST" 1>&2
-fi
-
-
-# determine SHA256 hex digest hash of destination file
+# This should not happen because the scp command returned exit 0.
 #
-DEST_HEXDIGEST=$("$SHA256_TOOL" "$DEST")
-status="$?"
-if [[ $status -ne 0 ]]; then
+if [[ ! -e $DEST ]]; then
+
+    # report submit file does not exist
+    #
+    PROBLEM_CODE=9
+    {
+	echo
+	echo "$0: ERROR: destination does not exist: $DEST"
+	echo "$0: Warning: stderr output starts below"
+	cat "$TMP_STDERR"
+	echo "$0: Warning: stderr output ends above"
+    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
+    fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file is missing! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # NOTE: we cannot move staged path file under ERRORS because it does not exist
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    git_add "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
+
+# case: received a non-file
+#
+elif [[ ! -f $DEST ]]; then
+
+    # report submit is not a file
+    #
     PROBLEM_CODE=10
     {
 	echo
-	echo "$0: Warning: $SHA256_TOOL $DEST failed, error: $status"
+	echo "$0: ERROR: received a non-file: $DEST"
+	echo "$0: Warning: ls -la output starts below"
+	ls -la "$DEST"
+	echo "$0: Warning: ls -la output ends above"
 	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
     } | if [[ -n $USE_GIT ]]; then
 	cat >> "$TMP_GIT_COMMIT"
     else
 	cat 1>&2
     fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit is not a file! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # move staged path file under ERRORS
+    #
+    mv_to_errors "$DEST"
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    git_add "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
+
+# case: file is not readable
+#
+elif [[ ! -r $DEST ]]; then
+
+    # report non-readable submit file
+    #
+    PROBLEM_CODE=11
+    {
+	echo
+	echo "$0: ERROR: file is not readable: $DEST"
+	echo "$0: Warning: ls -la output starts below"
+	ls -la "$DEST"
+	echo "$0: Warning: ls -la output ends above"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
+    fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file is not readable! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # move staged path file under ERRORS
+    #
+    mv_to_errors "$DEST"
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    git_add "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
+
+# case: readable file is empty
+#
+elif [[ ! -s $DEST ]]; then
+
+    # report empty submit file
+    #
+    PROBLEM_CODE=12
+    {
+	echo
+	echo "$0: ERROR: file is empty: $DEST"
+	echo "$0: Warning: ls -la output starts below"
+	ls -la "$DEST"
+	echo "$0: Warning: ls -la output ends above"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
+    fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file is empty! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # move staged path file under ERRORS
+    #
+    mv_to_errors "$DEST"
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    git_add "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
+fi
+
+
+# determine SHA256 hex digest hash of destination file
+#
+if [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: about to: $SHA256_TOOL $DEST" 1>&2
+fi
+DEST_HEXDIGEST=$("$SHA256_TOOL" "$DEST" 2>"$TMP_STDERR")
+status="$?"
+if [[ $status -ne 0 ]]; then
+
+    PROBLEM_CODE=13
+    {
+	echo
+	echo "$0: Warning: $SHA256_TOOL $DEST failed, error: $status"
+	echo "$0: Warning: stderr output starts below"
+	cat "$TMP_STDERR"
+	echo "$0: Warning: stderr output ends above"
+	echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+    } | if [[ -n $USE_GIT ]]; then
+	cat >> "$TMP_GIT_COMMIT"
+    else
+	cat 1>&2
+    fi
+
+    # update the slot comment on the remote server to note the submit file corrupted on the server!
+    #
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file contents cannot be validated! Use mkiocccentry to rebuild and resubmit to this slot."
+
+    # move staged path file under ERRORS
+    #
+    mv_to_errors "$DEST"
+
+    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+    #
+    unexpected_collect "$UNEXPECTED_COUNT"
+
+    # if using git, add ERRORS
+    #
+    git_add "$ERRORS"
+
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
+    # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
+    #
+    exit 9
 fi
 # remove filename from SHA256_TOOL output leaving just the SHA256 hex digest
 DEST_HEXDIGEST=${DEST_HEXDIGEST%% *}
@@ -1376,10 +1600,15 @@ if [[ $DEST_HEXDIGEST == "$HEXDIGEST" ]]; then
     #
     change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge. The format test is pending."
 
+    # so far so good!
+
 # case: SHA256 hex digest hash of destination file is wrong
 #
 else
-    PROBLEM_CODE=11
+
+    # report corrupted submit file
+    #
+    PROBLEM_CODE=14
     {
 	echo
 	echo "$0: Warning: $DEST SHA256 hash: $DEST_HEXDIGEST != remote SHA256 hash: $HEXDIGEST"
@@ -1406,6 +1635,14 @@ else
     #
     git_add "$ERRORS"
 
+    # if using git, commit the files that have been added
+    #
+    git_commit "$TMP_GIT_COMMIT"
+
+    # if using git, push any commits
+    #
+    git_push .
+
     # exit non-zero due SHA256 hash mismatch - we can do thing more at this stage
     #
     exit 9
@@ -1418,19 +1655,22 @@ if [[ $PROBLEM_CODE -eq 0 ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH rm -f $STAGED_PATH" 1>&2
     fi
-    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" rm -f "$STAGED_PATH"
+    "$SSH_TOOL" -n -p "$RMT_PORT" "$RMT_USER@$SERVER" "$RMT_RUN_SH" rm -f "$STAGED_PATH" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	PROBLEM_CODE=12
+	# we do not set the PROBLEM_CODE simply because we cannot remove the staved file
 	{
 	    echo
 	    echo "$0: Warning: $SSH_TOOL -n -p $RMT_PORT $RMT_USER@$SERVER $RMT_RUN_SH rm -f $STAGED_PATH failed, error: $status"
-	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	    echo "$0: Warning: stderr output starts below"
+	    cat "$TMP_STDERR"
+	    echo "$0: Warning: stderr output ends above"
 	} | if [[ -n $USE_GIT ]]; then
 	    cat >> "$TMP_GIT_COMMIT"
 	else
 	    cat 1>&2
 	fi
+	# Having noted the problem, try to just carry on
     fi
 fi
 
@@ -1446,8 +1686,9 @@ if [[ $PROBLEM_CODE -ne 0 && -f $DEST ]]; then
     # if using git, add ERRORS
     #
     git_add "$ERRORS"
+    # Having noted the problem, try to just carry on
 
-# case: no problem and a staged path file
+# case: no problem detected so far and a we have a staged path file
 #
 elif [[ -f $DEST ]]; then
 
@@ -1462,7 +1703,7 @@ elif [[ -f $DEST ]]; then
 
 	# report txzchk test failure
 	#
-	PROBLEM_CODE=13
+	PROBLEM_CODE=15
 	{
 	    echo
 	    echo "$0: Warning: $TXZCHK_TOOL -q $DEST 2>$TMP_STDERR failed, error: $status"
@@ -1476,9 +1717,9 @@ elif [[ -f $DEST ]]; then
 	    cat 1>&2
 	fi
 
-	# update the slot comment on the remote server to note txxchk test failure
+	# update the slot comment on the remote server to note txchk test failure
 	#
-	change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed the txxchk test! Use mkiocccentry to rebuild and resubmit to this slot."
+	change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed the txzchk test! Use mkiocccentry to rebuild and resubmit to this slot."
 
 	# move destination under ERRORS
 	#
@@ -1511,12 +1752,53 @@ elif [[ -f $DEST ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_PARENT_DIR" 1>&2
     fi
-    mkdir -p "$SUBMIT_PARENT_DIR"
+    mkdir -p "$SUBMIT_PARENT_DIR" 2>"$TMP_STDERR"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR failed, error: $status" 1>&2
-	# exit non-zero due to mkdir failure - we can do thing more at this stage
-	exit 15
+
+	# report submit parent mkdir directory failure
+	#
+	PROBLEM_CODE=16
+	{
+	    echo
+	    echo "$0: ERROR: mkdir -p $SUBMIT_PARENT_DIR failed, error: $status" 1>&2
+	    echo "$0: Warning: stderr output starts below"
+	    cat "$TMP_STDERR"
+	    echo "$0: Warning: stderr output ends above"
+	    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	} | if [[ -n $USE_GIT ]]; then
+	    cat >> "$TMP_GIT_COMMIT"
+	else
+	    cat 1>&2
+	fi
+
+	# update the slot comment on the remote server to note txchk test failure
+	#
+	change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "failed to make submit parent directory! Use mkiocccentry to rebuild and resubmit to this slot."
+
+	# move destination under ERRORS
+	#
+	mv_to_errors "$DEST"
+
+	# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+	#
+	unexpected_collect "$UNEXPECTED_COUNT"
+
+	# if using git, add ERRORS
+	#
+	git_add "$ERRORS"
+
+	# if using git, commit the files that have been added
+	#
+	git_commit "$TMP_GIT_COMMIT"
+
+	# if using git, push any commits
+	#
+	git_push .
+
+	# exit non-zero due to txzchk failure - we can do thing more at this stage
+	#
+	exit 9
     fi
 
     # if we have a submission directory, create tarball holding directory
@@ -1527,12 +1809,54 @@ elif [[ -f $DEST ]]; then
 	if [[ $V_FLAG -ge 1 ]]; then
 	    echo "$0: debug[1]: about to: mkdir -p $SUBMIT_TARBALL_DIR" 1>&2
 	fi
-	mkdir -p "$SUBMIT_TARBALL_DIR"
+	mkdir -p "$SUBMIT_TARBALL_DIR" 2>"$TMP_STDERR"
 	status="$?"
 	if [[ $status -ne 0 ]]; then
-	    echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR failed, error: $status" 1>&2
-	    # exit non-zero due to mkdir failure - we can do thing more at this stage
-	    exit 15
+
+	    # report mkdir submit directory failure
+	    #
+	    PROBLEM_CODE=17
+	    {
+		echo
+		echo "$0: ERROR: mkdir -p $SUBMIT_TARBALL_DIR failed, error: $status" 1>&2
+		echo "$0: Warning: stderr output starts below"
+		cat "$TMP_STDERR"
+		echo "$0: Warning: stderr output ends above"
+		echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+	    } | if [[ -n $USE_GIT ]]; then
+		cat >> "$TMP_GIT_COMMIT"
+	    else
+		cat 1>&2
+	    fi
+
+	    # update the slot comment on the remote server to note txchk test failure
+	    #
+	    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "failed to make submit directory! Use mkiocccentry to rebuild and resubmit to this slot."
+
+	    # move destination under ERRORS
+	    #
+	    mv_to_errors "$DEST"
+
+	    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+	    #
+	    unexpected_collect "$UNEXPECTED_COUNT"
+
+	    # if using git, add ERRORS
+	    #
+	    git_add "$ERRORS"
+
+	    # if using git, commit the files that have been added
+	    #
+	    git_commit "$TMP_GIT_COMMIT"
+
+	    # if using git, push any commits
+	    #
+	    git_push .
+
+	    # exit non-zero due to txzchk failure - we can do thing more at this stage
+	    #
+	    exit 9
+
 	fi
 
 	# if we have a tarball holding directory, process it
@@ -1542,20 +1866,57 @@ elif [[ -f $DEST ]]; then
 	    # create a new temporary unpack directory
 	    #
 	    export SUBMIT_UNPACK_DIR="$SUBMIT_PARENT_DIR/tmp.$$"
-	    if [[ -n $USE_GIT ]]; then
-		trap 'rm -rf $TMP_GIT_COMMIT $TMP_STDERR $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
-	    else
-		trap 'rm -rf $SUBMIT_UNPACK_DIR $TMP_STDERR; exit' 0 1 2 3 15
-	    fi
+	    trap 'rm -rf $TMP_GIT_COMMIT $TMP_STDERR $SUBMIT_UNPACK_DIR; exit' 0 1 2 3 15
 	    if [[ $V_FLAG -ge 1 ]]; then
 		echo "$0: debug[1]: about to: mkdir -p $SUBMIT_UNPACK_DIR" 1>&2
 	    fi
-	    mkdir -p "$SUBMIT_UNPACK_DIR"
+	    mkdir -p "$SUBMIT_UNPACK_DIR" 2>"$TMP_STDERR"
 	    status="$?"
 	    if [[ $status -ne 0 ]]; then
-		echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
-		# exit non-zero due to mkdir failure - we can do thing more at this stage
-		exit 16
+
+		# report mkdir unpack directory failure
+		#
+		PROBLEM_CODE=18
+		{
+		    echo
+		    echo "$0: ERROR: mkdir -p $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+		    echo "$0: Warning: stderr output starts below"
+		    cat "$TMP_STDERR"
+		    echo "$0: Warning: stderr output ends above"
+		    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		} | if [[ -n $USE_GIT ]]; then
+		    cat >> "$TMP_GIT_COMMIT"
+		else
+		    cat 1>&2
+		fi
+
+		# update the slot comment on the remote server to note txchk test failure
+		#
+		change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "failed to make unpack directory! Use mkiocccentry to rebuild and resubmit to this slot."
+
+		# move destination under ERRORS
+		#
+		mv_to_errors "$DEST"
+
+		# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+		#
+		unexpected_collect "$UNEXPECTED_COUNT"
+
+		# if using git, add ERRORS
+		#
+		git_add "$ERRORS"
+
+		# if using git, commit the files that have been added
+		#
+		git_commit "$TMP_GIT_COMMIT"
+
+		# if using git, push any commits
+		#
+		git_push .
+
+		# exit non-zero due to txzchk failure - we can do thing more at this stage
+		#
+		exit 9
 	    fi
 
 	    # if we have a temporary unpack directory, untar the submit file
@@ -1573,7 +1934,7 @@ elif [[ -f $DEST ]]; then
 
 		    # report untar failure
 		    #
-		    PROBLEM_CODE=14
+		    PROBLEM_CODE=19
 		    {
 			echo
 			echo "$0: Warning: tar -C $SUBMIT_UNPACK_DIR -Jxf $DEST 2>$TMP_STDERR failed, error: $status"
@@ -1639,17 +2000,59 @@ elif [[ -f $DEST ]]; then
 		if [[ $V_FLAG -ge 3 ]]; then
 		    echo "$0: debug[3]: will move unpacked into: $SUBMIT_DIR" 1>&2
 		fi
-		SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d)
+		SRC_DIR=$(find "$SUBMIT_UNPACK_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
 		export SRC_DIR
 		if [[ $V_FLAG -ge 1 ]]; then
 		    echo "$0: debug[1]: about to: mv -f $SRC_DIR $SUBMIT_DIR" 1>&2
 		fi
-		mv -f "$SRC_DIR" "$SUBMIT_DIR"
+		mv -f "$SRC_DIR" "$SUBMIT_DIR" 2>"$TMP_STDERR"
 		status="$?"
 		if [[ $status -ne 0 ]]; then
-		    echo "$0: ERROR: mv -f $SRC_DIR $SUBMIT_DIR failed, error: $status" 1>&2
-		    # exit non-zero due to mv failure - we can do thing more at this stage
-		    exit 17
+
+		    # report cannot move src or submit directory
+		    #
+		    PROBLEM_CODE=20
+		    {
+			echo
+			echo "$0: Warning: mv -f $SRC_DIR $SUBMIT_DIR failed, error: $status"
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+
+		    # update the slot comment on the remote server to note untar faulure
+		    #
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit dir failed to move! Use mkiocccentry to rebuild and resubmit to this slot."
+
+		    # move destination under ERRORS
+		    #
+		    mv_to_errors "$DEST"
+
+		    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+		    #
+		    unexpected_collect "$UNEXPECTED_COUNT"
+
+		    # if using git, add ERRORS
+		    #
+		    git_add "$ERRORS"
+
+		    # if using git, commit the files that have been added
+		    #
+		    git_commit "$TMP_GIT_COMMIT"
+
+		    # if using git, push any commits
+		    #
+		    git_push .
+
+		    # exit non-zero due to untar failure - we can do thing more at this stage
+		    #
+		    exit 9
+
 		fi
 
 		# if we moved the temporary unpacked tree into place
@@ -1679,12 +2082,53 @@ elif [[ -f $DEST ]]; then
 		    if [[ $V_FLAG -ge 1 ]]; then
 			echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
 		    fi
-		    mv -f "$DEST" "$DEST_TARBALL"
+		    mv -f "$DEST" "$DEST_TARBALL" 2>"$TMP_STDERR"
 		    status="$?"
 		    if [[ $status -ne 0 ]]; then
-			echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
-			# exit non-zero due to mv failure - we can do thing more at this stage
-			exit 18
+
+			# report untar failure
+			#
+			PROBLEM_CODE=21
+			{
+			    echo
+			    echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+
+			# update the slot comment on the remote server to note untar faulure
+			#
+			change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed to move! Use mkiocccentry to rebuild and resubmit to this slot."
+
+			# move destination under ERRORS
+			#
+			mv_to_errors "$DEST"
+
+			# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+			#
+			unexpected_collect "$UNEXPECTED_COUNT"
+
+			# if using git, add ERRORS
+			#
+			git_add "$ERRORS"
+
+			# if using git, commit the files that have been added
+			#
+			git_commit "$TMP_GIT_COMMIT"
+
+			# if using git, push any commits
+			#
+			git_push .
+
+			# exit non-zero due to untar failure - we can do thing more at this stage
+			#
+			exit 9
 		    fi
 
 		    # cleanup temporary tree
@@ -1692,18 +2136,27 @@ elif [[ -f $DEST ]]; then
 		    if [[ $V_FLAG -ge 1 ]]; then
 			echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
 		    fi
-		    rm -rf "$SUBMIT_UNPACK_DIR"
+		    rm -rf "$SUBMIT_UNPACK_DIR" 2>"$TMP_STDERR"
 		    status="$?"
 		    if [[ $status -ne 0 ]]; then
-			echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
-			# exit non-zero due to rm failure - we can do thing more at this stage
-			exit 19
+
+			# just report a cleanup failure and move on
+			#
+			{
+			    echo
+			    echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
 		    fi
-		    if [[ -n $USE_GIT ]]; then
-			trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
-		    else
-			trap 'rm -f $TMP_STDERR' 0 1 2 3 15
-		    fi
+		    trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
 
 		    # perform chkentry test on the submission directory
 		    #
@@ -1716,7 +2169,7 @@ elif [[ -f $DEST ]]; then
 
 			# report chkentry failure
 			#
-			PROBLEM_CODE=15
+			PROBLEM_CODE=22
 			{
 			    echo
 			    echo "$0: Warning: $CHKENTRY_TOOL -q $SUBMIT_DIR 2>$TMP_STDERR failed, error: $status"
@@ -1771,7 +2224,7 @@ elif [[ -f $DEST ]]; then
 
 			# report chkentry failure
 			#
-			PROBLEM_CODE=16
+			PROBLEM_CODE=23
 			{
 			    echo
 			    echo "$0: Warning: $XZ_TOOL -z -f $AUTH_JSON 2>$TMP_STDERR failed, error: $status"
@@ -1784,6 +2237,7 @@ elif [[ -f $DEST ]]; then
 			else
 			    cat 1>&2
 			fi
+			# Having noted the problem, try to just carry on
 		    fi
 
 		    # if using git, add the submission directory and tarball
@@ -1801,6 +2255,8 @@ elif [[ -f $DEST ]]; then
 		    # report submission success
 		    #
 		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
+
+		    # success !!!
 		fi
 	    fi
 	fi

@@ -14,6 +14,7 @@ __init__.py - IOCCC submit tool module __init__
 from .ioccc_common import \
         APPDIR, \
         DEFAULT_GRACE_PERIOD, \
+        MARGIN_SIZE, \
         MAX_PASSWORD_LENGTH, \
         MAX_SUBMIT_SLOT, \
         MAX_TARBALL_LEN, \

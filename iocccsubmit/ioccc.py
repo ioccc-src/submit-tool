@@ -26,6 +26,7 @@ NOTE: This flask-login was inspired by the following:
 import inspect
 import re
 import subprocess
+import os
 
 # import from modules
 #
@@ -48,6 +49,7 @@ from flask_limiter.util import get_remote_address
 # pylint: disable-next=unused-import
 from iocccsubmit.ioccc_common import \
     APPDIR, \
+    MARGIN_SIZE, \
     MAX_PASSWORD_LENGTH, \
     MAX_TARBALL_LEN, \
     MIN_PASSWORD_LENGTH, \
@@ -78,7 +80,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.7.0 2025-02-28"
+VERSION_IOCCC = "2.8.0 2025-03-01"
 
 
 # Configure the application
@@ -86,7 +88,7 @@ VERSION_IOCCC = "2.7.0 2025-02-28"
 application = Flask(__name__,
             template_folder=f'{APPDIR}/templates',
             root_path=APPDIR)
-application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
+application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN + MARGIN_SIZE
 application.config['FLASH_APP'] = "iocccsubmit"
 application.debug = False
 application.config['FLASK_ENV'] = "production"
@@ -378,6 +380,7 @@ def login():
 
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
 #
 @application.route('/submit', methods = ['GET', 'POST'])
 @flask_login.login_required
@@ -586,6 +589,47 @@ def submit():
     #
     upload_file = f'{user_dir}/{slot_num}/{file.filename}'
     file.save(upload_file)
+
+    # verify file size
+    #
+    # Reject empty files.
+    #
+    # Because the Flask file upload size may exceed MAX_TARBALL_LEN bytes by
+    # as much as MARGIN_SIZE bytes, we also enforce the MAX_TARBALL_LEN limit.
+    #
+    try:
+        file_length = os.path.getsize(upload_file)
+    except OSError:
+        pass
+    if not file_length or file_length <= 0:
+        info(f'{me}: {return_client_ip()}: '
+             f'username: {username} slot_num: {slot_num} attempt to upload empty file')
+        flash('The file must not be empty')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    if file_length > MAX_TARBALL_LEN:
+        info(f'{me}: {return_client_ip()}: '
+             f'username: {username} slot_num: {slot_num} file size: {file_length} > {MAX_TARBALL_LEN}')
+        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # update slot
+    #
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} update_slot failed: {return_last_errmsg()}')
@@ -609,10 +653,12 @@ def submit():
 #
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-return-statements
+# pylint: enable=too-many-locals
 
 
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
 #
 @application.route('/update', methods=["POST"])
 @flask_login.login_required
@@ -648,8 +694,8 @@ def upload():
     slots = get_all_json_slots(username)
     if not slots:
         error(f'{me}: {return_client_ip()}: '
-              f'username: {username} get_all_json_slots failed: {return_last_errmsg()}')
-        flash(f'ERROR: in: {me}: get_all_json_slots failed: {return_last_errmsg()}')
+              f'username: {username} get_all_json_slots #0 failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: get_all_json_slots #0 failed: {return_last_errmsg()}')
         return redirect(url_for('login'))
 
     # setup for user
@@ -807,10 +853,55 @@ def upload():
     #
     upload_file = f'{user_dir}/{slot_num}/{file.filename}'
     file.save(upload_file)
+
+    # verify file size
+    #
+    # Reject empty files.
+    #
+    # Because the Flask file upload size may exceed MAX_TARBALL_LEN bytes by
+    # as much as MARGIN_SIZE bytes, we also enforce the MAX_TARBALL_LEN limit.
+    #
+    try:
+        file_length = os.path.getsize(upload_file)
+    except OSError:
+        pass
+    if not file_length or file_length <= 0:
+        info(f'{me}: {return_client_ip()}: '
+             f'username: {username} slot_num: {slot_num} attempt to upload empty file')
+        flash('The file must not be empty')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    if file_length > MAX_TARBALL_LEN:
+        info(f'{me}: {return_client_ip()}: '
+             f'username: {username} slot_num: {slot_num} file size: {file_length} > {MAX_TARBALL_LEN}')
+        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # update slot
+    #
     if not update_slot(username, slot_num, upload_file):
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} update_slot failed: {return_last_errmsg()}')
         flash(f'ERROR: in: {me}: update_slot failed: {return_last_errmsg()}')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -823,16 +914,26 @@ def upload():
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
     flash("Uploaded file: " + file.filename)
 
+    # get, again, the JSON for all slots for the user
+    #
+    slots = get_all_json_slots(username)
+    if not slots:
+        error(f'{me}: {return_client_ip()}: '
+              f'username: {username} get_all_json_slots #1 failed: {return_last_errmsg()}')
+        flash(f'ERROR: in: {me}: get_all_json_slots #1 failed: {return_last_errmsg()}')
+        return redirect(url_for('login'))
+
     # both login and user setup are successful
     #
     return render_template('submit.html',
                            flask_login = flask_login,
                            username = username,
-                           etable = get_all_json_slots(username),
+                           etable = slots,
                            date=str(close_datetime).replace('+00:00', ''))
 #
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-return-statements
+# pylint: enable=too-many-locals
 
 
 @application.route('/logout')
