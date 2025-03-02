@@ -80,7 +80,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.8.0 2025-03-01"
+VERSION_IOCCC = "2.8.1 2025-03-02"
 
 
 # Configure the application
@@ -260,7 +260,7 @@ def login():
             if not user_allowed_to_login(user.user_dict):
                 info(f'{me}: {return_client_ip()}: '
                      f'disabled: username: {username}')
-                flash("ERROR: Sorry (tm Canada 🇨🇦) you cannot login at this time")
+                flash("ERROR: Sorry (tm Canada 🇨🇦) you cannot login at this time.")
                 return render_template('login.html')
 
             # case: username and password are good, complete the login
@@ -1087,8 +1087,8 @@ def passwd():
             # This update_password() call also validates that old password is the correct password for the user.
             #
             if not update_password(username, old_password, new_password):
-                error(f'{me}: {return_client_ip()}: '
-                      f'username: {username} failed to change password')
+                info(f'{me}: {return_client_ip()}: '
+                     f'username: {username} user did not correctly change their password')
                 flash("ERROR: Password not changed")
                 # The update_password() and functions it calls set the ioccc_last_errmsg so display that too.
                 flash(return_last_errmsg())
