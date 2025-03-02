@@ -80,7 +80,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.8.1 2025-03-02"
+VERSION_IOCCC = "2.8.2 2025-03-02"
 
 
 # Configure the application
@@ -247,7 +247,7 @@ def login():
         if not user or not hasattr(user, 'id') or not user.id:
             info(f'{me}: {return_client_ip()}: '
                  f'invalid username')
-            flash("ERROR: invalid username and/or password")
+            flash("ERROR: invalid username and/or password.")
             return render_template('login.html')
 
         # validate password
@@ -275,7 +275,7 @@ def login():
         else:
             info(f'{me}: {return_client_ip()}: '
                  f'invalid password: username: {username}')
-            flash("ERROR: invalid username and/or password")
+            flash("ERROR: invalid username and/or password.")
             return render_template('login.html')
 
         # get the JSON slots for the user and verify we have slots
@@ -295,7 +295,7 @@ def login():
         if must_change_password(user.user_dict):
             info(f'{me}: {return_client_ip()}: '
                  f'required password change: username: {username}')
-            flash("Notice: You are required to change your password")
+            flash("Notice: You are required to change your password.")
             return redirect(url_for('passwd'))
 
         # obtain the contest open and close dates
@@ -306,12 +306,12 @@ def login():
                 info(f'{me}: {return_client_ip()}: '
                      f'cannot determine the contest open date')
                 open_datetime = "ERROR: unknown open date"
-                flash('ERROR: cannot determine the contest open date')
+                flash('ERROR: cannot determine the contest open date.')
             if not close_datetime:
                 info(f'{me}: {return_client_ip()}: '
                      f'cannot determine the contest close date')
                 open_datetime = "ERROR: unknown close date"
-                flash('ERROR: cannot determine the contest close date')
+                flash('ERROR: cannot determine the contest close date.')
             return render_template('not-open.html',
                                    flask_login = flask_login,
                                    username = username,
@@ -345,7 +345,7 @@ def login():
             #
             info(f'{me}: {return_client_ip()}: '
                  f'IOCCC is not yet open for username: {username}')
-            flash("The IOCCC is not yet open for submissions")
+            flash("The IOCCC is not yet open for submissions.")
             return render_template('not-open.html',
                                    flask_login = flask_login,
                                    username = username,
@@ -359,7 +359,7 @@ def login():
         #
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is no longer accepting submissions for username: {username}')
-        flash("The IOCCC is no longer accepting submissions")
+        flash("The IOCCC is no longer accepting submissions.")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -401,7 +401,7 @@ def submit():
     if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for current_user.id as None')
@@ -413,7 +413,7 @@ def submit():
     if not username:
         warning(f'{me}: {return_client_ip()}: '
                 f'invalid username')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         flask_login.logout_user()
         info(f'{me}: {return_client_ip()}: '
              f'forced logout for username as None')
@@ -448,7 +448,7 @@ def submit():
     if must_change_password(current_user.user_dict):
         info(f'{me}: {return_client_ip()}: '
              f'required password change: username: {username}')
-        flash("User is required to change their password")
+        flash("User is required to change their password.")
         return redirect(url_for('passwd'))
 
     # obtain the contest open and close dates
@@ -459,12 +459,12 @@ def submit():
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest open date')
             open_datetime = "ERROR: unknown open date"
-            flash('ERROR: cannot determine the contest open date')
+            flash('ERROR: cannot determine the contest open date.')
         if not close_datetime:
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest close date')
             open_datetime = "ERROR: unknown close date"
-            flash('ERROR: cannot determine the contest close date')
+            flash('ERROR: cannot determine the contest close date.')
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -487,7 +487,7 @@ def submit():
         #
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is not yet open for username: {username}')
-        flash("The IOCCC is not yet open for submissions")
+        flash("The IOCCC is not yet open for submissions.")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -502,7 +502,7 @@ def submit():
     if after_open:
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is no longer accepting submissions for username: {username}')
-        flash("The IOCCC is no longer accepting submissions")
+        flash("The IOCCC is no longer accepting submissions.")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -517,7 +517,7 @@ def submit():
     if not 'slot_num' in request.form:
         debug(f'{me}: {return_client_ip()}: '
               f'No slot selected')
-        flash("No slot selected")
+        flash("No slot selected.")
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -529,7 +529,7 @@ def submit():
     except ValueError:
         debug(f'{me}: {return_client_ip()}: '
               f'Slot number is not a number')
-        flash("Slot number is not a number: " + user_input)
+        flash("Slot number is not a number.")
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -555,7 +555,7 @@ def submit():
     if 'file' not in request.files:
         debug(f'{me}: {return_client_ip()}: '
               f'No file part')
-        flash('No file part')
+        flash('No file part.')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -565,7 +565,7 @@ def submit():
     if file.filename == '':
         debug(f'{me}: {return_client_ip()}: '
               f'No selected file')
-        flash('No selected file')
+        flash('No selected file.')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -578,7 +578,7 @@ def submit():
     if not re.match(re_match_str, file.filename):
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} invalid form of a filename')
-        flash(f'Filename for slot: {slot_num} must match this regular expression: {re_match_str}')
+        flash(f'Filename for slot: {slot_num} must match this regular expression: {re_match_str} to upload.')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -604,7 +604,7 @@ def submit():
     if not file_length or file_length <= 0:
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} slot_num: {slot_num} attempt to upload empty file')
-        flash('The file must not be empty')
+        flash('The file must not be empty.')
         try:
             os.remove(upload_file)
         except OSError:
@@ -617,7 +617,7 @@ def submit():
     if file_length > MAX_TARBALL_LEN:
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} slot_num: {slot_num} file size: {file_length} > {MAX_TARBALL_LEN}')
-        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}')
+        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}.')
         try:
             os.remove(upload_file)
         except OSError:
@@ -644,7 +644,7 @@ def submit():
     #
     info(f'{me}: {return_client_ip()}: '
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
-    flash("Uploaded file: " + file.filename)
+    flash(f'File {file.filename} was uploaded sucessfully.')
     return render_template('submit.html',
                            flask_login = flask_login,
                            username = username,
@@ -679,14 +679,14 @@ def upload():
     if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
         warning(f'{me}: {return_client_ip()}: '
                 f'invalid username')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         return redirect(url_for('login'))
 
     # get the JSON for all slots for the user
@@ -712,7 +712,7 @@ def upload():
     if must_change_password(current_user.user_dict):
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} required password change')
-        flash("User is required to change their password")
+        flash("User is required to change their password.")
         return redirect(url_for('passwd'))
 
     # obtain the contest open and close dates
@@ -723,12 +723,12 @@ def upload():
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest open date')
             open_datetime = "ERROR: unknown open date"
-            flash('ERROR: cannot determine the contest open date')
+            flash('ERROR: cannot determine the contest open date.')
         if not close_datetime:
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest close date')
             open_datetime = "ERROR: unknown close date"
-            flash('ERROR: cannot determine the contest close date')
+            flash('ERROR: cannot determine the contest close date.')
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -751,7 +751,7 @@ def upload():
         #
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is not yet open for username: {username}')
-        flash("The IOCCC is not yet open for submissions")
+        flash("The IOCCC is not yet open for submissions.")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -766,7 +766,7 @@ def upload():
     if after_open:
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is no longer accepting submissions for username: {username}')
-        flash("The IOCCC is no longer accepting submissions")
+        flash("The IOCCC is no longer accepting submissions.")
         return render_template('not-open.html',
                                flask_login = flask_login,
                                username = username,
@@ -781,7 +781,7 @@ def upload():
     if not 'slot_num' in request.form:
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} No slot selected')
-        flash("No slot selected")
+        flash("No slot selected.")
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -793,7 +793,7 @@ def upload():
     except ValueError:
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} Slot number is not a number')
-        flash("Slot number is not a number: " + user_input)
+        flash("Slot number is not a number.")
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -819,7 +819,7 @@ def upload():
     if 'file' not in request.files:
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} No file part')
-        flash('No file part')
+        flash('No file part.')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -829,7 +829,7 @@ def upload():
     if file.filename == '':
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} No selected file')
-        flash('No selected file')
+        flash('No selected file.')
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -868,7 +868,7 @@ def upload():
     if not file_length or file_length <= 0:
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} slot_num: {slot_num} attempt to upload empty file')
-        flash('The file must not be empty')
+        flash('The file must not be empty.')
         try:
             os.remove(upload_file)
         except OSError:
@@ -881,7 +881,7 @@ def upload():
     if file_length > MAX_TARBALL_LEN:
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} slot_num: {slot_num} file size: {file_length} > {MAX_TARBALL_LEN}')
-        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}')
+        flash(f'The file size of {file_length} exceeds the maximum size of {MAX_TARBALL_LEN}.')
         try:
             os.remove(upload_file)
         except OSError:
@@ -912,7 +912,7 @@ def upload():
     #
     info(f'{me}: {return_client_ip()}: '
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
-    flash("Uploaded file: " + file.filename)
+    flash(f'File {file.filename}  was uploaded sucessfully.')
 
     # get, again, the JSON for all slots for the user
     #
@@ -985,14 +985,14 @@ def passwd():
     if not current_user or not hasattr(current_user, 'id') or not current_user.id:
         warning(f'{me}: {return_client_ip()}: '
                 f'login required #0')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
         warning(f'{me}: {return_client_ip()}: '
                 f'invalid username #0')
-        flash("ERROR: Login required")
+        flash("ERROR: Login required.")
         return redirect(url_for('login'))
 
     # get the JSON for all slots for the user
@@ -1021,13 +1021,13 @@ def passwd():
             if not current_user.id:
                 warning(f'{me}: {return_client_ip()}: '
                         f'login required #1')
-                flash("ERROR: Login required")
+                flash("ERROR: Login required.")
                 return redirect(url_for('login'))
             # paranoia
             if not username:
                 warning(f'{me}: {return_client_ip()}: '
                         f'invalid username #1')
-                flash("ERROR: Login required")
+                flash("ERROR: Login required.")
                 return redirect(url_for('login'))
 
             # get and validate form parameters
@@ -1036,36 +1036,36 @@ def passwd():
             if not old_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} No current password')
-                flash("ERROR: You must enter your current password")
+                flash("ERROR: You must enter your current password.")
                 return redirect(url_for('login'))
             if not isinstance(old_password, str):
                 info(f'{me}: {return_client_ip()}: '
                      f'old_password is not a string')
-                flash("ERROR: Your current password must be a non-empty string")
+                flash("ERROR: Your current password must be a non-empty string.")
                 return redirect(url_for('login'))
             #
             new_password = form_dict.get('new_password')
             if not new_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} No new password')
-                flash("ERROR: You must enter a new password")
+                flash("ERROR: You must enter a new password.")
                 return redirect(url_for('login'))
             if not isinstance(new_password, str):
                 info(f'{me}: {return_client_ip()}: '
                      f'new_password is not a string')
-                flash("ERROR: Your new password must be a non-empty string")
+                flash("ERROR: Your new password must be a non-empty string.")
                 return redirect(url_for('login'))
             #
             reenter_new_password = form_dict.get('reenter_new_password')
             if not reenter_new_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} No reentered password')
-                flash("ERROR: You must re-enter the new password")
+                flash("ERROR: You must re-enter the new password.")
                 return redirect(url_for('login'))
             if not isinstance(reenter_new_password, str):
                 info(f'{me}: {return_client_ip()}: '
                      f'reenter_new_password is not a string')
-                flash("ERROR: Your re-entered new password must be a non-empty string")
+                flash("ERROR: Your re-entered new password must be a non-empty string.")
                 return redirect(url_for('login'))
 
             # verify new and reentered passwords match
@@ -1073,7 +1073,7 @@ def passwd():
             if new_password != reenter_new_password:
                 debug(f'{me}: {return_client_ip()}: '
                       f'username: {username} new password not same as reentered password')
-                flash("ERROR: New Password and Reentered Password are not the same")
+                flash("ERROR: New Password and Reentered Password are not the same.")
                 return redirect(url_for('passwd'))
 
             # change user password
@@ -1089,7 +1089,7 @@ def passwd():
             if not update_password(username, old_password, new_password):
                 info(f'{me}: {return_client_ip()}: '
                      f'username: {username} user did not correctly change their password')
-                flash("ERROR: Password not changed")
+                flash("ERROR: Password not changed.")
                 # The update_password() and functions it calls set the ioccc_last_errmsg so display that too.
                 flash(return_last_errmsg())
                 return redirect(url_for('passwd'))
@@ -1098,7 +1098,7 @@ def passwd():
             #
             info(f'{me}: {return_client_ip()}: '
                  f'password changed for username: {username}')
-            flash("Password successfully changed")
+            flash("Password successfully changed.")
             return redirect(url_for('logout'))
 
     # case: process /passwd GET
