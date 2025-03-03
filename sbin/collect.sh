@@ -101,7 +101,7 @@ shopt -s globstar	# enable ** to match all files and zero or more directories an
 
 # setup
 #
-export VERSION="2.6.0 2025-03-01"
+export VERSION="2.6.1 2025-03-03"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -1598,7 +1598,7 @@ if [[ $DEST_HEXDIGEST == "$HEXDIGEST" ]]; then
 
     # update the slot comment on the remote server to note the submit file was fetched
     #
-    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file fetched by an IOCCC judge. The format test is pending."
+    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file fetched. The format test is pending."
 
     # so far so good!
 

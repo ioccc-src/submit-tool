@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.8.0 2025-03-01"
+VERSION_IOCCC_COMMON = "2.8.1 2025-03-03"
 
 # force password change grace time
 #
@@ -4591,7 +4591,7 @@ def update_slot(username, slot_num, submit_file):
     slot_dict['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
     slot_dict['SHA256'] = result.hexdigest()
     slot_dict['collected'] = False
-    slot_dict['status'] = 'uploaded file into slot'
+    slot_dict['status'] = 'file successfully uploaded into slot.'
 
     # save JSON data for the slot
     #
