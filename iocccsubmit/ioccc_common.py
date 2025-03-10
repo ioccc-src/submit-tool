@@ -30,13 +30,13 @@ import glob
 import hashlib
 import uuid
 import logging
+import datetime
 
 
 # import from modules
 #
 from string import Template
 from os import makedirs, umask
-from datetime import datetime, timezone
 from pathlib import Path
 from random import randrange
 from logging.handlers import SysLogHandler
@@ -68,7 +68,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.8.1 2025-03-03"
+VERSION_IOCCC_COMMON = "2.9.0 2025-03-10"
 
 # force password change grace time
 #
@@ -83,11 +83,11 @@ DEFAULT_GRACE_PERIOD = 72*3600
 #
 # The date string produced by:
 #
-#   date_string = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
+#   date_string = re.sub(r'\+00:00 ', ' ', f'{datetime.datetime.now(datetime.timezone.utc)} UTC')
 #
 # may be converted back into a datetime object by:
 #
-#   dt = datetime.strptime(date_string, DATETIME_USEC_FORMAT)
+#   dt = datetime.datetime.strptime(date_string, DATETIME_USEC_FORMAT)
 #
 DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 
@@ -3286,7 +3286,7 @@ def user_allowed_to_login(user_dict):
         # Convert pw_change_by into a datetime string
         #
         try:
-            pw_change_by = datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
+            pw_change_by = datetime.datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
         except ValueError as errcode:
 
             # report pw_change_by time format is invalid
@@ -3301,7 +3301,7 @@ def user_allowed_to_login(user_dict):
 
         # determine the datetime of now
         #
-        now = datetime.now(timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
 
         # failed to change the password in time
         #
@@ -4588,7 +4588,7 @@ def update_slot(username, slot_num, submit_file):
     slot_dict['slot'] = slot_num
     slot_dict['filename'] = os.path.basename(submit_file)
     slot_dict['length'] = os.path.getsize(submit_file)
-    slot_dict['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.now(timezone.utc)} UTC')
+    slot_dict['date'] = re.sub(r'\+00:00 ', ' ', f'{datetime.datetime.now(datetime.timezone.utc)} UTC')
     slot_dict['SHA256'] = result.hexdigest()
     slot_dict['collected'] = False
     slot_dict['status'] = 'file successfully uploaded into slot.'
@@ -5006,12 +5006,12 @@ def read_state():
         error(f'{me}: open_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
-        open_datetime = datetime.strptime(state['open_date'], DATETIME_USEC_FORMAT)
+        open_datetime = datetime.datetime.strptime(state['open_date'], DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
-            f'ERROR: {me}: state file open_date is not in proper datetime '
+                f'ERROR: {me}: state file open_date is not in proper datetime '
             f'format: <<{state["open_date"]}>> failed: <<{errcode}>>')
-        error(f'{me}: datetime.strptime of open_date for STATE_FILE: {STATE_FILE} '
+        error(f'{me}: datetime.datetime.strptime of open_date for STATE_FILE: {STATE_FILE} '
               f'open_date: {state["open_date"]} failed: <<{errcode}>>')
         return None, None
 
@@ -5026,12 +5026,12 @@ def read_state():
         error(f'{me}: close_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
-        close_datetime = datetime.strptime(state['close_date'], DATETIME_USEC_FORMAT)
+        close_datetime = datetime.datetime.strptime(state['close_date'], DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: state file close_date is not in proper datetime '
             f'format: <<{state["close_date"]}>>')
-        error(f'{me}: datetime.strptime of close_date for STATE_FILE: {STATE_FILE} '
+        error(f'{me}: datetime.datetime.strptime of close_date for STATE_FILE: {STATE_FILE} '
               f'close_date: {state["close_date"]} failed: <<{errcode}>>')
         return None, None
 
@@ -5074,7 +5074,7 @@ def update_state(open_date, close_date):
         return False
     try:
         # pylint: disable=unused-variable
-        open_datetime = datetime.strptime(open_date, DATETIME_USEC_FORMAT)
+        open_datetime = datetime.datetime.strptime(open_date, DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: open_date arg not in proper datetime format '
@@ -5091,12 +5091,12 @@ def update_state(open_date, close_date):
         return False
     try:
         # pylint: disable=unused-variable
-        close_datetime = datetime.strptime(close_date, DATETIME_USEC_FORMAT)
+        close_datetime = datetime.datetime.strptime(close_date, DATETIME_USEC_FORMAT)
     except ValueError as errcode:
         ioccc_last_errmsg = (
             f'ERROR: {me}: state file close_date is not in proper datetime format '
             f'format: <<{close_date}>> failed: <<{errcode}>>')
-        error(f'{me}: datetime.strptime of close_date arg: {close_date} format '
+        error(f'{me}: datetime.datetime.strptime of close_date arg: {close_date} format '
               f'failed: <<{errcode}>>')
         return False
 
@@ -5159,8 +5159,8 @@ def contest_open_close(user_dict, open_datetime, close_datetime):
 
     Given:
         user_dict        user information for username as a python dictionary
-        open_datetime    IOCCC open date as a string in DATETIME_USEC_FORMAT format
-        close_datetime   IOCCC close date as a string in DATETIME_USEC_FORMAT format
+        open_datetime    IOCCC open date as a datetime object
+        close_datetime   IOCCC close date as a datetime object
 
     Return:
         before_open, is_open, after_open
@@ -5183,19 +5183,57 @@ def contest_open_close(user_dict, open_datetime, close_datetime):
     #
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
-    now = datetime.now(timezone.utc)
 
-    # firewall - open_datetime arg
+    # determine the datetime of now
+    #
+    now = datetime.datetime.now(datetime.timezone.utc)
+    debug(f'{me}: now: {now}')
+
+    # firewall - open_datetime arg must be in datetime in format
     #
     if not open_datetime:
         error(f'{me}: open_datetime arg is None')
         return False, False, False
+    if not isinstance(open_datetime, datetime.datetime):
+        error(f'{me}: open_datetime arg is not a datetime object')
+        return False, False, False
+    debug(f'{me}: open_datetime: {open_datetime}')
 
-    # firewall - close_datetime arg
+    # firewall - close_datetime arg must be in datetime format
     #
     if not close_datetime:
         error(f'{me}: close_datetime arg is None')
         return False, False, False
+    if not isinstance(close_datetime, datetime.datetime):
+        error(f'{me}: close_datetime arg is not a datetime object')
+        return False, False, False
+    debug(f'{me}: close_datetime: {close_datetime}')
+
+    # convert open_datetime into a UTC timestamp
+    #
+    try:
+        open_datetime_utc = open_datetime.replace(tzinfo=datetime.timezone.utc)
+    except ValueError as errcode:
+        error(f'{me}: UTC conversion of open_datetime failed: <<{errcode}>>')
+        return False, False, False
+    debug(f'{me}: open_datetime_utc: {open_datetime_utc}')
+    debug(f'{me}: now.timestamp() < open_datetime_utc.timestamp(): '
+          f'{now.timestamp() < open_datetime_utc.timestamp()}')
+    debug(f'{me}: now.timestamp() >= open_datetime_utc.timestamp(): '
+          f'{now.timestamp() >= open_datetime_utc.timestamp()}')
+
+    # convert close_datetime into a UTC timestamp
+    #
+    try:
+        close_datetime_utc = close_datetime.replace(tzinfo=datetime.timezone.utc)
+    except ValueError as errcode:
+        error(f'{me}: UTC conversion of close_datetime failed: <<{errcode}>>')
+        return False, False, False
+    debug(f'{me}: close_datetime_utc: {close_datetime_utc}')
+    debug(f'{me}: now.timestamp() < close_datetime_utc.timestamp(): '
+          f'{now.timestamp() < close_datetime_utc.timestamp()}')
+    debug(f'{me}: now.timestamp() >= close_datetime_utc.timestamp(): '
+          f'{now.timestamp() >= close_datetime_utc.timestamp()}')
 
     # firewall - check the user information
     #
@@ -5209,7 +5247,7 @@ def contest_open_close(user_dict, open_datetime, close_datetime):
         error(f'{me}: ignore_date is missing from user_dict')
         return False, False, False
 
-    # For users that mayignore the date, the contest is always open,
+    # For users that are allowed to ignore the date, the contest is always open,
     # even if we are outside the contest open-close internal.
     #
     if user_dict['ignore_date']:
@@ -5218,13 +5256,13 @@ def contest_open_close(user_dict, open_datetime, close_datetime):
 
     # case: now is before the contest is open
     #
-    if now.timestamp() < open_datetime.timestamp():
+    if now.timestamp() < open_datetime_utc.timestamp():
         debug(f'{me}: end: contest is not yet open')
         return True, False, False
 
     # case: now is after the contest open period
     #
-    if now.timestamp() >= close_datetime.timestamp():
+    if now.timestamp() >= close_datetime_utc.timestamp():
         debug(f'{me}: end: contest is no longer open')
         return False, False, True
 
@@ -5901,7 +5939,7 @@ def validate_slot_dict_nolock(slot_dict, username, slot_num):
             return 'slot date is not a string'
         try:
             # pylint: disable-next=unused-variable
-            dt = datetime.strptime(slot_dict['date'], DATETIME_USEC_FORMAT)
+            dt = datetime.datetime.strptime(slot_dict['date'], DATETIME_USEC_FORMAT)
         # pylint: disable-next=unused-variable
         except ValueError as errcode:
             debug(f'{me}: end: slot date format is invalid')

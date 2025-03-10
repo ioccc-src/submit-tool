@@ -80,7 +80,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.8.2 2025-03-02"
+VERSION_IOCCC = "2.9.0 2025-03-10"
 
 
 # Configure the application
@@ -324,6 +324,7 @@ def login():
         # determine if we are before, during, or after contest opening
         #
         before_open, contest_open, after_open = contest_open_close(user.user_dict, open_datetime, close_datetime)
+        debug(f'{me}: before_open: {before_open} contest_open: {contest_open} after_open: {after_open}')
 
         # case: contest is open
         #
@@ -476,8 +477,8 @@ def submit():
 
     # determine if we are before, during, or after contest opening
     #
-    # pylint: disable-next=unused-variable
     before_open, contest_open, after_open = contest_open_close(current_user.user_dict, open_datetime, close_datetime)
+    debug(f'{me}: before_open: {before_open} contest_open: {contest_open} after_open: {after_open}')
 
     # case: contest is not yet open
     #
@@ -740,8 +741,8 @@ def upload():
 
     # determine if we are before, during, or after contest opening
     #
-    # pylint: disable-next=unused-variable
     before_open, contest_open, after_open = contest_open_close(current_user.user_dict, open_datetime, close_datetime)
+    debug(f'{me}: before_open: {before_open} contest_open: {contest_open} after_open: {after_open}')
 
     # case: contest is not yet open
     #
