@@ -12,6 +12,7 @@ ioccc_date.py - Manage the IOCCC start and/or end dates
 import sys
 import argparse
 import os
+import locale
 
 # import the ioccc python utility code
 #
@@ -31,7 +32,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.0 2025-02-28"
+VERSION = "2.5.0 2025-03-13"
 
 
 def main():
@@ -44,6 +45,13 @@ def main():
     program = os.path.basename(__file__)
     start_given = False
     stop_given = False
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

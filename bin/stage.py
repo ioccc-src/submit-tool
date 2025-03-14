@@ -39,6 +39,7 @@ NOTE: A unexpected_count > 0 is NOT an error for the staging, rather it is an
 import sys
 import argparse
 import os
+import locale
 
 # import from modules
 #
@@ -67,7 +68,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.1.0 2025-02-28"
+VERSION = "2.2.0 2025-03-13"
 
 
 # pylint: disable=too-many-statements
@@ -82,6 +83,13 @@ def main():
     program = os.path.basename(__file__)
     hexdigest = "."
     unexpected_count = 0
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

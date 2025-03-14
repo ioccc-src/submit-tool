@@ -12,6 +12,7 @@ cp_passwd.py - copy the submit server IOCCC password file
 import sys
 import argparse
 import os
+import locale
 
 
 # import from modules
@@ -39,7 +40,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.1.0 2025-02-28"
+VERSION = "2.2.0 2025-03-13"
 
 
 def main():
@@ -50,6 +51,13 @@ def main():
     # setup
     #
     program = os.path.basename(__file__)
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

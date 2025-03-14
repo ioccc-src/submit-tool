@@ -12,6 +12,7 @@ set_slot_status.py - Modify the status comment of a user's slot
 import sys
 import argparse
 import os
+import locale
 
 
 # import the ioccc python utility code
@@ -35,7 +36,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.5.0 2025-02-28"
+VERSION = "2.6.0 2025-03-13"
 
 
 def main():
@@ -47,6 +48,13 @@ def main():
     #
     program = os.path.basename(__file__)
     set_collected_to_true = False
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

@@ -30,9 +30,16 @@
 # Share and enjoy! :-)
 
 
+# IOCCC requires use of C locale
+#
+export LC_ALL="C"
+export LANG="C"
+export LC_NUMERIC="C"
+
+
 # setup
 #
-export VERSION="2.1.0 2025-02-28"
+export VERSION="2.2.0 2025-03-13"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0

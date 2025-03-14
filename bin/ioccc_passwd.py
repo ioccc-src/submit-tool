@@ -16,6 +16,7 @@ import argparse
 import os
 import uuid
 import re
+import locale
 
 
 # import from modules
@@ -48,7 +49,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.7.0 2025-02-28"
+VERSION = "2.8.0 2025-03-13"
 
 
 # pylint: disable=too-many-locals
@@ -72,6 +73,13 @@ def main():
     email = None
     username_with_email = None
     output_for_email = False
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

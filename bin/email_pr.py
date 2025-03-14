@@ -12,6 +12,7 @@ email_pr.py - print email and/or username for IOCCC submit server accounts
 import sys
 import argparse
 import os
+import locale
 
 # import the ioccc python utility code
 #
@@ -33,7 +34,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.0 2025-02-28"
+VERSION = "2.1.0 2025-03-13"
 
 
 # pylint: disable=too-many-branches
@@ -53,6 +54,13 @@ def main():
     print_none = False
     args_are_email = True
     print_comma = False
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #

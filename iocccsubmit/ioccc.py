@@ -27,6 +27,7 @@ import inspect
 import re
 import subprocess
 import os
+import locale
 
 # import from modules
 #
@@ -80,7 +81,15 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.9.0 2025-03-10"
+VERSION_IOCCC = "2.10.0 2025-03-13"
+
+
+# IOCCC requires use of C locale
+#
+try:
+    locale.setlocale(locale.LC_ALL, 'C')
+except locale.Error:
+    pass
 
 
 # Configure the application

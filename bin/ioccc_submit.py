@@ -15,6 +15,7 @@ from the command line.
 import os
 import sys
 import argparse
+import locale
 
 
 # import the ioccc python utility code
@@ -39,7 +40,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.4.0 2025-02-28"
+VERSION = "2.5.0 2025-03-13"
 
 
 def main():
@@ -50,7 +51,13 @@ def main():
     # setup
     #
     program = os.path.basename(__file__)
-    # pylint: disable-next=invalid-name
+
+    # IOCCC requires use of C locale
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
 
     # parse args
     #
