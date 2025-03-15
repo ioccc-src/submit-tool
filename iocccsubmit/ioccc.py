@@ -27,7 +27,6 @@ import inspect
 import re
 import subprocess
 import os
-import locale
 
 # import from modules
 #
@@ -49,32 +48,33 @@ from flask_limiter.util import get_remote_address
 #
 # pylint: disable-next=unused-import
 from iocccsubmit.ioccc_common import \
-    APPDIR, \
-    MARGIN_SIZE, \
-    MAX_PASSWORD_LENGTH, \
-    MAX_TARBALL_LEN, \
-    MIN_PASSWORD_LENGTH, \
-    contest_open_close, \
-    debug, \
-    error, \
-    get_all_json_slots, \
-    info, \
-    initialize_user_tree, \
-    is_proper_password, \
-    lookup_username, \
-    must_change_password, \
-    read_state, \
-    return_client_ip, \
-    return_last_errmsg, \
-    return_secret, \
-    return_slot_dir_path, \
-    return_user_dir_path, \
-    update_password, \
-    update_slot, \
-    user_allowed_to_login, \
-    valid_password_change, \
-    verify_hashed_password, \
-    warning
+        APPDIR, \
+        MARGIN_SIZE, \
+        MAX_PASSWORD_LENGTH, \
+        MAX_TARBALL_LEN, \
+        MIN_PASSWORD_LENGTH, \
+        contest_open_close, \
+        debug, \
+        error, \
+        get_all_json_slots, \
+        info, \
+        initialize_user_tree, \
+        is_proper_password, \
+        lookup_username, \
+        must_change_password, \
+        read_state, \
+        return_client_ip, \
+        return_last_errmsg, \
+        return_secret, \
+        return_slot_dir_path, \
+        return_user_dir_path, \
+        set_ioccc_locale, \
+        update_password, \
+        update_slot, \
+        user_allowed_to_login, \
+        valid_password_change, \
+        verify_hashed_password, \
+        warning
 
 
 # ioccc.py version
@@ -86,10 +86,7 @@ VERSION_IOCCC = "2.10.0 2025-03-13"
 
 # IOCCC requires use of C locale
 #
-try:
-    locale.setlocale(locale.LC_ALL, 'C')
-except locale.Error:
-    pass
+set_ioccc_locale()
 
 
 # Configure the application

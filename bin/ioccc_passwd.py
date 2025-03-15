@@ -16,13 +16,10 @@ import argparse
 import os
 import uuid
 import re
-import locale
-
 
 # import from modules
 #
 from datetime import datetime, timezone, timedelta
-
 
 # import the ioccc python utility code
 #
@@ -40,6 +37,7 @@ from iocccsubmit import \
         lookup_username_by_email, \
         prerr, \
         return_last_errmsg, \
+        set_ioccc_locale, \
         setup_logger, \
         update_username, \
         warning
@@ -76,10 +74,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

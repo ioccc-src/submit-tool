@@ -12,7 +12,6 @@ ioccc_date.py - Manage the IOCCC start and/or end dates
 import sys
 import argparse
 import os
-import locale
 
 # import the ioccc python utility code
 #
@@ -24,6 +23,7 @@ from iocccsubmit import \
         prerr, \
         read_state, \
         return_last_errmsg, \
+        set_ioccc_locale, \
         setup_logger, \
         update_state
 
@@ -48,10 +48,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

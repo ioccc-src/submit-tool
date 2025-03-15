@@ -48,6 +48,7 @@ from .ioccc_common import \
         return_slot_dir_path, \
         return_slot_json_filename, \
         return_user_dir_path, \
+        set_ioccc_locale, \
         setup_logger, \
         stage_submit, \
         update_password, \

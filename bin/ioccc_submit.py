@@ -15,7 +15,6 @@ from the command line.
 import os
 import sys
 import argparse
-import locale
 
 
 # import the ioccc python utility code
@@ -27,13 +26,14 @@ import locale
 from iocccsubmit.ioccc import application
 
 from iocccsubmit.ioccc_common import \
-    IP_ADDRESS, \
-    TCP_PORT, \
-    change_startup_appdir, \
-    error, \
-    prerr, \
-    return_last_errmsg, \
-    setup_logger
+        IP_ADDRESS, \
+        TCP_PORT, \
+        change_startup_appdir, \
+        error, \
+        prerr, \
+        return_last_errmsg, \
+        set_ioccc_locale, \
+        setup_logger
 
 
 # ioccc_submit.py version
@@ -54,10 +54,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

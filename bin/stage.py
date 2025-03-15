@@ -39,7 +39,6 @@ NOTE: A unexpected_count > 0 is NOT an error for the staging, rather it is an
 import sys
 import argparse
 import os
-import locale
 
 # import from modules
 #
@@ -59,6 +58,7 @@ from iocccsubmit import \
         error, \
         prerr, \
         return_last_errmsg, \
+        set_ioccc_locale, \
         setup_logger, \
         stage_submit, \
         warning
@@ -86,10 +86,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

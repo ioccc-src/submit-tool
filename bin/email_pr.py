@@ -12,7 +12,6 @@ email_pr.py - print email and/or username for IOCCC submit server accounts
 import sys
 import argparse
 import os
-import locale
 
 # import the ioccc python utility code
 #
@@ -27,6 +26,7 @@ from iocccsubmit import \
         prerr, \
         read_pwfile, \
         return_last_errmsg, \
+        set_ioccc_locale, \
         setup_logger
 
 
@@ -57,10 +57,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

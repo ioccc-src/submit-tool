@@ -12,7 +12,6 @@ cp_passwd.py - copy the submit server IOCCC password file
 import sys
 import argparse
 import os
-import locale
 
 
 # import from modules
@@ -32,6 +31,7 @@ from iocccsubmit import \
         info, \
         prerr, \
         return_last_errmsg, \
+        set_ioccc_locale, \
         setup_logger, \
         warning
 
@@ -54,10 +54,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #

@@ -31,6 +31,7 @@ import hashlib
 import uuid
 import logging
 import datetime
+import locale
 
 
 # import from modules
@@ -6485,3 +6486,91 @@ def stage_submit(username, slot_num):
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-statements
+
+
+
+def set_ioccc_locale():
+    """
+    set_ioccc_locale - set the contest wide locale for the IOCCC
+
+    * ********************** *
+    * A programmer's apology *
+    * ********************** *
+
+    We need to establish a content wide locale for the IOCCC to help ensure consistently
+    across the contents, the web site, the submit server, and the mkiocccentry toolkit.
+
+    While the I in IOCCC stands for "International", such so we have worked hard to maintain
+    support for valid UTC-8 encoding of Unicode control points, so that people may specify
+    things such as their name, submission abstract, affiliation, etc. as well as having
+    the official IOCCC web site under https://www.ioccc.org all using and supporting valid UTF-8
+    encoding for Unicode control points: the first C in IOCCC stands for C.  :-)
+    Therefore the IOCCC will use the C locale as common contest wide locale for the IOCCC.
+
+    The Open Group Base Specifications Issue 7, 2018 edition IEEE Std 1003.1-2017
+    (Revision of IEEE Std 1003.1-2008) may be found in:
+
+        https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html#tag_08_02
+
+    And while a careful reading of that spec may say otherwise, experience and practice shows
+    that just calling:
+
+       locale.setlocale(locale.LC_ALL, 'C')
+
+    is NOT sufficient to properly establish the C locale, unfortunately.  Due to code bugs,
+    programmer carelessness, and code developers -->elsewhere<-- who fail to carefully read the
+    specification in the above URL, we must also set a number of environment variables
+    to use "C" as well.
+
+    The list of environment variables set by this function, and their order, came
+    from the following command line when run on RHEL9.5:
+
+       LC_ALL="C" LANG="C" locale | sed -e 's/^/export /' -e 's/=C/="C"/'
+
+    For the calls set the environment variable itself, used the following command line when run on RHEL9.5:
+
+       LC_ALL="C" LANG="C" locale | sed -e 's/=C/="C"/' -e 's/^/    os.environ["/' -e 's/=/"] = /' -e 's/"/'"'"'/g'
+
+    We realize that list produced by the above command line goes beyond the variables listed in
+    listed in the above URL.  We nevertheless set those values, and in that order, after
+    calling `setlocale(3)` in order to try and mitigate the above mentioned bugs and "bogons".
+
+    Also note, we do **NOT** check the return of these functions, but instead cast their return
+    as void, because even if were were to check their return values for errors, there is little
+    we can do about any errors (apart from exiting) because this function is designed to be
+    called **VERY EARLY** in main() where things like error handling and logging may not yet
+    have been setup.  However, because "C" is a mandatory locale for all code, there is nil chance
+    the library calls used by this function will fail.  And if for some reason they do fail,
+    what can we really do (other then exiting)?  We might as well plow ahead and hope for the best:
+    and we do believe that the best is yet to come!
+
+    End of the "programmer's apology".
+    """
+
+    # IOCCC requires use of C locale
+    #
+    # See also the "programmer's apology" above.
+    #
+    try:
+        locale.setlocale(locale.LC_ALL, 'C')
+    except locale.Error:
+        pass
+
+    # workaround locale bogons often found elsewhere
+    #
+    # See also the "programmer's apology" above.
+    #
+    os.environ['LANG'] = 'C'
+    os.environ['LC_CTYPE'] = 'C'
+    os.environ['LC_NUMERIC'] = 'C'
+    os.environ['LC_TIME'] = 'C'
+    os.environ['LC_COLLATE'] = 'C'
+    os.environ['LC_MONETARY'] = 'C'
+    os.environ['LC_MESSAGES'] = 'C'
+    os.environ['LC_PAPER'] = 'C'
+    os.environ['LC_NAME'] = 'C'
+    os.environ['LC_ADDRESS'] = 'C'
+    os.environ['LC_TELEPHONE'] = 'C'
+    os.environ['LC_MEASUREMENT'] = 'C'
+    os.environ['LC_IDENTIFICATION'] = 'C'
+    os.environ['LC_ALL'] = 'C'

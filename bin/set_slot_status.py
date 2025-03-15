@@ -12,8 +12,6 @@ set_slot_status.py - Modify the status comment of a user's slot
 import sys
 import argparse
 import os
-import locale
-
 
 # import the ioccc python utility code
 #
@@ -28,6 +26,7 @@ from iocccsubmit import \
         prerr, \
         return_last_errmsg, \
         return_slot_json_filename, \
+        set_ioccc_locale, \
         setup_logger, \
         update_slot_status
 
@@ -51,10 +50,7 @@ def main():
 
     # IOCCC requires use of C locale
     #
-    try:
-        locale.setlocale(locale.LC_ALL, 'C')
-    except locale.Error:
-        pass
+    set_ioccc_locale()
 
     # parse args
     #
