@@ -104,7 +104,7 @@ def main():
                         metavar='PW',
                         nargs=1)
     parser.add_argument('-P', '--changepw',
-                        help="Generate new random user password, implies -E, requires -u user",
+                        help="Generate new random user password, implies -E, requires -u USER",
                         action='store_true')
     parser.add_argument('-c', '--change',
                         help='force a password change at next login',
