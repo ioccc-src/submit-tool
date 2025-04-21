@@ -16,18 +16,20 @@ import argparse
 import os
 import uuid
 import re
+import datetime
 
 # import from modules
 #
-from datetime import datetime, timezone, timedelta
+#from datetime import datetime, timezone, timedelta
 
 # import the ioccc python utility code
 #
 # Sort the import list with: sort -d -u
 #
 from iocccsubmit import \
-        DEFAULT_GRACE_PERIOD, \
         change_startup_appdir, \
+        DATETIME_USEC_FORMAT, \
+        DEFAULT_GRACE_PERIOD, \
         delete_username, \
         error, \
         generate_password, \
@@ -47,7 +49,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.8.0 2025-03-13"
+VERSION = "2.9.0 2025-04-20"
 
 
 # pylint: disable=too-many-locals
@@ -101,6 +103,9 @@ def main():
                         help="specify the password (def: generate random password)",
                         metavar='PW',
                         nargs=1)
+    parser.add_argument('-P', '--changepw',
+                        help="Generate new random user password, implies -E, requires -u user",
+                        action='store_true')
     parser.add_argument('-c', '--change',
                         help='force a password change at next login',
                         action='store_true')
@@ -111,6 +116,11 @@ def main():
                         help=f'grace seconds to change the password (def: {DEFAULT_GRACE_PERIOD})',
                         metavar='SECS',
                         type=int,
+                        nargs=1)
+    parser.add_argument('-G', '--chgby',
+                        help='set password change by date in "YYYY-MM-DD HH:MM:SS.micros UTC" format, implies -c',
+                        metavar='DateTime',
+                        type=str,
                         nargs=1)
     parser.add_argument('-n', '--nologin',
                         help='disable login (def: login not explicitly disabled)',
@@ -157,8 +167,9 @@ def main():
     # -g secs - set the grace time to change in seconds from now
     #
     if args.grace:
+        now = datetime.datetime.now(datetime.timezone.utc)
         pw_change_by = re.sub(r'\+00:00 ', ' ',
-                              f'{datetime.now(timezone.utc)+timedelta(seconds=args.grace[0])} UTC')
+                              f'{now+datetime.timedelta(seconds=args.grace[0])} UTC')
 
     # -c and -C conflict
     #
@@ -172,6 +183,81 @@ def main():
         print("Notice via print: -C conflicts with -g secs")
         sys.exit(5)
 
+    # -P validation
+    #
+    if args.changepw:
+
+        # -P and -p PW conflict
+        #
+        if args.password:
+            print("Notice via print: -p PW conflicts with -P")
+            sys.exit(6)
+
+        # -P and -a USER conflict
+        #
+        if args.add:
+            print("Notice via print: -a USER conflicts with -P")
+            sys.exit(7)
+
+        # -P and -d USER conflict
+        #
+        if args.delete:
+            print("Notice via print: -d USER conflicts with -P")
+            sys.exit(8)
+
+        # -P and -U conflict
+        #
+        if args.UUID:
+            print("Notice via print: -U conflicts with -P")
+            sys.exit(9)
+
+        # -P requires -u USER
+        #
+        if not args.update:
+            print("Notice via print: -P requires use of -u USER")
+            sys.exit(10)
+
+        # -P implies -E
+        #
+        output_for_email = True
+
+        # generate a new random password for user
+        #
+        password = generate_password()
+        pwhash = hash_password(password)
+
+    # -G DateTime processing
+    #
+    if args.chgby:
+
+        # -G DateTime and -C conflict
+        #
+        if args.nochange:
+            print("Notice via print: -G DateTime conflicts with -C")
+            sys.exit(11)
+
+        # -G DateTime and -g SECS
+        #
+        if args.grace:
+            print("Notice via print: -G DateTime conflicts with -g SECS")
+            sys.exit(12)
+
+        # validate -G DateTime string
+        #
+        if not isinstance(args.chgby[0], str):
+            print("Notice via print: -G DateTime must be a string in 'YYYY-MM-DD HH:MM:SS.micros UTC' format")
+            sys.exit(13)
+        try:
+            dt = datetime.datetime.strptime(args.chgby[0], DATETIME_USEC_FORMAT)
+        except ValueError:
+            print("Notice via print: -G DateTime must be in 'YYYY-MM-DD HH:MM:SS.micros UTC' format")
+            sys.exit(14)
+        pw_change_by = re.sub(r'\+00:00 ', ' ', f'{dt} UTC')
+
+        # -G DateTime implies -c
+        #
+        force_pw_change = True
+
     # -c - force user to change their password at the next login
     #
     if args.change:
@@ -183,8 +269,9 @@ def main():
         # case: -g not give, assume default grace period
         #
         if not args.grace:
+            now = datetime.datetime.now(datetime.timezone.utc)
             pw_change_by = re.sub(r'\+00:00 ', ' ',
-                                  f'{datetime.now(timezone.utc)+timedelta(seconds=DEFAULT_GRACE_PERIOD)} UTC')
+                                  f'{now+datetime.timedelta(seconds=DEFAULT_GRACE_PERIOD)} UTC')
 
     # -C - disable password change at next login
     #
@@ -231,7 +318,7 @@ def main():
         if username_with_email:
             error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
             print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
-            sys.exit(6)
+            sys.exit(15)
 
         # add with random password unless we used -p password
         #
@@ -244,7 +331,7 @@ def main():
         if not pwhash:
             error(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -a user: hash_password for username: {username} failed: {return_last_errmsg()}')
-            sys.exit(7)
+            sys.exit(16)
 
         # determine the username to add
         #
@@ -255,7 +342,7 @@ def main():
         if lookup_username(username):
             warning(f'{program}: -a user: already exists for username: {username}')
             print(f'{program}: -a user: already exists for username: {username}')
-            sys.exit(8)
+            sys.exit(17)
 
         # add the user
         #
@@ -271,14 +358,14 @@ def main():
                 if not user_dict or not 'email' in user_dict or not isinstance(user_dict['email'], str):
                     error(f'{program}: -a user -E: while username: {username} as added, no email was set')
                     prerr(f'{program}: -a user -E: while username: {username} as added, no email was set')
-                    sys.exit(9)
+                    sys.exit(18)
 
                 # firewall - with -u user -E use of -p password is required
                 #
                 if not password or not isinstance(password, str):
                     error(f'{program}: -a user -E: while username: {username} as added, no password was set')
                     prerr(f'{program}: -a user -E: while username: {username} as added, no password was set')
-                    sys.exit(10)
+                    sys.exit(19)
 
                 # -E output
                 #
@@ -340,7 +427,7 @@ def main():
         else:
             error(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -a user: add username: {username} failed: {return_last_errmsg()}')
-            sys.exit(11)
+            sys.exit(20)
 
     # -u user - update if they exit, or add user if they do not already exist
     #
@@ -363,7 +450,7 @@ def main():
             if args.email and username_with_email and username_with_email != username:
                 error(f'{program}: -u {username} -e {email}: email address already used by: {username_with_email}')
                 print(f'{program}: -u {username} -e {email}: email address already used by: {username_with_email}')
-                sys.exit(12)
+                sys.exit(21)
 
             # case: -p was not given, keep the existing password hash
             #
@@ -406,7 +493,7 @@ def main():
             if username_with_email:
                 error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
                 print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
-                sys.exit(13)
+                sys.exit(22)
 
             # add with random password unless we used -p password
             #
@@ -419,7 +506,7 @@ def main():
             if not pwhash:
                 error(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
                 print(f'{program}: -u user: hash_password for username: {username} failed: {return_last_errmsg()}')
-                sys.exit(14)
+                sys.exit(23)
 
         # update the user
         #
@@ -435,14 +522,14 @@ def main():
                 if not user_dict or not 'email' in user_dict or not isinstance(user_dict['email'], str):
                     error(f'{program}: -u user -E: while username: {username} as updated, no email was set')
                     prerr(f'{program}: -u user -E: while username: {username} as updated, no email was set')
-                    sys.exit(15)
+                    sys.exit(24)
 
                 # firewall - with -u user -E use of -p password is required
                 #
                 if not password or not isinstance(password, str):
                     error(f'{program}: -u user -E: while username: {username} as updated, no password was set')
                     prerr(f'{program}: -u user -E: while username: {username} as updated, no password was set')
-                    sys.exit(16)
+                    sys.exit(25)
 
                 # -E output
                 #
@@ -544,7 +631,7 @@ def main():
                       f'failed: {return_last_errmsg()}')
                 print(f'{program}: -u user: failed to change details for username: {username} '
                       f'failed: {return_last_errmsg()}')
-            sys.exit(17)
+            sys.exit(26)
 
     # -d user - delete user
     #
@@ -559,7 +646,7 @@ def main():
         if not lookup_username(username):
             info(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
             print(f'{program}: -d user: no such username: {username} last_errmsg: {return_last_errmsg()}')
-            sys.exit(18)
+            sys.exit(27)
 
         # remove the user
         #
@@ -572,7 +659,7 @@ def main():
         else:
             error(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -d user: failed to delete username: {username} failed: {return_last_errmsg()}')
-            sys.exit(19)
+            sys.exit(28)
 
     # -U - add random UUID user
     #
@@ -583,7 +670,7 @@ def main():
         if username_with_email:
             error(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
             print(f'{program}: -a user -e {email}: email address already used by: {username_with_email}')
-            sys.exit(20)
+            sys.exit(29)
 
         # add with random password unless we used -p password
         #
@@ -596,7 +683,7 @@ def main():
         if not pwhash:
             error(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
             print(f'{program}: -U: hash_password failed: {return_last_errmsg()}')
-            sys.exit(21)
+            sys.exit(30)
 
         # generate an random UUID of type that is not an existing user
         #
@@ -648,7 +735,7 @@ def main():
         if not username:
             error(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
             print(f'{program}: -U: SUPER RARE: failed to found a new UUID after {try_limit} attempts!!!')
-            sys.exit(22)
+            sys.exit(31)
 
         # add the user
         #
@@ -664,14 +751,14 @@ def main():
                 if not user_dict or not 'email' in user_dict or not isinstance(user_dict['email'], str):
                     error(f'{program}: -U -E: while username: {username} as created, no email was set')
                     prerr(f'{program}: -U -E: while username: {username} as created, no email was set')
-                    sys.exit(23)
+                    sys.exit(32)
 
                 # firewall - with -U -E use of -p password is required
                 #
                 if not password or not isinstance(password, str):
                     error(f'{program}: -U -E: while username: {username} as created, no password was set')
                     prerr(f'{program}: -U -E: while username: {username} as created, no password was set')
-                    sys.exit(24)
+                    sys.exit(33)
 
                 # -E output
                 #
@@ -732,12 +819,12 @@ def main():
         else:
             error(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
             print(f'{program}: -U: add username: {username} failed: {return_last_errmsg()}')
-            sys.exit(25)
+            sys.exit(34)
 
     # no option selected
     #
     print(f'{program}: must use one of: -a USER or -u USER or -d USER or -U')
-    sys.exit(26)
+    sys.exit(35)
 #
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-branches

@@ -69,7 +69,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.0 2025-03-10"
+VERSION_IOCCC_COMMON = "2.9.1 2025-04-20"
 
 # force password change grace time
 #
@@ -78,17 +78,31 @@ VERSION_IOCCC_COMMON = "2.9.0 2025-03-10"
 #
 # If "force_pw_change" is "true", then login is denied if now > pw_change_by.
 #
-DEFAULT_GRACE_PERIOD = 72*3600
+DEFAULT_GRACE_PERIOD = 14*24*3600
 
 # standard date string in strptime format
 #
+# IMPORTANT: We need to:
+#
+#   import datetime
+#
+# DO NOT use the from method (i.e., do not use "from datetime import datetime, timezone, timedelta")
+#
+# Given now as a datetime object:
+#
+#   now = datetime.datetime.now(datetime.timezone.utc)
+#
 # The date string produced by:
 #
-#   date_string = re.sub(r'\+00:00 ', ' ', f'{datetime.datetime.now(datetime.timezone.utc)} UTC')
+#   date_string = re.sub(r'\+00:00 ', ' ', f'{now} UTC')
 #
 # may be converted back into a datetime object by:
 #
 #   dt = datetime.datetime.strptime(date_string, DATETIME_USEC_FORMAT)
+#
+# and then converted back into a date string again by:
+#
+#   date_string = re.sub(r'\+00:00 ', ' ', f'{dt} UTC')
 #
 DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 
