@@ -126,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.8.0 2025-05-01"
+export VERSION="2.8.1 2025-05-02"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -2396,56 +2396,6 @@ elif [[ -f $DEST ]]; then
 			fi
 		    fi
 
-		    # form .slot symlink to the submission slot directory
-		    #
-		    # firewall - .slot must NOT exist
-		    #
-		    if [[ -e $SUBMIT_DIR/.slot ]]; then
-
-			# just report that .slot exists
-			#
-			PROBLEM_CODE=26
-			{
-			    echo
-			    echo "$0: Warning: should not exist: $SUBMIT_DIR/.slot"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-
-		    # case: .slot does not exist, form the .slot to point to the submission slot directory
-		    #
-		    else
-			if [[ $V_FLAG -ge 1 ]]; then
-			    echo "$0: debug[1]: about to: ln -f -s .. $SUBMIT_DIR/.slot 2>$TMP_STDERR" 1>&2
-			fi
-			ln -f -s .. "$SUBMIT_DIR/.slot" 2>"$TMP_STDERR" 1>&2
-			status="$?"
-			if [[ $status -ne 0 ]]; then
-
-			    # just report a failure to form .slot
-			    #
-			    PROBLEM_CODE=27
-
-			    {
-				echo
-				echo "$0: Warning: ln -f -s .. $SUBMIT_DIR/.slot failed, error: $status"
-				echo "$0: Warning: stderr output starts below"
-				cat "$TMP_STDERR"
-				echo "$0: Warning: stderr output ends above"
-				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			    } | if [[ -n $USE_GIT ]]; then
-				cat >> "$TMP_GIT_COMMIT"
-			    else
-				cat 1>&2
-			    fi
-			    # Having noted the problem, try to just carry on
-			fi
-		    fi
-
 		    # case: we are updating slot - form a .prev symlink
 		    #
 		    if [[ -n $UPDATING_SLOT ]]; then
@@ -2456,7 +2406,7 @@ elif [[ -f $DEST ]]; then
 
 			    # just report that we have no previous submit time
 			    #
-			    PROBLEM_CODE=28
+			    PROBLEM_CODE=26
 			    {
 				echo
 				echo "$0: Warning: failed to determine PREV_SUBMIT_TIME for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
@@ -2474,7 +2424,7 @@ elif [[ -f $DEST ]]; then
 
 			    # just report that we have no previous submit slot directory
 			    #
-			    PROBLEM_CODE=29
+			    PROBLEM_CODE=27
 			    {
 				echo
 				echo "$0: Warning: not a previous slot directory: $PREV_SUBMIT_DIR for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
@@ -2494,7 +2444,7 @@ elif [[ -f $DEST ]]; then
 
 			    # just report that .prev exists
 			    #
-			    PROBLEM_CODE=30
+			    PROBLEM_CODE=28
 			    {
 				echo
 				echo "$0: Warning: should not exist: $SUBMIT_DIR/.prev"
@@ -2518,7 +2468,7 @@ elif [[ -f $DEST ]]; then
 
 				# just report a failure to form .prev
 				#
-				PROBLEM_CODE=31
+				PROBLEM_CODE=29
 
 				{
 				    echo
@@ -2549,7 +2499,7 @@ elif [[ -f $DEST ]]; then
 
 			    # just report a failure to pre-remove the current symlink
 			    #
-			    PROBLEM_CODE=32
+			    PROBLEM_CODE=30
 
 			    {
 				echo
@@ -2575,7 +2525,7 @@ elif [[ -f $DEST ]]; then
 
 			# just report a failure to form current in submit parent directory
 			#
-			PROBLEM_CODE=33
+			PROBLEM_CODE=31
 
 			{
 			    echo
@@ -2603,7 +2553,7 @@ elif [[ -f $DEST ]]; then
 
 			# just report a failure to pre-remote .submit.sh
 			#
-			PROBLEM_CODE=34
+			PROBLEM_CODE=32
 
 			{
 			    echo
@@ -2649,7 +2599,7 @@ elif [[ -f $DEST ]]; then
 
 			# just report a failure to form .submit.sh
 			#
-			PROBLEM_CODE=35
+			PROBLEM_CODE=33
 
 			{
 			    echo
@@ -2673,7 +2623,7 @@ elif [[ -f $DEST ]]; then
 
 			# just report a failure to make .submit.sh executable
 			#
-			PROBLEM_CODE=36
+			PROBLEM_CODE=34
 
 			{
 			    echo
