@@ -99,6 +99,13 @@ shopt -u extglob	# enable extended globbing patterns
 shopt -s globstar	# enable ** to match all files and zero or more directories and subdirectories
 
 
+# other required bash options
+#
+# Requires bash with a version 4.2 or later
+#
+shopt -s lastpipe	# run last command of a pipeline not executed in the background in the current shell environment
+
+
 # IOCCC requires use of C locale
 #
 export LANG="C"
@@ -119,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.7.0 2025-03-13"
+export VERSION="2.8.0 2025-05-01"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -975,7 +982,7 @@ elif [[ $V_FLAG -ge 1 ]]; then
 fi
 
 
-# move to workdir is workdir is not .
+# move to workdir if workdir is not .
 #
 if [[ $WORKDIR != "." ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
@@ -1334,6 +1341,7 @@ fi
 #
 STAGED_FILENAME=$(basename "$STAGED_PATH")
 export STAGED_FILENAME
+export STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME
 STAGED_FILENAME_NOTXZ=$(basename "$STAGED_PATH" .txz)
 export STAGED_FILENAME_NOTXZ
 DEST="$INBOUND/$STAGED_FILENAME"
@@ -1343,15 +1351,18 @@ SUBMIT_FILENAME=${SUBMIT_TIME%%.txz}
 export SUBMIT_FILENAME
 SUBMIT_TIME=${SUBMIT_FILENAME##*.}
 export SUBMIT_TIME
+SUBMIT_DATETIME=$(LANG=C date -u -d "@$SUBMIT_TIME")
+export SUBMIT_DATETIME
 SUBMIT_USERSLOT=${SUBMIT_FILENAME%%."$SUBMIT_TIME"}
 export SUBMIT_USERSLOT
 if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: STAGED_FILENAME=$STAGED_FILENAME" 1>&2
+    echo "$0: debug[3]: STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM" 1>&2
     echo "$0: debug[3]: STAGED_FILENAME_NOTXZ=$STAGED_FILENAME_NOTXZ" 1>&2
     echo "$0: debug[3]: DEST=$DEST" 1>&2
-    echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME" 1>&2
     echo "$0: debug[3]: SUBMIT_FILENAME=$SUBMIT_FILENAME" 1>&2
     echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME" 1>&2
+    echo "$0: debug[3]: SUBMIT_DATETIME=$SUBMIT_DATETIME" 1>&2
     echo "$0: debug[3]: SUBMIT_USERSLOT=$SUBMIT_USERSLOT" 1>&2
 fi
 if [[ $STAGED_PATH == "." ]]; then
@@ -1778,14 +1789,29 @@ elif [[ -f $DEST ]]; then
 	exit 9
     fi
 
-    # create submission directory
+    # create submission slot directory
     #
     export SUBMIT_PARENT_DIR="$SUBMIT/$SUBMIT_USERSLOT"
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: about to: mkdir -p $SUBMIT_PARENT_DIR" 1>&2
+    export UPDATING_SLOT=""
+    if [[ -e $SUBMIT_PARENT_DIR ]]; then
+	# case: submission slot already exists
+	#
+	# The submission slot directory was formed by a previous submission.
+	#
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: already exists: $SUBMIT_PARENT_DIR" 1>&2
+	fi
+	UPDATING_SLOT="true"
+	status=0
+    else
+	# case: first submission to this slot
+	#
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: mkdir -p $SUBMIT_PARENT_DIR" 1>&2
+	fi
+	mkdir -p "$SUBMIT_PARENT_DIR" 2>"$TMP_STDERR"
+	status="$?"
     fi
-    mkdir -p "$SUBMIT_PARENT_DIR" 2>"$TMP_STDERR"
-    status="$?"
     if [[ $status -ne 0 ]]; then
 
 	# report submit parent mkdir directory failure
@@ -1833,11 +1859,48 @@ elif [[ -f $DEST ]]; then
 	exit 9
     fi
 
-    # if we have a submission directory, create tarball holding directory
+    # if we have a submission slot directory, create tarball holding directory
     #
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: SUBMIT_PARENT_DIR=$SUBMIT_PARENT_DIR" 1>&2
+	echo "$0: debug[3]: UPDATING_SLOT=$UPDATING_SLOT" 1>&2
+    fi
+    export PREV_SUBMIT_TIME=""
+    export PREV_SUBMIT_DIR=""
     if [[ -d $SUBMIT_PARENT_DIR ]]; then
 
-	export SUBMIT_TARBALL_DIR="$SUBMIT/$SUBMIT_USERSLOT/txz"
+	# case: updating slot, determine the name of the previous submission slot directory
+	#
+	# Before we update a submission slot directory, we note the path of the most current
+	# submission slot directory so that we can form a .prev symlink to it later.
+	#
+	if [[ -n $UPDATING_SLOT ]]; then
+
+	    # determine the previous slot time
+	    #
+	    # NOTE: In case we fail to determine the name of the previous submission slot directory,
+	    #	    we do NOT report the error here.  Later when we attempt to form the .prev symlink
+	    #	    we will perform sanity checks on $PREV_SUBMIT_TIME.
+	    #
+	    PREV_SUBMIT_TIME=$(find "$SUBMIT_PARENT_DIR" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*[0-9]' 2>/dev/null |
+			       sed -e 's;^.*/;;' -e '/[^0-9.]/d' |
+			       sort -n |
+			       tail -1)
+
+	    # form the previous slot directory
+	    #
+	    # NOTE: In case we fail to determine the name of the previous submission slot directory,
+	    #	    we do NOT report the error here.  Later when we attempt to form the .prev symlink
+	    #	    we will perform sanity checks on $PREV_SUBMIT_DIR.
+	    #
+	    if [[ -n $PREV_SUBMIT_TIME ]]; then
+		PREV_SUBMIT_DIR="$SUBMIT_PARENT_DIR/$PREV_SUBMIT_TIME"
+	    fi
+	fi
+
+	# form txz tarball directory
+	#
+	export SUBMIT_TARBALL_DIR="$SUBMIT_PARENT_DIR/txz"
 	if [[ $V_FLAG -ge 1 ]]; then
 	    echo "$0: debug[1]: about to: mkdir -p $SUBMIT_TARBALL_DIR" 1>&2
 	fi
@@ -1845,7 +1908,7 @@ elif [[ -f $DEST ]]; then
 	status="$?"
 	if [[ $status -ne 0 ]]; then
 
-	    # report mkdir submit directory failure
+	    # report mkdir submit txz directory failure
 	    #
 	    PROBLEM_CODE=17
 	    {
@@ -1863,7 +1926,7 @@ elif [[ -f $DEST ]]; then
 
 	    # update the slot comment on the remote server to note txchk test failure
 	    #
-	    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "failed to make submit directory! Use mkiocccentry to rebuild and resubmit to this slot."
+	    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "failed to make submit txz directory! Use mkiocccentry to rebuild and resubmit to this slot."
 
 	    # move destination under ERRORS
 	    #
@@ -1889,6 +1952,10 @@ elif [[ -f $DEST ]]; then
 	    #
 	    exit 9
 
+	fi
+	if [[ $V_FLAG -ge 3 ]]; then
+	    echo "$0: debug[3]: PREV_SUBMIT_TIME=$PREV_SUBMIT_TIME" 1>&2
+	    echo "$0: debug[3]: PREV_SUBMIT_DIR=$PREV_SUBMIT_DIR" 1>&2
 	fi
 
 	# if we have a tarball holding directory, process it
@@ -2012,6 +2079,7 @@ elif [[ -f $DEST ]]; then
 		# find a brand new place into which to move the temporary tree
 		#
 		export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+		export SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME"
 		if [[ -e $SUBMIT_DIR ]]; then
 
 		    # we already have SUBMIT_DIR, find a different directory that does NOT already exist
@@ -2020,11 +2088,14 @@ elif [[ -f $DEST ]]; then
 		    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
 		    while [[ -e $SUBMIT_DIR ]]; do
 			((i=i+1))
-			SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
+			SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME.$i"
+			SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME_DOT_NUM"
 		    done
 		fi
 		if [[ $V_FLAG -ge 3 ]]; then
 		    echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
+		    echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME." 1>&2
+		    echo "$0: debug[3]: SUBMIT_TIME_DOT_NUM=$SUBMIT_TIME_DOT_NUM" 1>&2
 		fi
 
 		# move the temporary unpacked tree into place
@@ -2099,13 +2170,16 @@ elif [[ -f $DEST ]]; then
 			# we already have a DEST_TARBALL, find a different filename that does NOT already exist
 			#
 			((i=0))
-			DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+			STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$i.txz"
+			DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
 			while [[ -e $DEST_TARBALL ]]; do
 			    ((i=i+1))
-			    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_NOTXZ.$i.txz"
+			    STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$i.txz"
+			    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
 			done
 		    fi
 		    if [[ $V_FLAG -ge 3 ]]; then
+			echo "$0: debug[3]: STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM" 1>&2
 			echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
 		    fi
 
@@ -2190,7 +2264,7 @@ elif [[ -f $DEST ]]; then
 		    fi
 		    trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
 
-		    # perform chkentry test on the submission directory
+		    # perform chkentry test on the submission slot directory
 		    #
 		    if [[ $V_FLAG -ge 1 ]]; then
 			echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $SUBMIT_DIR 2>$TMP_STDERR" 1>&2
@@ -2254,7 +2328,7 @@ elif [[ -f $DEST ]]; then
 		    status="$?"
 		    if [[ $status -ne 0 ]]; then
 
-			# report chkentry failure
+			# just report cannot compress .auth.json file
 			#
 			PROBLEM_CODE=23
 			{
@@ -2272,17 +2346,363 @@ elif [[ -f $DEST ]]; then
 			# Having noted the problem, try to just carry on
 		    fi
 
-		    # if using git, add the submission directory and tarball
+		    # form .txz symlink to the compressed tarball
+		    #
+		    # firewall - .txz must NOT exist
+		    #
+		    if [[ -e $SUBMIT_DIR/.txz ]]; then
+
+			# just report that .txz exists
+			#
+			PROBLEM_CODE=24
+			{
+			    echo
+			    echo "$0: Warning: should not exist: $SUBMIT_DIR/.txz"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+
+		    # case: .txz does not exist, form the .txz to point to the compressed tarball
+		    #
+		    else
+			if [[ $V_FLAG -ge 1 ]]; then
+			    echo "$0: debug[1]: about to: ln -f -s ../txz/$STAGED_FILENAME_DOT_NUM $SUBMIT_DIR/.txz 2>$TMP_STDERR" 1>&2
+			fi
+			ln -f -s "../txz/$STAGED_FILENAME_DOT_NUM" "$SUBMIT_DIR/.txz" 2>"$TMP_STDERR" 1>&2
+			status="$?"
+			if [[ $status -ne 0 ]]; then
+
+			    # just report a failure to form .txz
+			    #
+			    PROBLEM_CODE=25
+
+			    {
+				echo
+				echo "$0: Warning: ln -f -s ../txz/$STAGED_FILENAME_DOT_NUM $SUBMIT_DIR/.txz failed, error: $status"
+				echo "$0: Warning: stderr output starts below"
+				cat "$TMP_STDERR"
+				echo "$0: Warning: stderr output ends above"
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+			fi
+		    fi
+
+		    # form .slot symlink to the submission slot directory
+		    #
+		    # firewall - .slot must NOT exist
+		    #
+		    if [[ -e $SUBMIT_DIR/.slot ]]; then
+
+			# just report that .slot exists
+			#
+			PROBLEM_CODE=26
+			{
+			    echo
+			    echo "$0: Warning: should not exist: $SUBMIT_DIR/.slot"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+
+		    # case: .slot does not exist, form the .slot to point to the submission slot directory
+		    #
+		    else
+			if [[ $V_FLAG -ge 1 ]]; then
+			    echo "$0: debug[1]: about to: ln -f -s .. $SUBMIT_DIR/.slot 2>$TMP_STDERR" 1>&2
+			fi
+			ln -f -s .. "$SUBMIT_DIR/.slot" 2>"$TMP_STDERR" 1>&2
+			status="$?"
+			if [[ $status -ne 0 ]]; then
+
+			    # just report a failure to form .slot
+			    #
+			    PROBLEM_CODE=27
+
+			    {
+				echo
+				echo "$0: Warning: ln -f -s .. $SUBMIT_DIR/.slot failed, error: $status"
+				echo "$0: Warning: stderr output starts below"
+				cat "$TMP_STDERR"
+				echo "$0: Warning: stderr output ends above"
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+			fi
+		    fi
+
+		    # case: we are updating slot - form a .prev symlink
+		    #
+		    if [[ -n $UPDATING_SLOT ]]; then
+
+			# firewall - validate PREV_SUBMIT_TIME
+			#
+			if [[ -z $PREV_SUBMIT_TIME ]]; then
+
+			    # just report that we have no previous submit time
+			    #
+			    PROBLEM_CODE=28
+			    {
+				echo
+				echo "$0: Warning: failed to determine PREV_SUBMIT_TIME for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+
+			# firewall - validate PREV_SUBMIT_DIR
+			#
+			elif [[ ! -d $PREV_SUBMIT_DIR ]]; then
+
+			    # just report that we have no previous submit slot directory
+			    #
+			    PROBLEM_CODE=29
+			    {
+				echo
+				echo "$0: Warning: not a previous slot directory: $PREV_SUBMIT_DIR for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+
+			# form .prev symlink to the previous submission slot directory
+			#
+			# firewall - .prev must NOT exist
+			#
+			elif [[ -e $SUBMIT_DIR/.prev ]]; then
+
+			    # just report that .prev exists
+			    #
+			    PROBLEM_CODE=30
+			    {
+				echo
+				echo "$0: Warning: should not exist: $SUBMIT_DIR/.prev"
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+
+			# case: .prev does not exist, form the .prev to point to the previous submission slot directory
+			#
+			else
+			    if [[ $V_FLAG -ge 1 ]]; then
+				echo "$0: debug[1]: about to: ln -f -s ../$PREV_SUBMIT_TIME $SUBMIT_DIR/.prev 2>$TMP_STDERR" 1>&2
+			    fi
+			    ln -f -s "../$PREV_SUBMIT_TIME" "$SUBMIT_DIR/.prev" 2>"$TMP_STDERR" 1>&2
+			    status="$?"
+			    if [[ $status -ne 0 ]]; then
+
+				# just report a failure to form .prev
+				#
+				PROBLEM_CODE=31
+
+				{
+				    echo
+				    echo "$0: Warning: ln -f -s ../$PREV_SUBMIT_TIME $SUBMIT_DIR/.prev failed, error: $status"
+				    echo "$0: Warning: stderr output starts below"
+				    cat "$TMP_STDERR"
+				    echo "$0: Warning: stderr output ends above"
+				    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+				} | if [[ -n $USE_GIT ]]; then
+				    cat >> "$TMP_GIT_COMMIT"
+				else
+				    cat 1>&2
+				fi
+				# Having noted the problem, try to just carry on
+			    fi
+			fi
+		    fi
+
+		    # force the current symlink to point at this submission slot directory
+		    #
+		    if [[ -e $SUBMIT_PARENT_DIR/current ]]; then
+			if [[ $V_FLAG -ge 1 ]]; then
+			    echo "$0: debug[1]: about to: rm -f $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
+			fi
+			rm -f "$SUBMIT_PARENT_DIR/current"
+			status="$?"
+			if [[ $status -ne 0 || -e $SUBMIT_PARENT_DIR/current ]]; then
+
+			    # just report a failure to pre-remove the current symlink
+			    #
+			    PROBLEM_CODE=32
+
+			    {
+				echo
+				echo "$0: Warning: rm -f $SUBMIT_PARENT_DIR/current failed, error: $status"
+				echo "$0: Warning: stderr output starts below"
+				cat "$TMP_STDERR"
+				echo "$0: Warning: stderr output ends above"
+				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			    } | if [[ -n $USE_GIT ]]; then
+				cat >> "$TMP_GIT_COMMIT"
+			    else
+				cat 1>&2
+			    fi
+			    # Having noted the problem, try to just carry on
+			fi
+		    fi
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
+		    fi
+		    ln -f -s "$SUBMIT_TIME_DOT_NUM" "$SUBMIT_PARENT_DIR/current" 2>"$TMP_STDERR" 1>&2
+		    status="$?"
+		    if [[ $status -ne 0 ]]; then
+
+			# just report a failure to form current in submit parent directory
+			#
+			PROBLEM_CODE=33
+
+			{
+			    echo
+			    echo "$0: Warning: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+		    fi
+
+		    # form the .submit.sh information file
+		    #
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: rm -f $SUBMIT_DIR/.submit.sh 2>$TMP_STDERR" 1>&2
+		    fi
+		    rm -f "$SUBMIT_DIR/.submit.sh" 2>"$TMP_STDERR" 1>&2
+		    status="$?"
+		    if [[ $status -ne 0 || -e $SUBMIT_DIR/.submit.sh ]]; then
+
+			# just report a failure to pre-remote .submit.sh
+			#
+			PROBLEM_CODE=34
+
+			{
+			    echo
+			    echo "$0: Warning: rm -f $SUBMIT_DIR/.submit.sh failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+		    fi
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to form $SUBMIT_DIR/.submit.sh" 1>&2
+			if [[ $V_FLAG -ge 3 ]]; then
+			    {
+				echo "$0: debug[3]: IOCCC_USERNAME=$IOCCC_USERNAME"
+				echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM"
+				echo "$0: debug[3]: SUBMIT_DATETIME='$SUBMIT_DATETIME'"
+				echo "$0: debug[3]: SUBMIT_TIMESTAMP=$SUBMIT_TIME"
+				echo "$0: debug[3]: SUBMIT_TIMESTAMP_DOT_NUM=$SUBMIT_TIME_DOT_NUM"
+				echo "$0: debug[3]: SUBMIT_USERSLOT=$SUBMIT_USERSLOT"
+				echo "$0: debug[3]: TXZ_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM"
+				echo "$0: debug[3]: TXZ_SHA256=$HEXDIGEST"
+			    } 1>&2
+			fi
+		    fi
+		    {
+			echo "#!/usr/bin/env bash"
+			echo "export IOCCC_USERNAME=$IOCCC_USERNAME"
+			echo "export SLOT_NUM=$SLOT_NUM"
+			echo "export SUBMIT_DATETIME='$SUBMIT_DATETIME'"
+			echo "export SUBMIT_TIMESTAMP=$SUBMIT_TIME"
+			echo "export SUBMIT_TIMESTAMP_DOT_NUM=$SUBMIT_TIME_DOT_NUM"
+			echo "export SUBMIT_USERSLOT=$SUBMIT_USERSLOT"
+			echo "export TXZ_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM"
+			echo "export TXZ_SHA256=$HEXDIGEST"
+		    } > "$SUBMIT_DIR/.submit.sh"
+		    if [[ ! -s $SUBMIT_DIR/.submit.sh ]]; then
+
+			# just report a failure to form .submit.sh
+			#
+			PROBLEM_CODE=35
+
+			{
+			    echo
+			    echo "$0: Warning: forming $SUBMIT_DIR/.submit.sh failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+		    fi
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to: chmod 0555 $SUBMIT_DIR/.submit.sh 2>$TMP_STDERR" 1>&2
+		    fi
+		    chmod 0555 "$SUBMIT_DIR/.submit.sh"
+		    if [[ $status -ne 0 || ! -x $SUBMIT_DIR/.submit.sh ]]; then
+
+			# just report a failure to make .submit.sh executable
+			#
+			PROBLEM_CODE=36
+
+			{
+			    echo
+			    echo "$0: Warning: chmod 0555 $SUBMIT_DIR/.submit.sh failed, error: $status"
+			    echo "$0: Warning: stderr output starts below"
+			    cat "$TMP_STDERR"
+			    echo "$0: Warning: stderr output ends above"
+			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+			} | if [[ -n $USE_GIT ]]; then
+			    cat >> "$TMP_GIT_COMMIT"
+			else
+			    cat 1>&2
+			fi
+			# Having noted the problem, try to just carry on
+		    fi
+
+		    # if using git, add the submission slot directory and tarball
 		    #
 		    if [[ -n $USE_GIT ]]; then
 			{
 			    echo
 			    echo "Formed: $SUBMIT_DIR/"
 			    echo "Formed: $DEST_TARBALL"
+			    echo "Formed: $SUBMIT_PARENT_DIR/current"
 			} >> "$TMP_GIT_COMMIT"
 		    fi
 		    git_add "$SUBMIT_DIR"
 		    git_add "$DEST_TARBALL"
+		    git_add "$SUBMIT_PARENT_DIR/current"
 
 		    # report submission success
 		    #
