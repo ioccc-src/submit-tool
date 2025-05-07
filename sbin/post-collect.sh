@@ -128,7 +128,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.0 2025-05-06"
+export VERSION="2.0.1 2025-05-06"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -861,6 +861,7 @@ if [[ -z $NOOP ]]; then
 	    {
 		echo "$0: debug[3]: DOT_NUM=$DOT_NUM"
 		echo "$0: debug[3]: IOCCC_USERNAME=$IOCCC_USERNAME"
+		echo "$0: debug[3]: PREV=$PREV"
 		echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM"
 		echo "$0: debug[3]: SUBMIT_DATETIME='$DATETIME'"
 		echo "$0: debug[3]: SUBMIT_TIMESTAMP=$TIMESTAMP"
@@ -875,6 +876,7 @@ if [[ -z $NOOP ]]; then
 	echo "#!/usr/bin/env bash"
 	echo "export DOT_NUM=$DOT_NUM"
 	echo "export IOCCC_USERNAME=$IOCCC_USERNAME"
+	echo "export PREV=$PREV"
 	echo "export SLOT_NUM=$SLOT_NUM"
 	echo "export SUBMIT_DATETIME='$DATETIME'"
 	echo "export SUBMIT_TIMESTAMP=$TIMESTAMP"
