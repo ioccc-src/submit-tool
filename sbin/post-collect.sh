@@ -598,12 +598,12 @@ if [[ -z $NOOP ]]; then
     rm -f "$TMP_STDERR"
     if [[ -e $TMP_STDERR ]]; then
 	echo "$0: ERROR: cannot remove stderr collection file: $TMP_STDERR" 1>&2
-	exit 12
+	exit 10
     fi
     : >  "$TMP_STDERR"
     if [[ ! -e $TMP_STDERR ]]; then
 	echo "$0: ERROR: cannot create stderr collection file: $TMP_STDERR" 1>&2
-	exit 13
+	exit 11
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not form temporary stderr collection file: $TMP_STDERR" 1>&2
@@ -623,7 +623,7 @@ if [[ $status -ne 0 || -z $HEXDIGEST ]]; then
     echo "$0: ERROR: stderr output starts below" 1>&2
     cat "$TMP_STDERR" 1>&2
     echo "$0: ERROR: stderr output ends above" 1>&2
-    exit 10
+    exit 12
 fi
 HEXDIGEST=${HEXDIGEST%% *}
 if [[ $V_FLAG -ge 3 ]]; then
@@ -631,7 +631,7 @@ if [[ $V_FLAG -ge 3 ]]; then
 fi
 if [[ -n $GIVEN_HEXDIGEST && $GIVEN_HEXDIGEST != "$HEXDIGEST" ]]; then
     echo "$0: ERROR: sha256 hash of  $TARBALL_PATH: $HEXDIGEST != -H $GIVEN_HEXDIGEST" 1>&2
-    exit 11
+    exit 13
 fi
 
 
@@ -689,6 +689,28 @@ fi
 #
 if [[ -z $NOOP ]]; then
 
+    # pre-remove .txz
+    #
+    if [[ -e .txz ]]; then
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: rm -f .txz 2>$TMP_STDERR" 1>&2
+	fi
+	rm -f .txz 2>"$TMP_STDERR" 1>&2
+	status="$?"
+	if [[ $status -ne 0 || -e .txz ]]; then
+
+	    # just report a failure to pre-remove .txz
+	    #
+	    echo "$0: ERROR: rm -f .txz failed, error: $status" 1>&2
+	    echo "$0: ERROR: stderr output starts below" 1>&2
+	    cat "$TMP_STDERR" 1>&2
+	    echo "$0: ERROR: stderr output ends above" 1>&2
+	    exit 17
+	fi
+    fi
+
+    # form .txz symlink
+    #
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: ln -f -s ../txz/$TARBALL .txz 2>$TMP_STDERR" 1>&2
     fi
@@ -702,7 +724,7 @@ if [[ -z $NOOP ]]; then
 	echo "$0: ERROR: stderr output starts below" 1>&2
 	cat "$TMP_STDERR" 1>&2
 	echo "$0: ERROR: stderr output ends above" 1>&2
-	exit 17
+	exit 18
     fi
 
 elif [[ $V_FLAG -ge 1 ]]; then
@@ -737,9 +759,32 @@ if [[ -n $PREV ]]; then
     PREV_DIR="../$PREV"
     if [[ ! -d $PREV_DIR ]]; then
 	echo "$0: ERROR: not a previous directory: $PREV_DIR" 1>&2
-	exit 18
+	exit 19
     fi
     if [[ -z $NOOP ]]; then
+
+	# pre-remove .prev
+	#
+	if [[ -e .prev ]]; then
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: about to: rm -f .prev 2>$TMP_STDERR" 1>&2
+	    fi
+	    rm -f .prev 2>"$TMP_STDERR" 1>&2
+	    status="$?"
+	    if [[ $status -ne 0 || -e .prev ]]; then
+
+		# just report a failure to pre-remove .prev
+		#
+		echo "$0: ERROR: rm -f .prev failed, error: $status" 1>&2
+		echo "$0: ERROR: stderr output starts below" 1>&2
+		cat "$TMP_STDERR" 1>&2
+		echo "$0: ERROR: stderr output ends above" 1>&2
+		exit 20
+	    fi
+	fi
+
+	# form .prev symlink
+	#
 	if [[ $V_FLAG -ge 1 ]]; then
 	    echo "$0: debug[1]: about to: ln -f -s $PREV_DIR .prev 2>$TMP_STDERR" 1>&2
 	fi
@@ -751,7 +796,7 @@ if [[ -n $PREV ]]; then
 	    echo "$0: Warning: stderr output starts below" 1>&2
 	    cat "$TMP_STDERR" 1>&2
 	    echo "$0: Warning: stderr output ends above" 1>&2
-	    exit 19
+	    exit 21
 	fi
 
     elif [[ $V_FLAG -ge 1 ]]; then
@@ -774,7 +819,7 @@ if [[ -z $NOOP ]]; then
 	echo "$0: Warning: stderr output starts below" 1>&2
 	cat "$TMP_STDERR" 1>&2
 	echo "$0: Warning: stderr output ends above" 1>&2
-	exit 20
+	exit 22
     fi
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to form .submit.sh" 1>&2
@@ -812,7 +857,7 @@ if [[ -z $NOOP ]]; then
 	echo "$0: Warning: stderr output starts below" 1>&2
 	cat "$TMP_STDERR" 1>&2
 	echo "$0: Warning: stderr output ends above" 1>&2
-	exit 21
+	exit 23
     fi
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: chmod 0555 .submit.sh 2>$TMP_STDERR" 1>&2
@@ -826,7 +871,7 @@ if [[ -z $NOOP ]]; then
 	echo "$0: Warning: stderr output starts below" 1>&2
 	cat "$TMP_STDERR" 1>&2
 	echo "$0: Warning: stderr output ends above" 1>&2
-	exit 22
+	exit 24
     fi
 
 elif [[ $V_FLAG -ge 1 ]]; then
