@@ -168,12 +168,13 @@ if [[ -z $SHA256_TOOL ]]; then
     SHA256_TOOL=$(type -P sha256sum)
 fi
 export GIVEN_HEXDIGEST=""
+export T_FLAG=""
 
 
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I]
-        [-j jpase] [-t jval.sh] [-2 sha256_tool] [-x xz] [-H hexdigest] slot_path
+        [-j jpase] [-t jval.sh] [-2 sha256_tool] [-x xz] [-H hexdigest] [-T] slot_path
 
         -h              print help message and exit
         -v level        set verbosity level (def level: 0)
@@ -193,6 +194,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-i ioccc.rc] [-I]
         -x xz           use local xz tool to compress (def: $XZ_TOOL)
 
 	-H hexdigest	SHA256 hash of compressed tarball (def: compute using sha256_tool)
+	-T		assume timestamp directories arrived in modify time order (def: use numeric timestamp order)
 
         slot_path       slot directory to process
 
@@ -213,7 +215,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNi:Ij:J:t:2:x:H: flag; do
+while getopts :hv:VnNi:Ij:J:t:2:x:H:T flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -242,6 +244,8 @@ while getopts :hv:VnNi:Ij:J:t:2:x:H: flag; do
     x) XZ_TOOL="$OPTARG"
 	;;
     H) GIVEN_HEXDIGEST="$OPTARG"
+	;;
+    T) T_FLAG="true"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -524,6 +528,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: JVAL_TOOL=$JVAL_TOOL" 1>&2
     echo "$0: debug[3]: SHA256_TOOL=$SHA256_TOOL" 1>&2
     echo "$0: debug[3]: GIVEN_HEXDIGEST=$GIVEN_HEXDIGEST" 1>&2
+    echo "$0: debug[3]: T_FLAG=$T_FLAG" 1>&2
     echo "$0: debug[3]: SLOT_PATH=$SLOT_PATH" 1>&2
     echo "$0: debug[3]: IOCCC_USERNAME=$IOCCC_USERNAME" 1>&2
     echo "$0: debug[3]: TARBALL=$TARBALL" 1>&2
@@ -736,17 +741,36 @@ fi
 #
 export PREV=""
 export PREV_DIR=""
-if [[ $V_FLAG -ge 1 ]]; then
-    echo "$0: debug[1]: about to: ls -1tr .. 2>/dev/null | grep -E '^[0-9]+$'" 1>&2
-fi
-# It is easier to pipe to grep for digits
-#
-# SC2010 (warning): Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames.
-# https://www.shellcheck.net/wiki/SC2010
-# shellcheck disable=SC2010
-ls -1tr .. 2>/dev/null |
-    grep -E '^[0-9.]+$' |
-    while read -r dir; do
+if [[ -n $T_FLAG ]]; then
+
+    # case: with -T, use modify dates of timestamp directories
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: ls -1tr .. 2>/dev/null | grep -E '^[0-9]+$'" 1>&2
+    fi
+    # It is easier to pipe to grep for digits
+    #
+    # SC2010 (warning): Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames.
+    # https://www.shellcheck.net/wiki/SC2010
+    # shellcheck disable=SC2010
+    ls -1tr .. 2>/dev/null |
+	grep -E '^[0-9.]+$'
+else
+
+    # case: without -T, use modify dates of timestamp directories
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: about to: ls -1 .. 2>/dev/null | grep -E '^[0-9]+$' | sort -n" 1>&2
+    fi
+    # It is easier to pipe to grep for digits
+    #
+    # SC2010 (warning): Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames.
+    # https://www.shellcheck.net/wiki/SC2010
+    # shellcheck disable=SC2010
+    ls -1 .. 2>/dev/null |
+	grep -E '^[0-9.]+$' |
+	sort -n
+fi | while read -r dir; do
 	if [[ $dir == "$TIMESTAMP_DOT_NUM" ]]; then
 	    break
 	fi

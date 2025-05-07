@@ -2418,10 +2418,10 @@ elif [[ -f $DEST ]]; then
 		# post-process the submission directory
 		#
 		if [[ $V_FLAG -ge 1 ]]; then
-		    echo "$0: debug[1]: about to: $POST_COLLECT_SH -2 $SHA256_TOOL -x $XZ_TOOL -H $DEST_HEXDIGEST --" \
+		    echo "$0: debug[1]: about to: $POST_COLLECT_SH -2 $SHA256_TOOL -x $XZ_TOOL -H $DEST_HEXDIGEST -T --" \
 			 "$SUBMIT_DIR  2>$TMP_STDERR" 1>&2
 		fi
-		"$POST_COLLECT_SH" -2 "$SHA256_TOOL" -x "$XZ_TOOL" -H "$DEST_HEXDIGEST" -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
+		"$POST_COLLECT_SH" -2 "$SHA256_TOOL" -x "$XZ_TOOL" -H "$DEST_HEXDIGEST" -T -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
 		status="$?"
 		if [[ $status -ne 0 ]]; then
 
