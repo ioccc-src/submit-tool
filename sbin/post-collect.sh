@@ -752,36 +752,46 @@ ls -1tr .. 2>/dev/null |
 	fi
 	PREV="$dir"
     done
+#
+if [[ -z $NOOP ]]; then
+
+    # pre-remove .prev
+    #
+    # We always try pre-remove .prev, in case .prev was created in this submit directory by mistake
+    #
+    if [[ -e .prev ]]; then
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to: rm -f .prev 2>$TMP_STDERR" 1>&2
+	fi
+	rm -f .prev 2>"$TMP_STDERR" 1>&2
+	status="$?"
+	if [[ $status -ne 0 || -e .prev ]]; then
+
+	    # just report a failure to pre-remove .prev
+	    #
+	    echo "$0: ERROR: rm -f .prev failed, error: $status" 1>&2
+	    echo "$0: ERROR: stderr output starts below" 1>&2
+	    cat "$TMP_STDERR" 1>&2
+	    echo "$0: ERROR: stderr output ends above" 1>&2
+	    exit 19
+	fi
+    fi
+elif [[ $V_FLAG -ge 1 ]]; then
+     echo "$0: debug[1]: because of -n, did pre-remove: .prev" 1>&2
+fi
+#
 if [[ -n $PREV ]]; then
 
     # case: we have a previous submit directory
     #
+    # We form the .prev symlink.
+    #
     PREV_DIR="../$PREV"
     if [[ ! -d $PREV_DIR ]]; then
 	echo "$0: ERROR: not a previous directory: $PREV_DIR" 1>&2
-	exit 19
+	exit 20
     fi
     if [[ -z $NOOP ]]; then
-
-	# pre-remove .prev
-	#
-	if [[ -e .prev ]]; then
-	    if [[ $V_FLAG -ge 1 ]]; then
-		echo "$0: debug[1]: about to: rm -f .prev 2>$TMP_STDERR" 1>&2
-	    fi
-	    rm -f .prev 2>"$TMP_STDERR" 1>&2
-	    status="$?"
-	    if [[ $status -ne 0 || -e .prev ]]; then
-
-		# just report a failure to pre-remove .prev
-		#
-		echo "$0: ERROR: rm -f .prev failed, error: $status" 1>&2
-		echo "$0: ERROR: stderr output starts below" 1>&2
-		cat "$TMP_STDERR" 1>&2
-		echo "$0: ERROR: stderr output ends above" 1>&2
-		exit 20
-	    fi
-	fi
 
 	# form .prev symlink
 	#
