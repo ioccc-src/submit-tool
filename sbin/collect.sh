@@ -126,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.8.1 2025-05-02"
+export VERSION="2.9.0 2025-05-06"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -237,6 +237,11 @@ if [[ -z $CHKENTRY_TOOL ]]; then
 	echo "$0: FATAL: chkentry tool is not installed or not in \$PATH" 1>&2
 	exit 5
     fi
+fi
+#
+export POST_COLLECT_SH
+if [[ -z $POST_COLLECT_SH ]]; then
+    POST_COLLECT_SH="/usr/ioccc/sbin/post-collect.sh"
 fi
 #
 export XZ_TOOL
@@ -614,48 +619,49 @@ function unexpected_collect
 # usage
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
-	[-p rmt_port] [-u rmt_user] [-H rmt_host]
-	[-s ssh_tool] [-r rmt_run] [-c scp_tool] [-s sha256_tool] [-R rsync_root] [-x xz] [-g git_tool] [-G]
-	[-z txzchk] [-y chkenry] [-S rmt_stage] [-C slot_comment] [-w workdir]
-	rmt_slot_path
+        [-p rmt_port] [-u rmt_user] [-H rmt_host]
+        [-s ssh_tool] [-r rmt_run] [-c scp_tool] [-s sha256_tool] [-R rsync_root] [-x xz] [-g git_tool] [-G]
+        [-z txzchk] [-y chkenry] [-P post-collect.sh] [-S rmt_stage] [-C slot_comment] [-w workdir]
+        rmt_slot_path
 
-	-h		print help message and exit
-	-v level	set verbosity level (def level: 0)
-	-V		print version string and exit
+        -h              print help message and exit
+        -v level        set verbosity level (def level: 0)
+        -V              print version string and exit
 
-	-n		go thru the actions, but do not update any files (def: do the action)
-	-N		do not process anything, just parse arguments (def: process something)
+        -n              go thru the actions, but do not update any files (def: do the action)
+        -N              do not process anything, just parse arguments (def: process something)
 
-	-t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
+        -t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
 
-	-i ioccc.rc	Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
-	-I		Do not use any rc startup file (def: do)
+        -i ioccc.rc     Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
+        -I              Do not use any rc startup file (def: do)
 
-	-p rmt_port	use ssh TCP port (def: $RMT_PORT)
-	-u rmt_user	ssh into this user (def: $RMT_USER)
-	-H rmt_host	ssh host to use (def: $SERVER)
+        -p rmt_port     use ssh TCP port (def: $RMT_PORT)
+        -u rmt_user     ssh into this user (def: $RMT_USER)
+        -H rmt_host     ssh host to use (def: $SERVER)
 
-	-s ssh_tool	use local ssh_tool to ssh (def: $SSH_TOOL)
-	-r rmt_run	path to run.sh on the remote server (def: $RMT_RUN_SH)
-	-c scp_tool	use local scp_tool to scp (def: $SCP_TOOL)
-	-2 sha256_tool	use local sha256_tool to hash (def: $SHA256_TOOL)
-	-R rsync_root	use local rsync tool to sync trees (def: $RSYNC_TOOL)
-	-x xz		use local xz tool to compress (def: $XZ_TOOL)
-	-g git_tool	use local git tool to manage files (def: $GIT_TOOL)
+        -s ssh_tool     use local ssh_tool to ssh (def: $SSH_TOOL)
+        -r rmt_run      path to run.sh on the remote server (def: $RMT_RUN_SH)
+        -c scp_tool     use local scp_tool to scp (def: $SCP_TOOL)
+        -2 sha256_tool  use local sha256_tool to hash (def: $SHA256_TOOL)
+        -R rsync_root   use local rsync tool to sync trees (def: $RSYNC_TOOL)
+        -x xz           use local xz tool to compress (def: $XZ_TOOL)
+        -g git_tool     use local git tool to manage files (def: $GIT_TOOL)
 
-	-G		disable git operations (def: try to use git)
+        -G              disable git operations (def: try to use git)
 
-	-z txzchk	use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
-	-y chkenry	use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
+        -z txzchk       use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
+        -y chkenry      use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
 
-	-S rmt_stage	path to stage.py on the remote server (def: $RMT_STAGE_PY)
-	-C slot_comment	path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
+        -S rmt_stage    path to stage.py on the remote server (def: $RMT_STAGE_PY)
+        -C slot_comment path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
+        -P post-collect.sh      use local post-collect.sh to post process slot dir (def: $POST_COLLECT_SH)
 
-	-w workdir	cd to the workdir before running (def: stay in $WORKDIR)
+        -w workdir      cd to the workdir before running (def: stay in $WORKDIR)
 
-	rmt_slot_path	The path on the remote side, of the slot to process
+        rmt_slot_path   path on the remote side, of the slot to process
 
-	NOTE: The slot_path can be relative to the rmt_topdir
+        NOTE: The rmt_slot_path may be relative to the rmt_topdir
 
 Exit codes:
      0        all OK
@@ -675,7 +681,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNt:i:Ip:u:H:s:r:c:2:R:x:g:Gz:y:S:C:w: flag; do
+while getopts :hv:VnNt:i:Ip:u:H:s:r:c:2:R:x:g:Gz:y:P:S:C:w: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -720,6 +726,8 @@ while getopts :hv:VnNt:i:Ip:u:H:s:r:c:2:R:x:g:Gz:y:S:C:w: flag; do
     z) TXZCHK_TOOL="$OPTARG"
 	;;
     y) CHKENTRY_TOOL="$OPTARG"
+	;;
+    P) POST_COLLECT_SH="$OPTARG"
 	;;
     S) RMT_STAGE_PY="$OPTARG"
 	;;
@@ -788,6 +796,8 @@ if [[ -n $IOCCC_RC ]]; then
     if [[ $V_FLAG -ge 3 ]]; then
 	echo "$0: debug[3]: about to source $IOCCC_RC" 1>&2
     fi
+    # We need to source the .ioccc.rc file
+    #
     # SC1090 (warning): ShellCheck can't follow non-constant source. Use a directive to specify location.
     # https://www.shellcheck.net/wiki/SC1090
     # shellcheck disable=SC1090
@@ -839,6 +849,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: XZ_TOOL=$XZ_TOOL" 1>&2
     echo "$0: debug[3]: TXZCHK_TOOL=$TXZCHK_TOOL" 1>&2
     echo "$0: debug[3]: CHKENTRY_TOOL=$CHKENTRY_TOOL" 1>&2
+    echo "$0: debug[3]: POST_COLLECT_SH=$POST_COLLECT_SH" 1>&2
     echo "$0: debug[3]: GIT_TOOL=$GIT_TOOL" 1>&2
     echo "$0: debug[3]: USE_GIT=$USE_GIT" 1>&2
     echo "$0: debug[3]: RMT_STAGE_PY=$RMT_STAGE_PY" 1>&2
@@ -1052,6 +1063,14 @@ fi
 #
 if [[ ! -x $CHKENTRY_TOOL ]]; then
     echo "$0: ERROR: chkentry tool not executable: $CHKENTRY_TOOL" 1>&2
+    exit 5
+fi
+
+
+# firewall - POST_COLLECT_SH must be executable
+#
+if [[ ! -x $POST_COLLECT_SH ]]; then
+    echo "$0: ERROR: post-collect.sh tool not executable: $POST_COLLECT_SH" 1>&2
     exit 5
 fi
 
@@ -1341,7 +1360,6 @@ fi
 #
 STAGED_FILENAME=$(basename "$STAGED_PATH")
 export STAGED_FILENAME
-export STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME
 STAGED_FILENAME_NOTXZ=$(basename "$STAGED_PATH" .txz)
 export STAGED_FILENAME_NOTXZ
 DEST="$INBOUND/$STAGED_FILENAME"
@@ -1357,7 +1375,6 @@ SUBMIT_USERSLOT=${SUBMIT_FILENAME%%."$SUBMIT_TIME"}
 export SUBMIT_USERSLOT
 if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: STAGED_FILENAME=$STAGED_FILENAME" 1>&2
-    echo "$0: debug[3]: STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM" 1>&2
     echo "$0: debug[3]: STAGED_FILENAME_NOTXZ=$STAGED_FILENAME_NOTXZ" 1>&2
     echo "$0: debug[3]: DEST=$DEST" 1>&2
     echo "$0: debug[3]: SUBMIT_FILENAME=$SUBMIT_FILENAME" 1>&2
@@ -1382,6 +1399,7 @@ status="$?"
 if [[ $status -ne 0 ]]; then
     echo "$0: Warning: $SCP_TOOL -q -P $RMT_PORT $RMT_USER@$SERVER:$STAGED_PATH $DEST failed, error: $status" 1>&2
 fi
+
 
 # case: nothing received from scp
 #
@@ -2078,24 +2096,34 @@ elif [[ -f $DEST ]]; then
 
 		# find a brand new place into which to move the temporary tree
 		#
-		export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+		export DOT_NUM=""
 		export SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME"
-		if [[ -e $SUBMIT_DIR ]]; then
+		export SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME"
+		export STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME"
+		export DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME"
+		if [[ -e $SUBMIT_DIR || -e $DEST_TARBALL ]]; then
 
 		    # we already have SUBMIT_DIR, find a different directory that does NOT already exist
 		    #
-		    ((i=0))
-		    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$i"
-		    while [[ -e $SUBMIT_DIR ]]; do
-			((i=i+1))
-			SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME.$i"
+		    ((DOT_NUM=0))
+		    SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME.$DOT_NUM"
+		    SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME.$DOT_NUM"
+		    STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$DOT_NUM.txz"
+		    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
+		    while [[ -e $SUBMIT_DIR || -e $DEST_TARBALL ]]; do
+			((DOT_NUM=DOT_NUM+1))
+			SUBMIT_TIME_DOT_NUM="$SUBMIT_TIME.$DOT_NUM"
 			SUBMIT_DIR="$SUBMIT_PARENT_DIR/$SUBMIT_TIME_DOT_NUM"
+			STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$DOT_NUM.txz"
+			DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
 		    done
 		fi
 		if [[ $V_FLAG -ge 3 ]]; then
-		    echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
-		    echo "$0: debug[3]: SUBMIT_TIME=$SUBMIT_TIME." 1>&2
+		    echo "$0: debug[3]: DOT_NUM=$DOT_NUM" 1>&2
 		    echo "$0: debug[3]: SUBMIT_TIME_DOT_NUM=$SUBMIT_TIME_DOT_NUM" 1>&2
+		    echo "$0: debug[3]: SUBMIT_DIR=$SUBMIT_DIR" 1>&2
+		    echo "$0: debug[3]: STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM" 1>&2
+		    echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
 		fi
 
 		# move the temporary unpacked tree into place
@@ -2158,182 +2186,104 @@ elif [[ -f $DEST ]]; then
 
 		fi
 
-		# if we moved the temporary unpacked tree into place
+		# move the inbound tarball under the SUBMIT_TARBALL_DIR
 		#
-		if [[ -d $SUBMIT_DIR ]]; then
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
+		fi
+		mv -f "$DEST" "$DEST_TARBALL" 2>"$TMP_STDERR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
 
-		    # find a destination tarball under the SUBMIT_TARBALL_DIR directory
+		    # report untar failure
 		    #
-		    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME"
-		    if [[ -e $DEST_TARBALL ]]; then
-
-			# we already have a DEST_TARBALL, find a different filename that does NOT already exist
-			#
-			((i=0))
-			STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$i.txz"
-			DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
-			while [[ -e $DEST_TARBALL ]]; do
-			    ((i=i+1))
-			    STAGED_FILENAME_DOT_NUM="$STAGED_FILENAME_NOTXZ.$i.txz"
-			    DEST_TARBALL="$SUBMIT_TARBALL_DIR/$STAGED_FILENAME_DOT_NUM"
-			done
-		    fi
-		    if [[ $V_FLAG -ge 3 ]]; then
-			echo "$0: debug[3]: STAGED_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM" 1>&2
-			echo "$0: debug[3]: DEST_TARBALL=$DEST_TARBALL" 1>&2
+		    PROBLEM_CODE=21
+		    {
+			echo
+			echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
 		    fi
 
-		    # move the inbound tarball under the SUBMIT_TARBALL_DIR
+		    # update the slot comment on the remote server to note untar faulure
 		    #
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed to move! Use mkiocccentry to rebuild and resubmit to this slot."
+
+		    # move destination under ERRORS
+		    #
+		    mv_to_errors "$DEST"
+
+		    # collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
+		    #
+		    unexpected_collect "$UNEXPECTED_COUNT"
+
+		    # if using git, add ERRORS
+		    #
+		    git_add "$ERRORS"
+
+		    # if using git, commit the files that have been added
+		    #
+		    git_commit "$TMP_GIT_COMMIT"
+
+		    # if using git, push any commits
+		    #
+		    git_push .
+
+		    # exit non-zero due to untar failure - we can do thing more at this stage
+		    #
+		    exit 9
+		fi
+
+		# cleanup temporary tree
+		#
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
+		fi
+		rm -rf "$SUBMIT_UNPACK_DIR" 2>"$TMP_STDERR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+
+		    # just report a cleanup failure and move on
+		    #
+		    {
+			echo
+			echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+		    # Having noted the problem, try to just carry on
+		fi
+		trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
+
+		# force the current symlink to point at this submission slot directory
+		#
+		if [[ -e $SUBMIT_PARENT_DIR/current ]]; then
 		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: mv -f $DEST $DEST_TARBALL" 1>&2
+			echo "$0: debug[1]: about to: rm -f $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
 		    fi
-		    mv -f "$DEST" "$DEST_TARBALL" 2>"$TMP_STDERR"
+		    rm -f "$SUBMIT_PARENT_DIR/current"
 		    status="$?"
-		    if [[ $status -ne 0 ]]; then
+		    if [[ $status -ne 0 || -e $SUBMIT_PARENT_DIR/current ]]; then
 
-			# report untar failure
-			#
-			PROBLEM_CODE=21
-			{
-			    echo
-			    echo "$0: ERROR: mv -f $DEST $DEST_TARBALL failed, error: $status" 1>&2
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-
-			# update the slot comment on the remote server to note untar faulure
-			#
-			change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed to move! Use mkiocccentry to rebuild and resubmit to this slot."
-
-			# move destination under ERRORS
-			#
-			mv_to_errors "$DEST"
-
-			# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
-			#
-			unexpected_collect "$UNEXPECTED_COUNT"
-
-			# if using git, add ERRORS
-			#
-			git_add "$ERRORS"
-
-			# if using git, commit the files that have been added
-			#
-			git_commit "$TMP_GIT_COMMIT"
-
-			# if using git, push any commits
-			#
-			git_push .
-
-			# exit non-zero due to untar failure - we can do thing more at this stage
-			#
-			exit 9
-		    fi
-
-		    # cleanup temporary tree
-		    #
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: rm -rf $SUBMIT_UNPACK_DIR" 1>&2
-		    fi
-		    rm -rf "$SUBMIT_UNPACK_DIR" 2>"$TMP_STDERR"
-		    status="$?"
-		    if [[ $status -ne 0 ]]; then
-
-			# just report a cleanup failure and move on
-			#
-			{
-			    echo
-			    echo "$0: ERROR: rm -rf $SUBMIT_UNPACK_DIR failed, error: $status" 1>&2
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-		    fi
-		    trap 'rm -f $TMP_GIT_COMMIT $TMP_STDERR; exit' 0 1 2 3 15
-
-		    # perform chkentry test on the submission slot directory
-		    #
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q $SUBMIT_DIR 2>$TMP_STDERR" 1>&2
-		    fi
-		    "$CHKENTRY_TOOL" -q "$SUBMIT_DIR" 2>"$TMP_STDERR"
-		    status="$?"
-		    if [[ $status -ne 0 ]]; then
-
-			# report chkentry failure
+			# just report a failure to pre-remove the current symlink
 			#
 			PROBLEM_CODE=22
+
 			{
 			    echo
-			    echo "$0: Warning: $CHKENTRY_TOOL -q $SUBMIT_DIR 2>$TMP_STDERR failed, error: $status"
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-
-			# update the slot comment on the remote server to note chkentry faulure
-			#
-			change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
-
-			# move destination under ERRORS
-			#
-			mv_to_errors "$DEST"
-
-			# collect any unexpected files we may have received from RMT_SLOT_PATH under ERRORS
-			#
-			unexpected_collect "$UNEXPECTED_COUNT"
-
-			# if using git, add ERRORS
-			#
-			git_add "$ERRORS"
-
-			# if using git, commit the files that have been added
-			#
-			git_commit "$TMP_GIT_COMMIT"
-
-			# if using git, push any commits
-			#
-			git_push .
-
-			# exit non-zero due to chkentry failure - we can do thing more at this stage
-			#
-			exit 9
-		    fi
-
-		    # as an "gram of protection", compress the .auth.json file
-		    #
-		    export AUTH_JSON="$SUBMIT_DIR/.auth.json"
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: $XZ_TOOL -z -f $AUTH_JSON 2>$TMP_STDERR" 1>&2
-		    fi
-		    "$XZ_TOOL" -z -f "$AUTH_JSON" 2>"$TMP_STDERR"
-		    status="$?"
-		    if [[ $status -ne 0 ]]; then
-
-			# just report cannot compress .auth.json file
-			#
-			PROBLEM_CODE=23
-			{
-			    echo
-			    echo "$0: Warning: $XZ_TOOL -z -f $AUTH_JSON 2>$TMP_STDERR failed, error: $status"
+			    echo "$0: Warning: rm -f $SUBMIT_PARENT_DIR/current failed, error: $status"
 			    echo "$0: Warning: stderr output starts below"
 			    cat "$TMP_STDERR"
 			    echo "$0: Warning: stderr output ends above"
@@ -2345,19 +2295,58 @@ elif [[ -f $DEST ]]; then
 			fi
 			# Having noted the problem, try to just carry on
 		    fi
+		fi
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
+		fi
+		ln -f -s "$SUBMIT_TIME_DOT_NUM" "$SUBMIT_PARENT_DIR/current" 2>"$TMP_STDERR" 1>&2
+		status="$?"
+		if [[ $status -ne 0 ]]; then
 
-		    # form .txz symlink to the compressed tarball
+		    # just report a failure to form current in submit parent directory
 		    #
-		    # firewall - .txz must NOT exist
-		    #
-		    if [[ -e $SUBMIT_DIR/.txz ]]; then
+		    PROBLEM_CODE=23
 
-			# just report that .txz exists
+		    {
+			echo
+			echo "$0: Warning: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current failed, error: $status"
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+		    # Having noted the problem, try to just carry on
+		fi
+
+		# form .num.sh if we had to find a different directory that does NOT already exist
+		#
+		if [[ -n $DOT_NUM ]]; then
+
+		    # form .num.sh
+		    #
+		    if [[ $V_FLAG -ge 1 ]]; then
+			echo "$0: debug[1]: about to form $SUBMIT_DIR/.num.sh" 1>&2
+			if [[ $V_FLAG -ge 3 ]]; then
+			    echo "$0: debug[3]: DOT_NUM=$DOT_NUM" 1>&2
+			fi
+		    fi
+		    {
+			echo "#!/usr/bin/env bash"
+			echo "export DOT_NUM=$DOT_NUM"
+		    } > "$SUBMIT_DIR/.num.sh"
+		    if [[ ! -s $SUBMIT_DIR/.num.sh ]]; then
+
+			# just report a failure to form .num.sh
 			#
 			PROBLEM_CODE=24
+
 			{
 			    echo
-			    echo "$0: Warning: should not exist: $SUBMIT_DIR/.txz"
+			    echo "$0: Warning: forming $SUBMIT_DIR/.num.sh failed, error: $status"
 			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
 			} | if [[ -n $USE_GIT ]]; then
 			    cat >> "$TMP_GIT_COMMIT"
@@ -2365,24 +2354,20 @@ elif [[ -f $DEST ]]; then
 			    cat 1>&2
 			fi
 			# Having noted the problem, try to just carry on
-
-		    # case: .txz does not exist, form the .txz to point to the compressed tarball
-		    #
 		    else
 			if [[ $V_FLAG -ge 1 ]]; then
-			    echo "$0: debug[1]: about to: ln -f -s ../txz/$STAGED_FILENAME_DOT_NUM $SUBMIT_DIR/.txz 2>$TMP_STDERR" 1>&2
+			    echo "$0: debug[1]: about to: chmod 0555 $SUBMIT_DIR/.num.sh 2>$TMP_STDERR" 1>&2
 			fi
-			ln -f -s "../txz/$STAGED_FILENAME_DOT_NUM" "$SUBMIT_DIR/.txz" 2>"$TMP_STDERR" 1>&2
-			status="$?"
-			if [[ $status -ne 0 ]]; then
+			chmod 0555 "$SUBMIT_DIR/.num.sh" 2>"$TMP_STDERR"
+			if [[ $status -ne 0 || ! -x $SUBMIT_DIR/.num.sh ]]; then
 
-			    # just report a failure to form .txz
+			    # just report a failure to make .num.sh executable
 			    #
 			    PROBLEM_CODE=25
 
 			    {
 				echo
-				echo "$0: Warning: ln -f -s ../txz/$STAGED_FILENAME_DOT_NUM $SUBMIT_DIR/.txz failed, error: $status"
+				echo "$0: Warning: chmod 0555 $SUBMIT_DIR/.num.sh failed, error: $status"
 				echo "$0: Warning: stderr output starts below"
 				cat "$TMP_STDERR"
 				echo "$0: Warning: stderr output ends above"
@@ -2395,271 +2380,91 @@ elif [[ -f $DEST ]]; then
 			    # Having noted the problem, try to just carry on
 			fi
 		    fi
-
-		    # case: we are updating slot - form a .prev symlink
-		    #
-		    if [[ -n $UPDATING_SLOT ]]; then
-
-			# firewall - validate PREV_SUBMIT_TIME
-			#
-			if [[ -z $PREV_SUBMIT_TIME ]]; then
-
-			    # just report that we have no previous submit time
-			    #
-			    PROBLEM_CODE=26
-			    {
-				echo
-				echo "$0: Warning: failed to determine PREV_SUBMIT_TIME for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
-				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			    } | if [[ -n $USE_GIT ]]; then
-				cat >> "$TMP_GIT_COMMIT"
-			    else
-				cat 1>&2
-			    fi
-			    # Having noted the problem, try to just carry on
-
-			# firewall - validate PREV_SUBMIT_DIR
-			#
-			elif [[ ! -d $PREV_SUBMIT_DIR ]]; then
-
-			    # just report that we have no previous submit slot directory
-			    #
-			    PROBLEM_CODE=27
-			    {
-				echo
-				echo "$0: Warning: not a previous slot directory: $PREV_SUBMIT_DIR for SUBMIT_PARENT_DIR: $SUBMIT_PARENT_DIR" 1>&2
-				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			    } | if [[ -n $USE_GIT ]]; then
-				cat >> "$TMP_GIT_COMMIT"
-			    else
-				cat 1>&2
-			    fi
-			    # Having noted the problem, try to just carry on
-
-			# form .prev symlink to the previous submission slot directory
-			#
-			# firewall - .prev must NOT exist
-			#
-			elif [[ -e $SUBMIT_DIR/.prev ]]; then
-
-			    # just report that .prev exists
-			    #
-			    PROBLEM_CODE=28
-			    {
-				echo
-				echo "$0: Warning: should not exist: $SUBMIT_DIR/.prev"
-				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			    } | if [[ -n $USE_GIT ]]; then
-				cat >> "$TMP_GIT_COMMIT"
-			    else
-				cat 1>&2
-			    fi
-			    # Having noted the problem, try to just carry on
-
-			# case: .prev does not exist, form the .prev to point to the previous submission slot directory
-			#
-			else
-			    if [[ $V_FLAG -ge 1 ]]; then
-				echo "$0: debug[1]: about to: ln -f -s ../$PREV_SUBMIT_TIME $SUBMIT_DIR/.prev 2>$TMP_STDERR" 1>&2
-			    fi
-			    ln -f -s "../$PREV_SUBMIT_TIME" "$SUBMIT_DIR/.prev" 2>"$TMP_STDERR" 1>&2
-			    status="$?"
-			    if [[ $status -ne 0 ]]; then
-
-				# just report a failure to form .prev
-				#
-				PROBLEM_CODE=29
-
-				{
-				    echo
-				    echo "$0: Warning: ln -f -s ../$PREV_SUBMIT_TIME $SUBMIT_DIR/.prev failed, error: $status"
-				    echo "$0: Warning: stderr output starts below"
-				    cat "$TMP_STDERR"
-				    echo "$0: Warning: stderr output ends above"
-				    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-				} | if [[ -n $USE_GIT ]]; then
-				    cat >> "$TMP_GIT_COMMIT"
-				else
-				    cat 1>&2
-				fi
-				# Having noted the problem, try to just carry on
-			    fi
-			fi
-		    fi
-
-		    # force the current symlink to point at this submission slot directory
-		    #
-		    if [[ -e $SUBMIT_PARENT_DIR/current ]]; then
-			if [[ $V_FLAG -ge 1 ]]; then
-			    echo "$0: debug[1]: about to: rm -f $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
-			fi
-			rm -f "$SUBMIT_PARENT_DIR/current"
-			status="$?"
-			if [[ $status -ne 0 || -e $SUBMIT_PARENT_DIR/current ]]; then
-
-			    # just report a failure to pre-remove the current symlink
-			    #
-			    PROBLEM_CODE=30
-
-			    {
-				echo
-				echo "$0: Warning: rm -f $SUBMIT_PARENT_DIR/current failed, error: $status"
-				echo "$0: Warning: stderr output starts below"
-				cat "$TMP_STDERR"
-				echo "$0: Warning: stderr output ends above"
-				echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			    } | if [[ -n $USE_GIT ]]; then
-				cat >> "$TMP_GIT_COMMIT"
-			    else
-				cat 1>&2
-			    fi
-			    # Having noted the problem, try to just carry on
-			fi
-		    fi
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current 2>$TMP_STDERR" 1>&2
-		    fi
-		    ln -f -s "$SUBMIT_TIME_DOT_NUM" "$SUBMIT_PARENT_DIR/current" 2>"$TMP_STDERR" 1>&2
-		    status="$?"
-		    if [[ $status -ne 0 ]]; then
-
-			# just report a failure to form current in submit parent directory
-			#
-			PROBLEM_CODE=31
-
-			{
-			    echo
-			    echo "$0: Warning: ln -f -s $SUBMIT_TIME_DOT_NUM $SUBMIT_PARENT_DIR/current failed, error: $status"
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-		    fi
-
-		    # form the .submit.sh information file
-		    #
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: rm -f $SUBMIT_DIR/.submit.sh 2>$TMP_STDERR" 1>&2
-		    fi
-		    rm -f "$SUBMIT_DIR/.submit.sh" 2>"$TMP_STDERR" 1>&2
-		    status="$?"
-		    if [[ $status -ne 0 || -e $SUBMIT_DIR/.submit.sh ]]; then
-
-			# just report a failure to pre-remote .submit.sh
-			#
-			PROBLEM_CODE=32
-
-			{
-			    echo
-			    echo "$0: Warning: rm -f $SUBMIT_DIR/.submit.sh failed, error: $status"
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-		    fi
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to form $SUBMIT_DIR/.submit.sh" 1>&2
-			if [[ $V_FLAG -ge 3 ]]; then
-			    {
-				echo "$0: debug[3]: IOCCC_USERNAME=$IOCCC_USERNAME"
-				echo "$0: debug[3]: SLOT_NUM=$SLOT_NUM"
-				echo "$0: debug[3]: SUBMIT_DATETIME='$SUBMIT_DATETIME'"
-				echo "$0: debug[3]: SUBMIT_TIMESTAMP=$SUBMIT_TIME"
-				echo "$0: debug[3]: SUBMIT_TIMESTAMP_DOT_NUM=$SUBMIT_TIME_DOT_NUM"
-				echo "$0: debug[3]: SUBMIT_USERSLOT=$SUBMIT_USERSLOT"
-				echo "$0: debug[3]: TXZ_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM"
-				echo "$0: debug[3]: TXZ_SHA256=$HEXDIGEST"
-			    } 1>&2
-			fi
-		    fi
-		    {
-			echo "#!/usr/bin/env bash"
-			echo "export IOCCC_USERNAME=$IOCCC_USERNAME"
-			echo "export SLOT_NUM=$SLOT_NUM"
-			echo "export SUBMIT_DATETIME='$SUBMIT_DATETIME'"
-			echo "export SUBMIT_TIMESTAMP=$SUBMIT_TIME"
-			echo "export SUBMIT_TIMESTAMP_DOT_NUM=$SUBMIT_TIME_DOT_NUM"
-			echo "export SUBMIT_USERSLOT=$SUBMIT_USERSLOT"
-			echo "export TXZ_FILENAME_DOT_NUM=$STAGED_FILENAME_DOT_NUM"
-			echo "export TXZ_SHA256=$HEXDIGEST"
-		    } > "$SUBMIT_DIR/.submit.sh"
-		    if [[ ! -s $SUBMIT_DIR/.submit.sh ]]; then
-
-			# just report a failure to form .submit.sh
-			#
-			PROBLEM_CODE=33
-
-			{
-			    echo
-			    echo "$0: Warning: forming $SUBMIT_DIR/.submit.sh failed, error: $status"
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-		    fi
-		    if [[ $V_FLAG -ge 1 ]]; then
-			echo "$0: debug[1]: about to: chmod 0555 $SUBMIT_DIR/.submit.sh 2>$TMP_STDERR" 1>&2
-		    fi
-		    chmod 0555 "$SUBMIT_DIR/.submit.sh"
-		    if [[ $status -ne 0 || ! -x $SUBMIT_DIR/.submit.sh ]]; then
-
-			# just report a failure to make .submit.sh executable
-			#
-			PROBLEM_CODE=34
-
-			{
-			    echo
-			    echo "$0: Warning: chmod 0555 $SUBMIT_DIR/.submit.sh failed, error: $status"
-			    echo "$0: Warning: stderr output starts below"
-			    cat "$TMP_STDERR"
-			    echo "$0: Warning: stderr output ends above"
-			    echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
-			} | if [[ -n $USE_GIT ]]; then
-			    cat >> "$TMP_GIT_COMMIT"
-			else
-			    cat 1>&2
-			fi
-			# Having noted the problem, try to just carry on
-		    fi
-
-		    # if using git, add the submission slot directory and tarball
-		    #
-		    if [[ -n $USE_GIT ]]; then
-			{
-			    echo
-			    echo "Formed: $SUBMIT_DIR/"
-			    echo "Formed: $DEST_TARBALL"
-			    echo "Formed: $SUBMIT_PARENT_DIR/current"
-			} >> "$TMP_GIT_COMMIT"
-		    fi
-		    git_add "$SUBMIT_DIR"
-		    git_add "$DEST_TARBALL"
-		    git_add "$SUBMIT_PARENT_DIR/current"
-
-		    # report submission success
-		    #
-		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
-
-		    # success !!!
 		fi
+
+		# perform chkentry test on the submission slot directory
+		#
+		export CHKENTRY_ERR_REPORTED=""
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q -i .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR" 1>&2
+		fi
+		"$CHKENTRY_TOOL" -q -i .num.sh -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+
+		    # report chkentry failure
+		    #
+		    PROBLEM_CODE=26
+		    {
+			echo
+			echo "$0: Warning: $CHKENTRY_TOOL -q -i .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR failed, error: $status"
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+
+		    # update the slot comment on the remote server to note chkentry faulure
+		    #
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
+		    CHKENTRY_ERR_REPORTED="true"
+		    # Having noted the problem, try to just carry on
+		fi
+
+		# post-process the submission directory
+		#
+		if [[ $V_FLAG -ge 1 ]]; then
+		    echo "$0: debug[1]: about to: $POST_COLLECT_SH -2 $SHA256_TOOL -x $XZ_TOOL -H $DEST_HEXDIGEST --" \
+			 "$SUBMIT_DIR  2>$TMP_STDERR" 1>&2
+		fi
+		"$POST_COLLECT_SH" -2 "$SHA256_TOOL" -x "$XZ_TOOL" -H "$DEST_HEXDIGEST" -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+
+		    # report chkentry failure
+		    #
+		    PROBLEM_CODE=27
+		    {
+			echo
+			echo "$0: Warning: $POST_COLLECT_SH -2 $SHA256_TOOL -x $XZ_TOOL -H $DEST_HEXDIGEST --" \
+			     "$SUBMIT_DIR  2>$TMP_STDERR failed, error: $status"
+			echo "$0: Warning: stderr output starts below"
+			cat "$TMP_STDERR"
+			echo "$0: Warning: stderr output ends above"
+			echo "$0: Warning: Set PROBLEM_CODE: $PROBLEM_CODE"
+		    } | if [[ -n $USE_GIT ]]; then
+			cat >> "$TMP_GIT_COMMIT"
+		    else
+			cat 1>&2
+		    fi
+		    # Having noted the problem, try to just carry on
+		fi
+
+		# if using git, add the submission slot directory and tarball
+		#
+		if [[ -n $USE_GIT ]]; then
+		    {
+			echo
+			echo "Formed: $SUBMIT_DIR/"
+			echo "Formed: $DEST_TARBALL"
+			echo "Formed: $SUBMIT_PARENT_DIR/current"
+		    } >> "$TMP_GIT_COMMIT"
+		fi
+		git_add "$SUBMIT_DIR"
+		git_add "$DEST_TARBALL"
+		git_add "$SUBMIT_PARENT_DIR/current"
+
+		# case: report submission success unless chkentry failed
+		#
+		if [[ -z $CHKENTRY_ERR_REPORTED ]]; then
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
+		fi
+
+		# success !!!
 	    fi
 	fi
     fi
@@ -2693,4 +2498,8 @@ git_push .
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
 #
+if [[ $PROBLEM_CODE -ne 0 ]]; then
+    echo "$0: Warning: about to exit $PROBLEM_CODE" 1>&2
+    exit "$PROBLEM_CODE"
+fi
 exit 0
