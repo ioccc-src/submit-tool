@@ -120,7 +120,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.0 2025-03-13"
+export VERSION="2.2.1 2025-05-08"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -167,7 +167,7 @@ fi
 #
 export RMT_MULTI_NEW_USER_SH
 if [[ -z $RMT_MULTI_NEW_USER_SH ]]; then
-    RMT_MULTI_NEW_USER_SH="/usr/ioccc/bin/last_email_msg.sh"
+    RMT_MULTI_NEW_USER_SH="/usr/ioccc/bin/multi_new_user.sh"
 fi
 
 
