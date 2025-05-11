@@ -620,48 +620,48 @@ function unexpected_collect
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
         [-p rmt_port] [-u rmt_user] [-H rmt_host]
-        [-s ssh_tool] [-r rmt_run] [-c scp_tool] [-s sha256_tool] [-R rsync_root] [-x xz] [-g git_tool] [-G]
+        [-s ssh_tool] [-r rmt_run] [-c scp_tool] [-2 sha256_tool] [-R rsync_root] [-x xz] [-g git_tool] [-G]
         [-z txzchk] [-y chkenry] [-P post-collect.sh] [-S rmt_stage] [-C slot_comment] [-w workdir]
         rmt_slot_path
 
-        -h              print help message and exit
-        -v level        set verbosity level (def level: 0)
-        -V              print version string and exit
+    -h              print help message and exit
+    -v level        set verbosity level (def level: 0)
+    -V              print version string and exit
 
-        -n              go thru the actions, but do not update any files (def: do the action)
-        -N              do not process anything, just parse arguments (def: process something)
+    -n              go thru the actions, but do not update any files (def: do the action)
+    -N              do not process anything, just parse arguments (def: process something)
 
-        -t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
+    -t rmt_topdir   app directory path on server (def: $RMT_TOPDIR)
 
-        -i ioccc.rc     Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
-        -I              Do not use any rc startup file (def: do)
+    -i ioccc.rc     Use ioccc.rc as the rc startup file (def: $IOCCC_RC)
+    -I              Do not use any rc startup file (def: do)
 
-        -p rmt_port     use ssh TCP port (def: $RMT_PORT)
-        -u rmt_user     ssh into this user (def: $RMT_USER)
-        -H rmt_host     ssh host to use (def: $SERVER)
+    -p rmt_port     use ssh TCP port (def: $RMT_PORT)
+    -u rmt_user     ssh into this user (def: $RMT_USER)
+    -H rmt_host     ssh host to use (def: $SERVER)
 
-        -s ssh_tool     use local ssh_tool to ssh (def: $SSH_TOOL)
-        -r rmt_run      path to run.sh on the remote server (def: $RMT_RUN_SH)
-        -c scp_tool     use local scp_tool to scp (def: $SCP_TOOL)
-        -2 sha256_tool  use local sha256_tool to hash (def: $SHA256_TOOL)
-        -R rsync_root   use local rsync tool to sync trees (def: $RSYNC_TOOL)
-        -x xz           use local xz tool to compress (def: $XZ_TOOL)
-        -g git_tool     use local git tool to manage files (def: $GIT_TOOL)
+    -s ssh_tool     use local ssh_tool to ssh (def: $SSH_TOOL)
+    -r rmt_run      path to run.sh on the remote server (def: $RMT_RUN_SH)
+    -c scp_tool     use local scp_tool to scp (def: $SCP_TOOL)
+    -2 sha256_tool  use local sha256_tool to hash (def: $SHA256_TOOL)
+    -R rsync_root   use local rsync tool to sync trees (def: $RSYNC_TOOL)
+    -x xz           use local xz tool to compress (def: $XZ_TOOL)
+    -g git_tool     use local git tool to manage files (def: $GIT_TOOL)
 
-        -G              disable git operations (def: try to use git)
+    -G              disable git operations (def: try to use git)
 
-        -z txzchk       use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
-        -y chkenry      use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
+    -z txzchk       use local txzchk tool to test compressed tarballs (def: $TXZCHK_TOOL)
+    -y chkenry      use local chkenry tool to test unpacked submission (def: $CHKENTRY_TOOL)
 
-        -S rmt_stage    path to stage.py on the remote server (def: $RMT_STAGE_PY)
-        -C slot_comment path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
-        -P post-collect.sh      use local post-collect.sh to post process slot dir (def: $POST_COLLECT_SH)
+    -S rmt_stage    path to stage.py on the remote server (def: $RMT_STAGE_PY)
+    -C slot_comment path to set_slot_status.py on the remote server (def: $RMT_SET_SLOT_STATUS_PY)
+    -P post-collect.sh      use local post-collect.sh to post process slot dir (def: $POST_COLLECT_SH)
 
-        -w workdir      cd to the workdir before running (def: stay in $WORKDIR)
+    -w workdir      cd to the workdir before running (def: stay in $WORKDIR)
 
-        rmt_slot_path   path on the remote side, of the slot to process
+    rmt_slot_path   path on the remote side, of the slot to process
 
-        NOTE: The rmt_slot_path may be relative to the rmt_topdir
+    NOTE: The rmt_slot_path may be relative to the rmt_topdir
 
 Exit codes:
      0        all OK
