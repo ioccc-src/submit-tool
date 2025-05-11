@@ -632,7 +632,7 @@ if [[ $status -ne 0 || -z $HEXDIGEST ]]; then
 fi
 HEXDIGEST=${HEXDIGEST%% *}
 if [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: about to: sha256 hash of $TARBALL_PATH: $HEXDIGEST" 1>&2
+    echo "$0: debug[3]: sha256 hash of $TARBALL_PATH: $HEXDIGEST" 1>&2
 fi
 if [[ -n $GIVEN_HEXDIGEST && $GIVEN_HEXDIGEST != "$HEXDIGEST" ]]; then
     echo "$0: ERROR: sha256 hash of  $TARBALL_PATH: $HEXDIGEST != -H $GIVEN_HEXDIGEST" 1>&2
