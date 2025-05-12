@@ -620,7 +620,7 @@ function unexpected_collect
 #
 export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc.rc] [-I]
         [-p rmt_port] [-u rmt_user] [-H rmt_host]
-        [-s ssh_tool] [-r rmt_run] [-c scp_tool] [-2 sha256_tool] [-R rsync_root] [-x xz] [-g git_tool] [-G]
+        [-s ssh_tool] [-r rmt_run] [-c scp_tool] [-2 sha256_tool] [-R rsync_tool] [-x xz] [-g git_tool] [-G]
         [-z txzchk] [-y chkenry] [-P post-collect.sh] [-S rmt_stage] [-C slot_comment] [-w workdir]
         rmt_slot_path
 
@@ -644,7 +644,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-t rmt_topdir] [-i ioccc
     -r rmt_run      path to run.sh on the remote server (def: $RMT_RUN_SH)
     -c scp_tool     use local scp_tool to scp (def: $SCP_TOOL)
     -2 sha256_tool  use local sha256_tool to hash (def: $SHA256_TOOL)
-    -R rsync_root   use local rsync tool to sync trees (def: $RSYNC_TOOL)
+    -R rsync_tool   use local rsync tool to sync trees (def: $RSYNC_TOOL)
     -x xz           use local xz tool to compress (def: $XZ_TOOL)
     -g git_tool     use local git tool to manage files (def: $GIT_TOOL)
 
