@@ -2,7 +2,7 @@
 #
 # iocccsubmit - IOCCC submit server tool
 #
-# Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2024-2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -161,7 +161,8 @@ BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_s
 SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_passwd.sh \
 	   sbin/ssh_run.sh sbin/who_extract.sh sbin/ssh_email_pr.sh sbin/filter.sh \
 	   sbin/ssh_last_email_msg.sh sbin/comm_email.sh sbin/ssh_multi_new_user.sh \
-	   sbin/who_email.awk sbin/update_reg.sh sbin/jval.sh sbin/post-collect.sh
+	   sbin/who_email.awk sbin/update_reg.sh sbin/jval.sh sbin/post-collect.sh \
+	   sbin/gen-year.sh
 
 # tool to generate the secret Flask key
 #
@@ -179,6 +180,7 @@ FLASK_KEY= etc/.secret
 #
 DESTDIR= /usr/local/bin
 DESTSDIR= /usr/local/sbin
+DESTSHARE= /usr/local/share/submit-tool
 
 # user to root_install under
 #
@@ -378,13 +380,15 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 #
 # macOS does not have a group called root, so we use the GID 0 (-g 0) instead
 #
-sbin_install: ${SBIN_SRC}
+sbin_install: ${SBIN_SRC} etc/var.mk templates/Makefile.year
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
-	${V} echo DEBUG =-= $@ start =-=
+	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
+	${INSTALL} -o root -g 0 -m 0444 etc/var.mk templates/Makefile.year ${DESTSHARE}
+	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
 #
@@ -402,7 +406,7 @@ root_install: ${SELINUX_SET} root_setup
 	@echo
 	@echo finished setup ${DOCROOT} for SELinux
 	@echo
-	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 # as root: setup directories and permissions
 #
