@@ -56,11 +56,13 @@ all:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -75,11 +77,13 @@ alt:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -89,11 +93,13 @@ data:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -103,11 +109,13 @@ everything:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -122,11 +130,13 @@ diff_orig_prog:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -136,11 +146,13 @@ diff_prog_orig:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -150,11 +162,13 @@ diff_alt_prog:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -164,11 +178,13 @@ diff_prog_alt:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -178,11 +194,13 @@ diff_orig_alt:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -191,11 +209,13 @@ diff_alt_orig:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -208,11 +228,13 @@ clean:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -220,11 +242,13 @@ clobber:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -233,16 +257,18 @@ genpath:
 	@${RM} -f .tmp.genpath
 	@${TOUCH} .tmp.genpath
 	@-for i in ${ENTRIES}; do \
-	    echo "${YEAR}/$$i" >> .tmp.genpath; \
-	    rm -f "$$i/.tmp.genpath"; \
-	    echo "${YEAR}/$$i" >> "$$i/.tmp.genpath"; \
-	    if ${CMP} -s "$$i/.tmp.genpath" "$$i/.path"; then \
-	        rm -f "$$i/.tmp.genpath"; \
-		echo "$$i/.path already up to date"; \
-	    else \
-		 ${MV} -f "$$i/.tmp.genpath" "$$i/.path"; \
-		 ${CHMOD} 0444 "$$i/.path"; \
-		 echo "updated $$i/.path"; \
+	    if [[ -d $$i ]]; then \
+		echo "${YEAR}/$$i" >> .tmp.genpath; \
+		${RM} -f "$$i/.tmp.genpath"; \
+		echo "${YEAR}/$$i" >> "$$i/.tmp.genpath"; \
+		if ${CMP} -s "$$i/.tmp.genpath" "$$i/.path"; then \
+		    ${RM} -f "$$i/.tmp.genpath"; \
+		    echo "$$i/.path already up to date"; \
+		else \
+		     ${MV} -f "$$i/.tmp.genpath" "$$i/.path"; \
+		     ${CHMOD} 0444 "$$i/.path"; \
+		     echo "updated $$i/.path"; \
+		fi; \
 	    fi; \
         done
 	@-if ${CMP} -s .tmp.genpath .year; then \
@@ -280,11 +306,13 @@ indent.c:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -292,11 +320,13 @@ indent_clean: clean
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -304,11 +334,13 @@ indent_clobber: indent_clean clobber
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -316,11 +348,13 @@ install:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -333,11 +367,13 @@ love:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -345,11 +381,13 @@ haste:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -357,11 +395,13 @@ waste:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -369,11 +409,13 @@ maker:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -381,11 +423,13 @@ easter_egg:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -393,11 +437,13 @@ sandwich:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -408,11 +454,13 @@ supernova:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -420,11 +468,13 @@ more_magic:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -432,11 +482,13 @@ magic:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -444,11 +496,13 @@ charon:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
 
@@ -456,10 +510,12 @@ pluto:
 	@echo '=-=-= ${YEAR} begin make $@ =-=-='
 	@echo
 	@for i in ${ENTRIES}; do \
-	    echo "=-= start ${YEAR}/$$i =-="; \
-	    echo "(cd $$i && ${MAKE} $@)"; \
-	    (cd $$i && ${MAKE} $@); \
-	    echo "=-= end ${YEAR}/$$i =-="; \
-	    echo; \
+	    if [[ -d $$i ]]; then \
+		echo "=-= start ${YEAR}/$$i =-="; \
+		echo "(cd $$i && ${MAKE} $@)"; \
+		(cd $$i && ${MAKE} $@); \
+		echo "=-= end ${YEAR}/$$i =-="; \
+		echo; \
+	    fi; \
 	done
 	@echo '=-=-= ${YEAR} complete make $@ =-=-='
