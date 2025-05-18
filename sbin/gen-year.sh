@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.0 2025-05-11"
+export VERSION="2.0.1 2025-05-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -967,6 +967,101 @@ for index in "${!USER_SLOT[@]}"; do
 
     elif [[ $V_FLAG -ge 5 ]]; then
 	echo "$0: debug[5]: because of -n, did not copy $FROM_PATH/ to $TO_PATH" 1>&2
+    fi
+
+    # chmod 0444 files under submit.number
+    #
+    if [[ -z $NOOP ]]; then
+
+	if [[ $V_FLAG -ge 5 ]]; then
+	    echo "$0: debug[5]: about to: find $TO_PATH -type f -print0 2>/dev/null | xargs -0 chmod 0444 -v" 1>&2
+	fi
+	if [[ $V_FLAG -ge 5 ]]; then
+	    find "$TO_PATH" -type f -print0 2>/dev/null | xargs -0 chmod 0444 -v
+	    status_codes=("${PIPESTATUS[@]}")
+	    if [[ ${status_codes[*]} =~ [1-9] ]]; then
+		echo "$0: find $TO_PATH -type f -print0 2>/dev/null | xargs -0 chmod 0444 -v" \
+		     "error codes: ${status_codes[*]}" 1>&2
+		echo 1 > "$TMP_EXIT_CODE" # exit 1
+		continue
+	    fi
+	else
+	    find "$TO_PATH" -type f -print0 2>/dev/null | xargs -0 chmod 0444
+	    status_codes=("${PIPESTATUS[@]}")
+	    if [[ ${status_codes[*]} =~ [1-9] ]]; then
+		echo "$0: find $TO_PATH -type f -print0 2>/dev/null | xargs -0 chmod 0444" \
+		     "error codes: ${status_codes[*]}" 1>&2
+		echo 1 > "$TMP_EXIT_CODE" # exit 1
+		continue
+	    fi
+	fi
+
+    elif [[ $V_FLAG -ge 5 ]]; then
+	echo "$0: debug[5]: because of -n, did not chmod 0444 files under: $TO_PATH" 1>&2
+    fi
+
+    # chmod 0555 if we have try.sh
+    #
+    if [[ -f $TO_PATH/try.sh ]]; then
+
+	if [[ -z $NOOP ]]; then
+
+	    if [[ $V_FLAG -ge 5 ]]; then
+		echo "$0: debug[5]: about to: chmod 0555 -v $TO_PATH/try.sh" 1>&2
+	    fi
+	    if [[ $V_FLAG -ge 5 ]]; then
+		chmod 0555 -v "$TO_PATH/try.sh"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+		    echo "$0: ERROR: chmod 0555 -v $TO_PATH/try.sh failed, error: $status" 1>&2
+		    echo 1 > "$TMP_EXIT_CODE" # exit 1
+		    continue
+		fi
+	    else
+		chmod 0555 "$TO_PATH/try.sh"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+		    echo "$0: ERROR: chmod 0555 $TO_PATH/try.sh failed, error: $status" 1>&2
+		    echo 1 > "$TMP_EXIT_CODE" # exit 1
+		    continue
+		fi
+	    fi
+
+	elif [[ $V_FLAG -ge 5 ]]; then
+	    echo "$0: debug[5]: because of -n, did not chmod 0555 files under: $TO_PATH" 1>&2
+	fi
+    fi
+
+    # chmod 0555 if we have try.alt.sh
+    #
+    if [[ -f $TO_PATH/try.alt.sh ]]; then
+
+	if [[ -z $NOOP ]]; then
+
+	    if [[ $V_FLAG -ge 5 ]]; then
+		echo "$0: debug[5]: about to: chmod 0555 -v $TO_PATH/try.alt.sh" 1>&2
+	    fi
+	    if [[ $V_FLAG -ge 5 ]]; then
+		chmod 0555 -v "$TO_PATH/try.alt.sh"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+		    echo "$0: ERROR: chmod 0555 -v $TO_PATH/try.alt.sh failed, error: $status" 1>&2
+		    echo 1 > "$TMP_EXIT_CODE" # exit 1
+		    continue
+		fi
+	    else
+		chmod 0555 "$TO_PATH/try.alt.sh"
+		status="$?"
+		if [[ $status -ne 0 ]]; then
+		    echo "$0: ERROR: chmod 0555 $TO_PATH/try.alt.sh failed, error: $status" 1>&2
+		    echo 1 > "$TMP_EXIT_CODE" # exit 1
+		    continue
+		fi
+	    fi
+
+	elif [[ $V_FLAG -ge 5 ]]; then
+	    echo "$0: debug[5]: because of -n, did not chmod 0555 files under: $TO_PATH" 1>&2
+	fi
     fi
 
     # if we copied a .prev symlink, change the .prev symlink to point at the submit tree
