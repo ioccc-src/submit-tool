@@ -120,7 +120,7 @@ if [[ $MY_UID -ne 0 ]]; then
 fi
 
 
-# setup /var/ioccc for SELinux
+# setup /var/ioccc, /var/log/ioccc, /etc/httpd/conf, /var/log/trap-httpd, /var/log/httpd for SELinux
 #
 set -x
 semanage fcontext --list --locallist --noheading
@@ -134,9 +134,13 @@ semanage fcontext --add --ftype a --type httpd_sys_rw_content_t '/var/ioccc/user
 semanage fcontext --add --ftype a --type httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
 semanage fcontext --add --ftype f --type httpd_log_t '/var/log/ioccc'
 semanage fcontext --add --ftype f --type httpd_config_t '/etc/httpd/conf(/.*)?'
+semanage fcontext --add --ftype a --type httpd_log_t '/var/log/trap-httpd(/.*)?'
+semanage fcontext --add --ftype a --type httpd_log_t '/var/log/httpd(/.*)?'
 restorecon -vR /var/ioccc
 restorecon -v /var/log/ioccc
 restorecon -v /etc/httpd/conf
+restorecon -vR /var/log/trap-httpd
+restorecon -vR /var/log/httpd
 #no#ls -lRZa /var/ioccc
 semanage fcontext --list --locallist --noheading
 set +x
