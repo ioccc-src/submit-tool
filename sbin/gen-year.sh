@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.1 2025-05-17"
+export VERSION="2.0.2 2025-06-07"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -187,8 +187,8 @@ if [[ -z $TMPDIR ]]; then
     TMPDIR="/tmp"
 fi
 #
-export VAR_MK="etc/var.mk"
-export MAKEFILE_YEAR="templates/Makefile.year"
+export VAR_MK="$PWD/etc/var.mk"
+export MAKEFILE_YEAR="$PWD/templates/Makefile.year"
 export DESTSHARE="/usr/local/share/submit-tool"
 
 
@@ -443,27 +443,6 @@ elif [[ $V_FLAG -ge 3 ]]; then
 fi
 
 
-# create a temporary year level Makefile
-#
-export TMP_MAKEFILE="$TMPDIR/.tmp.$NAME.MAKEFILE.$$.tmp"
-if [[ $V_FLAG -ge 3 ]]; then
-    echo  "$0: debug[3]: temporary year level Makefile: $TMP_MAKEFILE" 1>&2
-fi
-# In this case we always create TMP_MAKEFILE even if -n, because of the complex shell loops below
-trap 'rm -f $TMP_MAKEFILE; exit' 0 1 2 3 15
-rm -f "$TMP_MAKEFILE"
-if [[ -e $TMP_MAKEFILE ]]; then
-    echo "$0: ERROR: cannot remove temporary year level Makefile: $TMP_MAKEFILE" 1>&2
-    exit 10
-fi
-sed -e "s/%%YEAR%%/$YYYY/g" "$MAKEFILE_YEAR" > "$TMP_MAKEFILE"
-status="$?"
-if [[ $status -ne 0 || ! -s $TMP_MAKEFILE ]]; then
-    echo "$0: ERROR: sed -e s/%%YEAR%%/$YYYY/g $MAKEFILE_YEAR > $TMP_MAKEFILE failed, error: $status" 1>&2
-    exit 7
-fi
-
-
 # move to WORKDIR if WORKDIR is not .
 #
 if [[ $WORKDIR != "." ]]; then
@@ -529,7 +508,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo  "$0: debug[3]: temporary exit code: $TMP_EXIT_CODE" 1>&2
 fi
 # In this case we always create TMP_EXIT_CODE even if -n, because of the complex shell loops below
-trap 'rm -f $TMP_MAKEFILE $TMP_EXIT_CODE; exit' 0 1 2 3 15
+trap 'rm -f $TMP_EXIT_CODE; exit' 0 1 2 3 15
 rm -f "$TMP_EXIT_CODE"
 if [[ -e $TMP_EXIT_CODE ]]; then
     echo "$0: ERROR: cannot remove temporary exit code: $TMP_EXIT_CODE" 1>&2
@@ -1239,47 +1218,13 @@ if [[ -z $NOOP ]]; then
 	echo "$0: debug[5]: because of -n, did not pre-remove $YYYY_MAKEFILE" 1>&2
     fi
 
-    # load first part of the Makefile under YYYY
+    # setup YEAR from Makefile.year template
     #
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: forming first part of the Makefile under YYYY: $YYYY_MAKEFILE" 1>&2
-    fi
-    sed -n -e '1,/^# BEGIN - DO NOT REMOVE THIS LINE - make new_entry uses this line #/p' \
-	"$TMP_MAKEFILE" > "$YYYY_MAKEFILE"
+    sed -e "s/%%YEAR%%/$YYYY/g" "$MAKEFILE_YEAR" > "$YYYY_MAKEFILE"
     status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: forming first part of the Makefile under YYYY: $YYYY_MAKEFILE failed," \
-	     "error code: $status" 1>&2
-	exit 1
-    fi
-
-    # setup ENTRIES= line in Makefile under YYYY
-    #
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: forming ENTRIES= line for the Makefile under YYYY: $YYYY_MAKEFILE" 1>&2
-    fi
-    {
-	echo -n 'ENTRIES= '
-	for index in "${!SUBMIT_NUMBER[@]}"; do
-	    echo "${SUBMIT_NUMBER[$index]}"
-	done | sort -d -u | fmt | sed -e '2,$s/^/\t/' -e 's/$/ \\/' -e '$s/ \\//'
-    } >> "$YYYY_MAKEFILE"
-
-    # load last part of the Makefile under YYYY
-    #
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: forming last part of the Makefile under YYYY: $YYYY_MAKEFILE" 1>&2
-    fi
-    sed -n -e '/^# END - DO NOT REMOVE THIS LINE - make new_entry also uses this #/,$p' \
-	"$TMP_MAKEFILE" >> "$YYYY_MAKEFILE"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: forming last part of the Makefile under YYYY: $YYYY_MAKEFILE failed," \
-	     "error code: $status" 1>&2
-	exit 1
-    fi
-    if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: formed $YYYY_MAKEFILE" 1>&2
+    if [[ $status -ne 0 || ! -s $YYYY_MAKEFILE ]]; then
+	echo "$0: ERROR: sed -e s/%%YEAR%%/$YYYY/g $MAKEFILE_YEAR > $YYYY_MAKEFILE failed, error: $status" 1>&2
+	exit 7
     fi
 
 elif [[ $V_FLAG -ge 1 ]]; then
