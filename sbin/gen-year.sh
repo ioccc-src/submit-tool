@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.2 2025-06-07"
+export VERSION="2.1.0 2025-06-19"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -187,9 +187,12 @@ if [[ -z $TMPDIR ]]; then
     TMPDIR="/tmp"
 fi
 #
-export VAR_MK="$PWD/etc/var.mk"
-export MAKEFILE_YEAR="$PWD/templates/Makefile.year"
 export DESTSHARE="/usr/local/share/submit-tool"
+export MAKEFILE_YEAR="$DESTSHARE/Makefile.year"
+export VAR_MK="$DESTSHARE/var.mk"
+export LEET_MK="$DESTSHARE/1337.mk"
+export CLANG_FORMAT="$DESTSHARE/.clang-format"
+export MAKEFILE_JUDGING="$DESTSHARE/Makefile.judging"
 
 
 # rsync options we use to copy
@@ -242,7 +245,7 @@ Exit codes:
      2        -h and help string printed or -V and version string printed
      3        command line error
      4        source of ioccc.rc file failed
-     5        some critical local executable tool not found
+     5        some critical local executable tool or file not found
      6	      invalid USERSLOT subdirectory under submit found
      7	      workdir invalid or missing mandatory sub-directory
  >= 10        internal error
@@ -376,9 +379,12 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RSYNC_OPTIONS=${RSYNC_OPTIONS[*]}" 1>&2
     echo "$0: debug[3]: RSYNC_VERBOSE_OPTIONS=${RSYNC_VERBOSE_OPTIONS[*]}" 1>&2
     echo "$0: debug[3]: YYYY=$YYYY" 1>&2
-    echo "$0: debug[3]: VAR_MK=$VAR_MK" 1>&2
-    echo "$0: debug[3]: MAKEFILE_YEAR=$MAKEFILE_YEAR" 1>&2
     echo "$0: debug[3]: DESTSHARE=$DESTSHARE" 1>&2
+    echo "$0: debug[3]: MAKEFILE_YEAR=$MAKEFILE_YEAR" 1>&2
+    echo "$0: debug[3]: VAR_MK=$VAR_MK" 1>&2
+    echo "$0: debug[3]: LEET_MK=$LEET_MK" 1>&2
+    echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
+    echo "$0: debug[3]: MAKEFILE_JUDGING=$MAKEFILE_JUDGING" 1>&2
 fi
 
 
@@ -398,48 +404,43 @@ if [[ ! -x $RSYNC_TOOL ]]; then
 fi
 
 
-# find the var.mk file
-#
-if [[ ! -s $VAR_MK ]]; then
-    VAR_MK="$DESTSHARE/var.mk"
-    if [[ ! -s $VAR_MK ]]; then
-	echo "$0: ERROR: cannot find non-empty var.mk file" 1>&2
-	exit 5
-    fi
-fi
-
-
 # find the Makefile.year file
 #
 if [[ ! -s $MAKEFILE_YEAR ]]; then
-    MAKEFILE_YEAR="$DESTSHARE/Makefile.year"
-    if [[ ! -s $MAKEFILE_YEAR ]]; then
-	echo "$0: ERROR: cannot find non-empty Makefile.year file" 1>&2
-	exit 5
-    fi
+    echo "$0: ERROR: cannot find non-empty Makefile.year file: $MAKEFILE_YEAR" 1>&2
+    exit 5
 fi
 
 
-# update var.mk under WORKDIR if needed
+# find the var.mk file
 #
-if ! cmp -s "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null; then
+if [[ ! -s $VAR_MK ]]; then
+    echo "$0: ERROR: cannot find non-empty var.mk file: $VAR_MK" 1>&2
+    exit 5
+fi
 
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
-    fi
-    if [[ -z $NOOP ]]; then
-	cp -p -f "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null
-	status="$?"
-	if [[ $status -ne 0 || ! -s $WORKDIR/var.mk ]]; then
-	    echo "$0: ERROR: cp -p -f $VAR_MK $WORKDIR/var.mk failed, error: $status" 1>&2
-	    exit 7
-	fi
-    elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
-    fi
 
-elif [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: var.mk is up to date: $WORKDIR/var.mk" 1>&2
+# find the 1337.mk file
+#
+if [[ ! -s $LEET_MK ]]; then
+    echo "$0: ERROR: cannot find non-empty 1337.mk file: $LEET_MK" 1>&2
+    exit 5
+fi
+
+
+# find the .clang-format file
+#
+if [[ ! -s $CLANG_FORMAT ]]; then
+    echo "$0: ERROR: cannot find non-empty .clang-format file: $CLANG_FORMAT" 1>&2
+    exit 5
+fi
+
+
+# find the Makefile.judging file
+#
+if [[ ! -s $MAKEFILE_JUDGING ]]; then
+    echo "$0: ERROR: cannot find non-empty Makefile.judging file: $MAKEFILE_JUDGING" 1>&2
+    exit 5
 fi
 
 
@@ -495,6 +496,75 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 	echo "$0: debug[3]: arguments parsed, -N given, exiting 0" 1>&2
     fi
     exit 0
+fi
+
+
+# update var.mk under WORKDIR if needed
+#
+if ! cmp -s "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $WORKDIR/var.mk ]]; then
+	    echo "$0: ERROR: cp -p -f $VAR_MK $WORKDIR/var.mk failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: var.mk is up to date: $WORKDIR/var.mk" 1>&2
+fi
+
+
+# update 1337.mk under WORKDIR if needed
+#
+if ! cmp -s "$LEET_MK" "$WORKDIR/1337.mk" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $LEET_MK $WORKDIR/1337.mk" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$LEET_MK" "$WORKDIR/1337.mk" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $WORKDIR/1337.mk ]]; then
+	    echo "$0: ERROR: cp -p -f $LEET_MK $WORKDIR/1337.mk failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $LEET_MK $WORKDIR/1337.mk" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: 1337.mk is up to date: $WORKDIR/1337.mk" 1>&2
+fi
+
+
+# update .clang-format under WORKDIR if needed
+#
+if ! cmp -s "$CLANG_FORMAT" "$WORKDIR/.clang-format" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $CLANG_FORMAT $WORKDIR/.clang-format" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$CLANG_FORMAT" "$WORKDIR/.clang-format" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $WORKDIR/.clang-format ]]; then
+	    echo "$0: ERROR: cp -p -f $CLANG_FORMAT $WORKDIR/.clang-format failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $CLANG_FORMAT $WORKDIR/.clang-format" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: .clang-format is up to date: $WORKDIR/.clang-format" 1>&2
 fi
 
 
@@ -1229,6 +1299,29 @@ if [[ -z $NOOP ]]; then
 
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not form: $YYYY_MAKEFILE" 1>&2
+fi
+
+
+# update Makefile.judging under YYYY if needed
+#
+if ! cmp -s "$MAKEFILE_JUDGING" "$YYYY/Makefile.judging" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$MAKEFILE_JUDGING" "$YYYY/Makefile.judging" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $YYYY/Makefile.judging ]]; then
+	    echo "$0: ERROR: cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: Makefile.judging is up to date: $YYYY/Makefile.judging" 1>&2
 fi
 
 

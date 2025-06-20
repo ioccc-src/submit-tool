@@ -196,6 +196,31 @@ GROUP= apache
 #
 IOCCC_SYSLOG= /var/log/ioccc
 
+# source for select files installed via: "make sbin_install"
+#
+# NOTE: These values NOT needed for the submit server.
+# 	The "make sbin_install" is NEVER run on the submit server.
+#
+# IOCCC_WINNER_TREE - location of the IOCCC winner tree
+#
+IOCCC_WINNER_TREE= ../docroot/winner
+#
+# VAR_MK_SRC - location of the master var.mk file
+# LEET_MK_SRC - location of the master 1337.mk file
+# CLANG_FORMAT_SRC - location of the master .clang_format file
+# MAKEFILE_YEAR_SRC - location of thee template for Makefile.year
+# MAKEFILE_JUDGING_SRC - location of thee template for Makefile.judging
+#
+VAR_MK_SRC= ${IOCCC_WINNER_TREE}/var.mk
+LEET_MK_SRC= ${IOCCC_WINNER_TREE}/1337.mk
+CLANG_FORMAT_SRC= ${IOCCC_WINNER_TREE}/.clang-format
+MAKEFILE_YEAR_SRC= ${IOCCC_WINNER_TREE}/template/Makefile.year
+MAKEFILE_JUDGING_SRC= ${IOCCC_WINNER_TREE}/template/entry/Makefile.judging
+#
+# DESTSHARE_SRC - files to install, via "make sbin_install" under ${DESTSHARE}
+#
+DESTSHARE_SRC= ${VAR_MK_SRC} ${LEET_MK_SRC} ${CLANG_FORMAT_SRC} ${MAKEFILE_YEAR_SRC} ${MAKEFILE_JUDGING_SRC}
+
 # what to build
 #
 TARGETS= dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
@@ -380,14 +405,16 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 #
 # macOS does not have a group called root, so we use the GID 0 (-g 0) instead
 #
-sbin_install: ${SBIN_SRC} etc/var.mk templates/Makefile.year
+# NOTE: The "make sbin_install" is NEVER run on the submit server.
+#
+sbin_install: ${SBIN_SRC} ${DESTSHARE_SRC}
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
-	${INSTALL} -o root -g 0 -m 0444 etc/var.mk templates/Makefile.year ${DESTSHARE}
+	${INSTALL} -o root -g 0 -m 0444 ${DESTSHARE_SRC} ${DESTSHARE}
 	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
