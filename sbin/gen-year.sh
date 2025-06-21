@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.1.0 2025-06-19"
+export VERSION="2.1.1 2025-06-19"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -193,6 +193,7 @@ export VAR_MK="$DESTSHARE/var.mk"
 export LEET_MK="$DESTSHARE/1337.mk"
 export CLANG_FORMAT="$DESTSHARE/.clang-format"
 export MAKEFILE_JUDGING="$DESTSHARE/Makefile.judging"
+export TRY_SH="$DESTSHARE/try.sh"
 
 
 # rsync options we use to copy
@@ -385,6 +386,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: LEET_MK=$LEET_MK" 1>&2
     echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
     echo "$0: debug[3]: MAKEFILE_JUDGING=$MAKEFILE_JUDGING" 1>&2
+    echo "$0: debug[3]: TRY_SH=$TRY_SH" 1>&2
 fi
 
 
@@ -440,6 +442,14 @@ fi
 #
 if [[ ! -s $MAKEFILE_JUDGING ]]; then
     echo "$0: ERROR: cannot find non-empty Makefile.judging file: $MAKEFILE_JUDGING" 1>&2
+    exit 5
+fi
+
+
+# find the try.sh file
+#
+if [[ ! -s $TRY_SH ]]; then
+    echo "$0: ERROR: cannot find non-empty Makefile.judging file: $TRY_SH" 1>&2
     exit 5
 fi
 
@@ -1322,6 +1332,29 @@ if ! cmp -s "$MAKEFILE_JUDGING" "$YYYY/Makefile.judging" 2>/dev/null; then
 
 elif [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: Makefile.judging is up to date: $YYYY/Makefile.judging" 1>&2
+fi
+
+
+# update try.sh.judging under YYYY if needed
+#
+if ! cmp -s "$TRY_SH" "$YYYY/try.sh.judging" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $TRY_SH $YYYY/try.sh.judging" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$TRY_SH" "$YYYY/try.sh.judging" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $YYYY/try.sh.judging ]]; then
+	    echo "$0: ERROR: cp -p -f $TRY_SH $YYYY/try.sh.judging failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_SH $YYYY/try.sh.judging" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: try.sh.judging is up to date: $YYYY/try.sh.judging" 1>&2
 fi
 
 
