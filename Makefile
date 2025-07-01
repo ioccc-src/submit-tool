@@ -216,7 +216,7 @@ LEET_MK_SRC= ${IOCCC_WINNER_TREE}/1337.mk
 CLANG_FORMAT_SRC= ${IOCCC_WINNER_TREE}/.clang-format
 MAKEFILE_YEAR_SRC= ${IOCCC_WINNER_TREE}/template/Makefile.year
 MAKEFILE_JUDGING_SRC= ${IOCCC_WINNER_TREE}/template/entry/Makefile.judging
-TRY_SH_SRC= ${IOCCC_WINNER_TREE}/next/try.sh
+TRY_SH_SRC= ${IOCCC_WINNER_TREE}/template/entry/try.sh.judging
 #
 # DESTSHARE_SRC - files to install, via "make sbin_install" under ${DESTSHARE}
 #
@@ -416,6 +416,7 @@ sbin_install: ${SBIN_SRC} ${DESTSHARE_SRC}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
 	${INSTALL} -o root -g 0 -m 0444 ${DESTSHARE_SRC} ${DESTSHARE}
+	${CHMOD} 0755 ${DESTSHARE}/try.sh.judging
 	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
