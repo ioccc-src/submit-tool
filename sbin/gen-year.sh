@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.1.1 2025-06-19"
+export VERSION="2.1.2 2025-06-30"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -193,7 +193,7 @@ export VAR_MK="$DESTSHARE/var.mk"
 export LEET_MK="$DESTSHARE/1337.mk"
 export CLANG_FORMAT="$DESTSHARE/.clang-format"
 export MAKEFILE_JUDGING="$DESTSHARE/Makefile.judging"
-export TRY_SH="$DESTSHARE/try.sh"
+export TRY_SH_JUDGING="$DESTSHARE/try.sh.judging"
 
 
 # rsync options we use to copy
@@ -386,7 +386,7 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: LEET_MK=$LEET_MK" 1>&2
     echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
     echo "$0: debug[3]: MAKEFILE_JUDGING=$MAKEFILE_JUDGING" 1>&2
-    echo "$0: debug[3]: TRY_SH=$TRY_SH" 1>&2
+    echo "$0: debug[3]: TRY_SH_JUDGING=$TRY_SH_JUDGING" 1>&2
 fi
 
 
@@ -446,10 +446,10 @@ if [[ ! -s $MAKEFILE_JUDGING ]]; then
 fi
 
 
-# find the try.sh file
+# find the try.sh.judging file
 #
-if [[ ! -s $TRY_SH ]]; then
-    echo "$0: ERROR: cannot find non-empty Makefile.judging file: $TRY_SH" 1>&2
+if [[ ! -s $TRY_SH_JUDGING ]]; then
+    echo "$0: ERROR: cannot find non-empty try.sh.judging file: $TRY_SH_JUDGING" 1>&2
     exit 5
 fi
 
@@ -1337,20 +1337,20 @@ fi
 
 # update try.sh.judging under YYYY if needed
 #
-if ! cmp -s "$TRY_SH" "$YYYY/try.sh.judging" 2>/dev/null; then
+if ! cmp -s "$TRY_SH_JUDGING" "$YYYY/try.sh.judging" 2>/dev/null; then
 
     if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $TRY_SH $YYYY/try.sh.judging" 1>&2
+	echo "$0: debug[3]: about to cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging" 1>&2
     fi
     if [[ -z $NOOP ]]; then
-	cp -p -f "$TRY_SH" "$YYYY/try.sh.judging" 2>/dev/null
+	cp -p -f "$TRY_SH_JUDGING" "$YYYY/try.sh.judging" 2>/dev/null
 	status="$?"
 	if [[ $status -ne 0 || ! -s $YYYY/try.sh.judging ]]; then
-	    echo "$0: ERROR: cp -p -f $TRY_SH $YYYY/try.sh.judging failed, error: $status" 1>&2
+	    echo "$0: ERROR: cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging failed, error: $status" 1>&2
 	    exit 7
 	fi
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_SH $YYYY/try.sh.judging" 1>&2
+	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging" 1>&2
     fi
 
 elif [[ $V_FLAG -ge 3 ]]; then
