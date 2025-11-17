@@ -126,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.9.0 2025-05-06"
+export VERSION="2.9.1 2025-11-16"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -2386,9 +2386,9 @@ elif [[ -f $DEST ]]; then
 		#
 		export CHKENTRY_ERR_REPORTED=""
 		if [[ $V_FLAG -ge 1 ]]; then
-		    echo "$0: debug[1]: about to: $CHKENTRY_TOOL -q -i .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR" 1>&2
+		    echo "$0: debug[1]: about to: $CHKENTRY_TOOL -S -q -I .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR" 1>&2
 		fi
-		"$CHKENTRY_TOOL" -q -i .num.sh -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
+		"$CHKENTRY_TOOL" -S -q -I .num.sh -- "$SUBMIT_DIR" 2>"$TMP_STDERR"
 		status="$?"
 		if [[ $status -ne 0 ]]; then
 
@@ -2397,7 +2397,7 @@ elif [[ -f $DEST ]]; then
 		    PROBLEM_CODE=26
 		    {
 			echo
-			echo "$0: Warning: $CHKENTRY_TOOL -q -i .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR failed, error: $status"
+			echo "$0: Warning: $CHKENTRY_TOOL -S -q -I .num.sh -- $SUBMIT_DIR 2>$TMP_STDERR failed, error: $status"
 			echo "$0: Warning: stderr output starts below"
 			cat "$TMP_STDERR"
 			echo "$0: Warning: stderr output ends above"
