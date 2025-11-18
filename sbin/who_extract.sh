@@ -64,7 +64,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.0 2025-03-13"
+export VERSION="2.2.1 2025-11-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -360,6 +360,11 @@ fi
 
 # extract email address from who-ioccc file
 #
+if [[ $V_FLAG -ge 5 ]]; then
+    echo "$0: debug[5]: $AWK_TOOL -f $WHO_EMAIL_AWK -v debug=$V_FLAG $WHO_IOCCC output starts below" 1>&2
+    "$AWK_TOOL" -f "$WHO_EMAIL_AWK" -v debug="$V_FLAG" "$WHO_IOCCC"
+    echo "$0: debug[5]: $AWK_TOOL -f $WHO_EMAIL_AWK -v debug=$V_FLAG $WHO_IOCCC output ends above" 1>&2
+fi
 if [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: about to run: $AWK_TOOL -f $WHO_EMAIL_AWK $WHO_IOCCC > $TMP_OUTPUT" 1>&2
 fi

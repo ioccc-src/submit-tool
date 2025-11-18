@@ -122,7 +122,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.1 2025-11-17"
+export VERSION="2.2.2 2025-11-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -1310,8 +1310,13 @@ if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: about to: $WHO_EXTRACT_SH $WHO_IOCCC $TMP_FREELISTS_LST 2>$TMP_STDERR" 1>&2
     fi
-    "$WHO_EXTRACT_SH" "$WHO_IOCCC" "$TMP_FREELISTS_LST" 2>"$TMP_STDERR"
-    status="$?"
+    if [[ $V_FLAG -ge 1 ]]; then
+	"$WHO_EXTRACT_SH" -v "$V_FLAG" "$WHO_IOCCC" "$TMP_FREELISTS_LST" 2>"$TMP_STDERR"
+	status="$?"
+    else
+	"$WHO_EXTRACT_SH" "$WHO_IOCCC" "$TMP_FREELISTS_LST" 2>"$TMP_STDERR"
+	status="$?"
+    fi
     if [[ $status -ne 0 ]]; then
 	git_exit 1 "$0: ERROR: $WHO_EXTRACT_SH $WHO_IOCCC $TMP_FREELISTS_LST 2>$TMP_STDERR failed, error: $status"
     fi

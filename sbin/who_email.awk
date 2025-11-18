@@ -8,8 +8,8 @@
 #
 # About modes:
 #
-# 0 - waiting for '>> who' line
-# 1 - read '>> who' line, now waiting for line that starts with 'Membership of list '
+# 0 - waiting for '>> who' or 'who' line
+# 1 - read '>> who' or 'who' line, now waiting for line that starts with 'Membership of list '
 # 2 - read line that starts with 'Membership of list ', now reading email lines, waiting for empty/blank line
 #
 # NOTE: When mode == 2 and a empty/blank line is read, mode will return to 0.
@@ -21,7 +21,7 @@ BEGIN {
 
     # setup
     #
-    VERSION="2.0.0 2025-02-28";
+    VERSION="2.0.1 2025-11-17";
 
     # if debug is empty, set debug to 0
     #
@@ -38,9 +38,9 @@ BEGIN {
 }
 
 
-# case mode 0: waiting for '>> who' line
+# case mode 0: waiting for '>> who' or 'who' line
 #
-mode == 0 && $0 !~ /^>> who/ {
+mode == 0 && $0 !~ /^[> \t]*who[ \t]*$/ {
     line = substr($0, 1, length($0)-1);
     if (debug > 0) {
 	print "DEBUG: mode 0: waiting for who line: ((" line "))";
@@ -49,11 +49,11 @@ mode == 0 && $0 !~ /^>> who/ {
 }
 
 
-# case mode 0: read '>> who' line
+# case mode 0: read '>> who' or 'who' line
 #
 # enter mode 1
 #
-mode == 0 && $0 ~ /^>> who/ {
+mode == 0 && $0 ~ /^[> \t]*who[ \t]*$/ {
     line = substr($0, 1, length($0)-1);
     if (debug > 0) {
 	print "DEBUG: mode 0: read who line: ((" line "))";
@@ -64,7 +64,7 @@ mode == 0 && $0 ~ /^>> who/ {
 }
 
 
-# case mode 1: read '>> who' line, now waiting for line that starts with 'Membership of list '
+# case mode 1: read '>> who' or 'who' line, now waiting for line that starts with 'Membership of list '
 #
 # enter mode 2
 #
