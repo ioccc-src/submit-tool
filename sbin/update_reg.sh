@@ -122,7 +122,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.0 2025-03-13"
+export VERSION="2.2.1 2025-11-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -560,6 +560,14 @@ function replace_file_git_add
 	status="$?"
 	if [[ $status -ne 0 ]]; then
 	    git_exit 1 "$0: ERROR: in replace_file_git_add: mv -f $SRC $DEST failed, error: $status" 1>&2
+	fi
+
+	# show difference if verbose enough
+	#
+	if [[ $V_FLAG -ge 5 ]]; then
+	    echo "$0: debug[5]: git diff -u $DEST starts below" 1>&2
+	    git diff -u "$DEST" 1>&2
+	    echo "$0: debug[5]: git diff -u $DEST ends above" 1>&2
 	fi
 
 	# add the replaced dest
