@@ -32,7 +32,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.5.0 2025-03-13"
+VERSION = "2.5.1 2025-11-26"
 
 
 def main():
@@ -60,11 +60,11 @@ def main():
                         metavar='appdir',
                         nargs=1)
     parser.add_argument('-s', '--start',
-                        help="set IOCCC start date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format",
+                        help="set IOCCC start date in 'YYYY-MM-DD HH:MM:SS.micros UTC' format",
                         metavar='DateTime',
                         nargs=1)
     parser.add_argument('-S', '--stop',
-                        help="set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format",
+                        help="set IOCCC stop date in 'YYYY-MM-DD HH:MM:SS.micros UTC' format",
                         metavar='DateTime',
                         nargs=1)
     parser.add_argument('-l', '--log',
