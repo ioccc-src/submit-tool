@@ -32,6 +32,7 @@ import uuid
 import logging
 import datetime
 import locale
+import bz2
 
 
 # import from modules
@@ -69,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.1 2025-04-20"
+VERSION_IOCCC_COMMON = "2.9.2 2025-12-04"
 
 # force password change grace time
 #
@@ -2413,7 +2414,7 @@ def generate_password():
     #
     #   /usr/local/share/polite.words/polite.english.words.txt
     #
-    # As of 2025 Feb 17 commit 9ffe97551033237701437f59a3ebb6d431266623
+    # As of 2025 Nov 26 commit 3502e390694b6b40c3119905917fb864bdd49d50
     # the polite English language words file had the following word count by running:
     #
     #   awk '{print length($1);}' < polite.english.words.txt | sort -n | uniq -c
@@ -2422,23 +2423,23 @@ def generate_password():
     #
     #        52 1
     #       756 2
-    #      2775 3
-    #      8353 4
-    #     18280 5
-    #     34159 6
-    #     47355 7
-    #     57615 8
-    #     59308 9
-    #     51116 10
-    #     41817 11
-    #     32065 12
-    #     22759 13
-    #     15228 14
-    #      9482 15
-    #      5522 16
-    #      3137 17
+    #      2774 3
+    #      8351 4
+    #     18271 5
+    #     34145 6
+    #     47344 7
+    #     57606 8
+    #     59292 9
+    #     51093 10
+    #     41793 11
+    #     32051 12
+    #     22753 13
+    #     15224 14
+    #      9479 15
+    #      5521 16
+    #      3136 17
     #      1526 18
-    #       787 19
+    #       786 19
     #       367 20
     #       170 21
     #        79 22
@@ -2455,7 +2456,7 @@ def generate_password():
     #
     # The make rebuild_pw_words rule is used to select all English language words that are
     # at least MIN_POLITE_WORD_LENGTH (def: 4) and at most MAX_POLITE_WORD_LENGTH (def: 10) long,
-    # where those two values come from the Makefile  As of 2025 Feb 17, this is what is used to
+    # where those two values come from the Makefile  As of 2025 Nov 26, this is what is used to
     # generate the etc/pw.words file.
     #
     # The minimum password length we generate is:
@@ -2466,12 +2467,12 @@ def generate_password():
     #
     #   10 + 1 + 10 + 1 + 9 = 31
     #
-    # The average word in etc/pw.words. given the above is 7.847 characters.
+    # The average word in etc/pw.words, given the above is 7.847 characters.
     # This gives us an average password length of:
     #
     #  7.847 + 1 + 7.847 + 9 = 25.694
     #
-    # The etc/pw.words file has about 276186 words in it (log2(276186) ~ 18.075).
+    # The etc/pw.words file has about 276102 words in it (log2(276102) ~ 18.075).
     #
     # We use punctuation symbols from list of 30 characters (log2 ~ 4.907).
     #
@@ -2479,12 +2480,12 @@ def generate_password():
     #
     # The number of different password we can generate, given the above, is:
     #
-    #   276186 * 30 * 277096 * 30 * 1000^2 = 68877032270400000000
+    #   276102 * 30 * 277096 * 30 * 1000^2 = 68856083812800000000
     #
     # We form a password using 2 polite English language words, 2 punctuation symbols, and
     # a f9.4 number, so we will have the following password entropy:
     #
-    #   log2(276186)*2 + log2(30)*2 + log2(1000)*2 = 65.896 bits of entropy
+    #   log2(276102)*2 + log2(30)*2 + log2(1000)*2 = 65.895 bits of entropy
     #
     # That gives us enough surprise for an initial password that users of the submit server will
     # be required to change when they first login.
@@ -2663,32 +2664,54 @@ def is_pw_pwned(password):
         password    plaintext password
 
     Returns:
-        True ==> password found in the Pwned password tree with a pwned count > 0, or
-                  failed to SHA-1 hash the password in UPPER CASE hex characters,
-                  failed to open or read the required Pwned password tree file,
+        True ==> password found in the Pwned password tree, or
                   non-string arg was found
         False ==> password not found in the Pwned password tree, or
-                  pwned count <= 0
+                  unable to lookup password in the Pwned password tree, or
+                  error while trying to lookup password in the Pwned password tree
+
+    NOTE: We only return True if we KNOW that the password is Pwned,
+          or if the arg is not a string (and thus isn't a safe password).
+          All other problems in trying to determine if the password is Pwned will
+          return False so that we don't deny users the ability to change their password.
+
+    NOTE: We do not care about the password count in in the Pwned password tree.
+          Even a 0 count is good enough to declare the password Pwned.
+          A 0 count could be a way that a password is declared Pwned when
+          the number of instances found is unknown.  Moreover counts <= 0
+          could be the result of an integer overflow in the part of the
+          creators of the Pwned password dataset.
 
     Regarding the Pwned password tree:
 
+    We download the 4 level directory tree of bzip2 compressed password files,
+    without DOS junk, and each file ending in a newline, via the command:
+
+        pwned-pw-download -v 5 /path/to/pwned.pw.tree
+
+    where /path/to/pwned.pw.tree is we allow PWNED_PW_TREE (see near the top) to be.
+
+    For information on pwned-pw-download see:
+
+        https://github.com/lcn2/pwned-pw-download
+
     The pwned password tree has 4 levels.  Files are of the form:
 
-        i/j/k/ikjxy
+        i/j/k/ikjxy.bz2
 
     where i, j, k, x, y are UPPER CASE hex digits:
 
         0 1 2 3 4 5 6 7 8 9 A B C D E F
 
-    Each file is of the form:
+    Each line of the file contains lines is of the form:
 
-    35-UPPER-CASE-HEX-digits, followed by a colon (":"), followed by an integer > 0
+        35-UPPER-CASE-HEX-digits, followed by a colon (":"), followed by an integer
 
-    For eample, all pwned passwords with a SHA-1 that begin with `12345` will be found in:
+    For example, all pwned passwords with a SHA-1 that begin with `12345` will be found in:
 
-        1/2/3/12345
+        1/2/3/12345.bz2
 
-    NOTE: The first 1 SHA-1 HEX characters are duplicated in the 3 directory levels.
+    NOTE: The first 3 single SHA-1 HEX characters are duplicated in the 3 directory levels.
 
     Example: a line from 1/2/3/12345
 
@@ -2715,17 +2738,17 @@ def is_pw_pwned(password):
 
     Using the first 5 hex digits, open the file:
 
-        5/B/A/5BAA6
+        5/B/A/5BAA6.bz2
 
     Using Unix tools, we can look for the remaining 35 hex digits followed by a ":"
 
-        grep -F 1E4C9B93F3F0682250B6CF8331B7EE68FD8: 5/B/A/5BAA6
+        bzgrep -F 1E4C9B93F3F0682250B6CF8331B7EE68FD8: 5/B/A/5BAA6.bz2
 
     This will produce the line:
 
-        1E4C9B93F3F0682250B6CF8331B7EE68FD8:10437277
+        1E4C9B93F3F0682250B6CF8331B7EE68FD8:46658894
 
-    This indicates that the password "`password`", has been pwned at least 10437277 times!
+    This indicates that the password "`password`", has been pwned at least 46658894 times!
     """
 
     # setup
@@ -2748,51 +2771,67 @@ def is_pw_pwned(password):
     if not m:
         ioccc_last_errmsg = f'ERROR: {me}: unable to form a context for SHA-1 hashing'
         error(f'{me}: unable to form a context for SHA-1 hashing')
-        return True
+        return False    # may or may not be Pwned, but this error isn't the user's fault
     m.update(bytes(password, 'utf-8'))
     sha1_hex = m.hexdigest().upper()
     if not sha1_hex or len(sha1_hex) != SHA1_HEXLEN:
         ioccc_last_errmsg = f'ERROR: {me}: SHA-1 hash return was invalid'
         error(f'{me}: invalid SHA-1 hash return')
-        return True
+        return False    # may or may not be Pwned, but this error isn't the user's fault
 
     # determine the Pwned password tree file we need to read
     #
-    pwned_file = f'{PWNED_PW_TREE}/{sha1_hex[0]}/{sha1_hex[1]}/{sha1_hex[2]}/{sha1_hex[0:5]}'
+    pwned_file = f'{PWNED_PW_TREE}/{sha1_hex[0]}/{sha1_hex[1]}/{sha1_hex[2]}/{sha1_hex[0:5]}.bz2'
+    #
+    if not os.path.exists(pwned_file):
+        ioccc_last_errmsg = f'ERROR: {me}: missing Pwned password tree file: {pwned_file}'
+        error(f'{me}: missing Pwned password tree file: {pwned_file}')
+        return False    # may or may not be Pwned, but this error isn't the user's fault
+    #
+    if os.path.getsize(pwned_file) <= 0:
+        ioccc_last_errmsg = f'ERROR: {me}: empty Pwned password tree file: {pwned_file}'
+        error(f'{me}: empty Pwned password tree file: {pwned_file}')
+        return False    # may or may not be Pwned, but this error isn't the user's fault
     #
     try:
-        with open(pwned_file, 'r', encoding='utf8') as input_file:
+        with bz2.BZ2File(pwned_file, 'r') as input_file:
 
-            # read the lines in the Pwned password tree file
+            # read the lines in the bzip2 compressed Pwned password tree file
             #
             lines = input_file.readlines()
 
             # scan the Pwned password tree file for the hash
             #
             scan_for = f'{sha1_hex[5:]}:'
-            for line in lines:
+            for line_b in lines:
 
-                # look for the read of the SHA-1 hash
+                # decode and newline strip the line
+                #
+                line = line_b.decode('utf-8').rstrip()
+
+                # look for line that contains the rest of the SHA-1 hash
                 #
                 if line.startswith(scan_for):
 
                     # we found a match - password is Pwned
                     #
                     # NOTE: We don't care just how Pwned the password is, thus
-                    #       the integer after the ":" doesn't matter in the case.
+                    #       the integer after the ":" doesn't matter in this case.
+                    #       See the function comment above.
                     #
-                    debug(f'{me}: Pwned password: {password}')
-                    return True
+                    debug(f'{me}: Pwned password: {password} line: {line}')
+                    return True     # password is definitely Pwned
 
     except OSError as errcode:
-        ioccc_last_errmsg = f'ERROR: {me}: failed using: Pwned password tree file: {pwned_file} failed: <<{errcode}>>'
-        error(f'{me}: failed open for reading: {pwned_file}')
-        return True
+        ioccc_last_errmsg = f'ERROR: {me}: failed bz2.BZ2File: ' \
+                            f'Pwned password tree file: {pwned_file} failed: <<{errcode}>>'
+        error(f'{me}: failed bz2.BZ2File open for reading: {pwned_file}')
+        return False    # may or may not be Pwned, but this error isn't the user's fault
 
     # We presume that the password is not Pwned
     #
     debug(f'{me}: end: password appears to not have (yet) been Pwned')
-    return False
+    return False    # password is not known to have been Pwned using our current database
 #
 # pylint: enable=too-many-return-statements
 

@@ -29,6 +29,7 @@ from .ioccc_common import \
         hash_password, \
         info, \
         initialize_user_tree, \
+        is_pw_pwned, \
         is_proper_password, \
         lookup_email_by_username, \
         lookup_username, \

@@ -87,15 +87,15 @@ def main():
     parser.add_argument('-c', '--comma',
                         help="print comma between email and username (def: print tab)",
                         action='store_true')
-    parser.add_argument('arg',
-                        help="email (or usernane of -u)",
-                        nargs="*")
     parser.add_argument('-L', '--level',
                         help="set log level: dbg debug info warn warning error crit critical (def: info)",
                         default="info",
                         action="store",
                         metavar='dbglvl',
                         type=str)
+    parser.add_argument('arg',
+                        help="email (or usernane of -u)",
+                        nargs="*")
     args = parser.parse_args()
 
     # setup logging according to -l logtype -L dbglvl
