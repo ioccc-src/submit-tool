@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.2 2025-12-04"
+VERSION_IOCCC_COMMON = "2.9.3 2025-12-09"
 
 # force password change grace time
 #
@@ -670,7 +670,7 @@ def check_username_arg(username, parent):
     if not isinstance(parent, str):
         ioccc_last_errmsg = f'ERROR: {me}: parent arg is not a string'
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: parent arg is not a string')
+        info(f'{me}: parent arg is not a string, type is: {type(parent)}')
         return False
 
     # firewall - username arg must be a string
@@ -687,7 +687,7 @@ def check_username_arg(username, parent):
     if not isinstance(username, str):
         ioccc_last_errmsg = f'ERROR: {me}: via {parent}: username arg is not a string'
         # use info() instead of error() - cause may be a system cracked or testing.
-        info(f'{me}: via {parent}: username arg is not a string')
+        info(f'{me}: via {parent}: username arg is not a string, type is: {type(username)}')
         return False
 
     # firewall - username cannot be empty
