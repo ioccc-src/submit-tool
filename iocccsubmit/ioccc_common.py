@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.3 2025-12-09"
+VERSION_IOCCC_COMMON = "2.9.4 2025-12-09"
 
 # force password change grace time
 #
@@ -655,6 +655,36 @@ def check_username_arg(username, parent):
     me = inspect.currentframe().f_code.co_name
     # We do NOT want to call debug from this function because we call this code too frequently
     #no#debug(f'{me}: start')
+
+    # firewall - return False without logging if username is None
+    #
+    # Calling this function with a None username seems to happen when hosts that probe the
+    # submit server activate a web service.  When username is None, we do not log.
+    # The /var/log/httpd/access.log file will log the action, however we do not
+    # need to report "username arg is not a string" to /var/log/ioccc.
+    #
+    # NOTE: We test if username is None BEFORE testing if parent is None because
+    #       the calling function should pass inspect.currentframe().f_code.co_name,
+    #       which should never be None, when calling this function.
+    #
+    if username is None:
+        ioccc_last_errmsg = f'ERROR: {me}: username arg is None'
+        # Don't log this common event, let /var/log/httpd/access.log record it instead.
+        return False
+
+    # firewall - return False if parent is None
+    #
+    # In theory, parent should NEVER be None because the check_username_arg() function
+    # should be called with me (inspect.currentframe().f_code.co_name) from the
+    # calling function context.  Given the above check for "username is None",
+    # this condition shouldn't happen when hosts that probe.
+    #
+    # Should this unusual "parent is None" action happeb, we want to warn!
+    #
+    if parent is None:
+        ioccc_last_errmsg = f'ERROR: {me}: parent arg is None'
+        warning(f'{me}: parent arg is None')
+        return False
 
     # firewall - parent arg must be a string
     #
