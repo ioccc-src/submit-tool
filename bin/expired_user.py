@@ -12,6 +12,7 @@ expired_user.py - print commands and comments about expired accounts
 import sys
 import argparse
 import os
+import time
 
 # import the ioccc python utility code
 #
@@ -36,7 +37,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.1 2025-12-22"
+VERSION = "2.0.2 2025-12-22"
 
 
 # pylint: disable=too-many-branches
@@ -58,6 +59,11 @@ def main():
     # IOCCC requires use of C locale
     #
     set_ioccc_locale()
+
+    # Set UTC timezone
+    #
+    os.environ['TZ'] = 'UTC'
+    time.tzset()
 
     # parse args
     #

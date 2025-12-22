@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.5.0 2025-03-13"
+export VERSION="2.5.1 2025-12-22"
 NAME=$(basename "$0")
 export NAME
 #
@@ -226,7 +226,7 @@ done
 # pylint critical bin files
 #
 for i in bin/expired_user.py bin/chk_passwd.py bin/cp_passwd.py bin/email_pr.py bin/stage.py \
-	 bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
+	 bin/test_ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
 
     # announce
     #

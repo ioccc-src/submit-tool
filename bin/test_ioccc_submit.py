@@ -15,6 +15,7 @@ from the command line.
 import os
 import sys
 import argparse
+import time
 
 
 # import the ioccc python utility code
@@ -40,7 +41,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.5.0 2025-03-13"
+VERSION = "2.5.1 2025-12-22"
 
 
 def main():
@@ -55,6 +56,11 @@ def main():
     # IOCCC requires use of C locale
     #
     set_ioccc_locale()
+
+    # Set UTC timezone
+    #
+    os.environ['TZ'] = 'UTC'
+    time.tzset()
 
     # parse args
     #

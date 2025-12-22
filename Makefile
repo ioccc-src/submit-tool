@@ -147,7 +147,7 @@ SELINUX_UNSET= bin/selinux.unset.sh
 # NOTE: Optional ~/.submit.org and select optional environment variables may help control these commands.
 #
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
-	 bin/ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh bin/stage.py \
+	 bin/test_ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh bin/stage.py \
 	 bin/email_pr.py bin/reg_email.sh bin/gen_acct.sh bin/new_user.sh bin/run.sh \
 	 bin/multi_new_user.sh bin/cp_passwd.py bin/last_email_msg.sh bin/expired_user.py \
 	 ${SELINUX_SET} ${SELINUX_UNSET}
@@ -162,7 +162,7 @@ SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_
 	   sbin/ssh_run.sh sbin/who_extract.sh sbin/ssh_email_pr.sh sbin/filter.sh \
 	   sbin/ssh_last_email_msg.sh sbin/comm_email.sh sbin/ssh_multi_new_user.sh \
 	   sbin/who_email.awk sbin/update_reg.sh sbin/jval.sh sbin/post-collect.sh \
-	   sbin/gen-year.sh
+	   sbin/gen-year.sh sbin/test_submit_server.sh
 
 # tool to generate the secret Flask key
 #
