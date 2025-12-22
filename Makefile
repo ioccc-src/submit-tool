@@ -162,7 +162,7 @@ SBIN_SRC = sbin/all-collect.sh sbin/collect.sh sbin/submitted_slots.sh sbin/scp_
 	   sbin/ssh_run.sh sbin/who_extract.sh sbin/ssh_email_pr.sh sbin/filter.sh \
 	   sbin/ssh_last_email_msg.sh sbin/comm_email.sh sbin/ssh_multi_new_user.sh \
 	   sbin/who_email.awk sbin/update_reg.sh sbin/jval.sh sbin/post-collect.sh \
-	   sbin/gen-year.sh sbin/test_submit_server.sh
+	   sbin/gen-year.sh
 
 # tool to generate the secret Flask key
 #
