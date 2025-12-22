@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.4 2025-12-09"
+VERSION_IOCCC_COMMON = "2.9.5 2025-12-21"
 
 # force password change grace time
 #
@@ -2497,28 +2497,47 @@ def generate_password():
     #
     #   10 + 1 + 10 + 1 + 9 = 31
     #
-    # The average word in etc/pw.words, given the above is 7.847 characters.
+    # The etc/pw.words file, which contains words whose length is >= MIN_POLITE_WORD_LENGTH
+    # and <= MAX_POLITE_WORD_LENGTH, has 276102 words in it:
+    #
+    #   $ wc -l etc/pw.words
+    #   276102 etc/pw.words
+    #
+    # A random selection from the etc/pw.words file gives us an entropy in bits:
+    #
+    #   round(log2( 276102 ),3) = 18.075
+    #
+    # The length of the etc/pw.words file is 2442545 bytes:
+    #
+    #   $ ls -l etc/pw.words
+    #   -r--r--r--. 1 apache apache 2442545 Dec  9 18:29 etc/pw.words
+    #
+    # so the average word length, not including the trailing newline, that is found in
+    # in etc/pw.words, given the above is 7.847 characters:
+    #
+    #   round(( 2442545 - 276102 ) / 276102 ,3) = 7.847
+    #
     # This gives us an average password length of:
     #
-    #  7.847 + 1 + 7.847 + 9 = 25.694
+    #   7.847 + 1 + 7.847 + 9 = 25.694
     #
-    # The etc/pw.words file has about 276102 words in it (log2(276102) ~ 18.075).
+    # We use punctuation symbols from list of 30 characters (log2 ~ 4.907):
     #
-    # We use punctuation symbols from list of 30 characters (log2 ~ 4.907).
+    #   round(log2( 30 ),3) = 4.907
     #
     # We append a f9.4 (4 decimal digits + . + 4 decimal digits) number (log2 ~ 19.932).
     #
-    # The number of different password we can generate, given the above, is:
+    # The number of different passwords we can generate, given the above, is:
     #
-    #   276102 * 30 * 277096 * 30 * 1000^2 = 68856083812800000000
+    #   276102 * 30 * 276102 * 30 * 1000^2 = 68609082963600000000
     #
     # We form a password using 2 polite English language words, 2 punctuation symbols, and
-    # a f9.4 number, so we will have the following password entropy:
+    # a f9.4 number, so we will have the following password entropy in bits:
     #
-    #   log2(276102)*2 + log2(30)*2 + log2(1000)*2 = 65.895 bits of entropy
+    #   round(log2( 276102 )*2 + log2( 30 )*2 + log2( 1000 )*2, 3) = 65.895
     #
-    # That gives us enough surprise for an initial password that users of the submit server will
-    # be required to change when they first login.
+    # That gives us enough surprise for an initial password (that users of the submit server will
+    # be required to change when they first login) for our needs.
     #
     password = (
         f'{secrets.choice(ioccc_pw_words)}{random.choice(punct)}{secrets.choice(ioccc_pw_words)}'
@@ -3257,21 +3276,148 @@ def update_password(username, old_password, new_password):
 # pylint: enable=too-many-branches
 
 
-# pylint: disable=too-many-return-statements
-# pylint: disable=too-many-branches
-#
+def user_disabled_login(user_dict):
+    """
+    Determine if the user has NOT been disabled based on the user python dictionary
+
+    Given:
+        user_dict    user information for username as a python dictionary
+
+    Returns:
+        True ==> user_dict failed firewall checks, or
+                  user login has been disabled
+        False ==> user login as NOT been disabled
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall check the user information
+    #
+    if not validate_user_dict_nolock(user_dict):
+
+        # report that validate_user_dict_nolock failed
+        #
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: invalid information found for username"
+        error(f'{me}: validate_user_dict_nolock failed')
+        return True
+    username = user_dict['username']
+
+    # deny login if disable_login is true
+    #
+    if user_dict['disable_login']:
+
+        # login disabled
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: login is not allowed at this time"
+        return True
+
+    # user login has NOT been disabled
+    #
+    debug(f'{me}: end: login has not been disabled for username: {username}')
+    return False
+
+
+def user_expired_pw(user_dict):
+    """
+    Determine if the password change deadline not set, or has not passed
+
+    Given:
+        user_dict    user information for username as a python dictionary
+
+    Returns:
+        True ==> user_dict failed firewall checks, or
+                 user did not change their password in time
+        False ==> user is not required to change their password, or
+                  user password change deadline has NOT passed
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    debug(f'{me}: start')
+
+    # firewall check the user information
+    #
+    if not validate_user_dict_nolock(user_dict):
+
+        # report that validate_user_dict_nolock failed
+        #
+        # Normally, the check_username_arg() function above will set ioccc_last_errmsg
+        # and issue log messages due to a username firewall check failure.
+        # However, we set ioccc_last_errmsg to a string suitable for display by the
+        # server to a web browser and thus we do not mention our function name.
+        #
+        ioccc_last_errmsg = "ERROR: invalid information found for username"
+        error(f'{me}: validate_user_dict_nolock failed')
+        return True
+    username = user_dict['username']
+
+    # deny login is the force_pw_change and we are beyond the pw_change_by time limit
+    #
+    if user_dict['force_pw_change'] and user_dict['pw_change_by']:
+
+        # Convert pw_change_by into a datetime string
+        #
+        try:
+            pw_change_by = datetime.datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
+        except ValueError as errcode:
+
+            # report pw_change_by time format is invalid
+            #
+            # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+            #       server to a web browser and thus we do not mention our function name.
+            #
+            ioccc_last_errmsg = "ERROR: username password change by date is invalid"
+            error(f'{me}: datetime.strptime of pw_change_by: <<{user_dict["pw_change_by"]}>>'
+                  f'failed: <<{errcode}>>')
+            return True
+
+        # determine the datetime of now
+        #
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        # failed to change the password in time
+        #
+        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
+        #       server to a web browser and thus we do not mention our function name.
+        #
+        if now.timestamp() > pw_change_by.timestamp():
+            ioccc_last_errmsg = "ERROR: failed to change the password in time, " + \
+                                "account disabled, contact the IOCCC judges"
+            return True
+
+    # password change deadline has not passed, or user is not required to change their password
+    #
+    debug(f'{me}: end: password change deadline not set, or has not passed for username: {username}')
+    return False
+
+
 def user_allowed_to_login(user_dict):
     """
-    Determine if the user has been disabled based on the username
+    Determine if the user has been disabled based on the user python dictionary
 
     Given:
         user_dict    user information for username as a python dictionary
 
     Returns:
         True ==> user is allowed to login
-        False ==> login is not allowed for the user, or
-                  user_dict failed firewall checks, or
-                  user is not allowed to login, or
+        False ==> user_dict failed firewall checks, or
+                  user login has been disabled, or
                   user did not change their password in time
     """
 
@@ -3298,22 +3444,9 @@ def user_allowed_to_login(user_dict):
         return False
     username = user_dict['username']
 
-    # paranoia - must have disable_login for this user_dict
+    # check the user information and if login has been disabled
     #
-    if not 'disable_login' in user_dict:
-
-        # report that disable_login is missing from user_dict
-        #
-        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-        #       server to a web browser and thus we do not mention our function name.
-        #
-        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #0"
-        error(f'{me}: disable_login is missing from user_dict')
-        return False
-
-    # deny login if disable_login is true
-    #
-    if user_dict['disable_login']:
+    if user_disabled_login(user_dict):
 
         # login disabled
         #
@@ -3324,87 +3457,21 @@ def user_allowed_to_login(user_dict):
         info(f'{me}: login not allowed for username: {username}')
         return False
 
-    # paranoia - must have force_pw_change for this user_dict
+    # check if password change deadline not set, or has not passed
     #
-    if not 'force_pw_change' in user_dict:
+    if user_expired_pw(user_dict):
 
-        # report force_pw_change is missing from user_dict
+        # report password change deadline has passed
         #
-        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-        #       server to a web browser and thus we do not mention our function name.
-        #
-        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #1"
-        error(f'{me}: force_pw_change is missing from user_dict')
+        ioccc_last_errmsg = "ERROR: failed to change the password in time, " + \
+                            "account disabled, contact the IOCCC judges"
+        info(f'{me}: password not changed in time for username: {username}')
         return False
-
-    # paranoia - must have pw_change_by for this user_dict
-    #
-    if not 'pw_change_by' in user_dict:
-
-        # report pw_change_by is missing from user_dict
-        #
-        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-        #       server to a web browser and thus we do not mention our function name.
-        #
-        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #2"
-        error(f'{me}: pw_change_by is missing from user_dict')
-        return False
-
-    # paranoia - must have email for this user_dict
-    #
-    if not 'email' in user_dict:
-
-        # report email is missing from user_dict
-        #
-        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-        #       server to a web browser and thus we do not mention our function name.
-        #
-        ioccc_last_errmsg = "ERROR: username is missing some critical internal information #3"
-        error(f'{me}: email is missing from user_dict')
-        return False
-
-    # deny login is the force_pw_change and we are beyond the pw_change_by time limit
-    #
-    if user_dict['force_pw_change'] and user_dict['pw_change_by']:
-
-        # Convert pw_change_by into a datetime string
-        #
-        try:
-            pw_change_by = datetime.datetime.strptime(user_dict['pw_change_by'], DATETIME_USEC_FORMAT)
-        except ValueError as errcode:
-
-            # report pw_change_by time format is invalid
-            #
-            # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-            #       server to a web browser and thus we do not mention our function name.
-            #
-            ioccc_last_errmsg = "ERROR: username password change by date is invalid"
-            error(f'{me}: datetime.strptime of pw_change_by: <<{user_dict["pw_change_by"]}>>'
-                  f'failed: <<{errcode}>>')
-            return False
-
-        # determine the datetime of now
-        #
-        now = datetime.datetime.now(datetime.timezone.utc)
-
-        # failed to change the password in time
-        #
-        # NOTE: We set ioccc_last_errmsg to a string suitable for display by the
-        #       server to a web browser and thus we do not mention our function name.
-        #
-        if now.timestamp() > pw_change_by.timestamp():
-            ioccc_last_errmsg = "ERROR: failed to change the password in time, " + \
-                                "account disabled, contact the IOCCC judges"
-            info(f'{me}: password not changed in time for username: {username}')
-            return False
 
     # user login attempt is allowed
     #
     debug(f'{me}: end: login allowed for username: {username}')
     return True
-#
-# pylint: enable=too-many-return-statements
-# pylint: enable=too-many-branches
 
 
 def must_change_password(user_dict):

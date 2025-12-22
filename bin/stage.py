@@ -68,7 +68,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.2.0 2025-03-13"
+VERSION = "2.2.1 2025-12-21"
 
 
 # pylint: disable=too-many-statements
@@ -91,7 +91,7 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description=" Stage a slot's submit file into a staging directory",
+                description="Stage a slot's submit file into a staging directory",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
                         help="app directory path",

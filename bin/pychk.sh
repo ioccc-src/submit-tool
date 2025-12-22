@@ -225,8 +225,8 @@ done
 
 # pylint critical bin files
 #
-for i in bin/chk_passwd.py bin/cp_passwd.py bin/email_pr.py bin/stage.py bin/ioccc_submit.py bin/ioccc_date.py \
-	 bin/ioccc_passwd.py bin/set_slot_status.py ; do
+for i in bin/expired_user.py bin/chk_passwd.py bin/cp_passwd.py bin/email_pr.py bin/stage.py \
+	 bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
 
     # announce
     #

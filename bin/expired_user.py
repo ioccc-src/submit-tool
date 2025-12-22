@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 #
-# email_pr.py - print email and/or username for IOCCC submit server accounts
+# expired_user.py - print commands and comments about expired accounts
 
 """
-email_pr.py - print email and/or username for IOCCC submit server accounts
+expired_user.py - print commands and comments about expired accounts
 """
 
 
@@ -19,7 +19,7 @@ import os
 #
 from iocccsubmit import \
         change_startup_appdir, \
-        error, \
+        debug, \
         lookup_email_by_username, \
         lookup_username, \
         lookup_username_by_email, \
@@ -27,14 +27,16 @@ from iocccsubmit import \
         read_pwfile, \
         return_last_errmsg, \
         set_ioccc_locale, \
-        setup_logger
+        setup_logger, \
+        user_disabled_login, \
+        user_expired_pw
 
 
 # ioccc_date.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.1.1 2025-12-21"
+VERSION = "2.0.0 2025-12-21"
 
 
 # pylint: disable=too-many-branches
@@ -51,9 +53,7 @@ def main():
     program = os.path.basename(__file__)
     print_email = True
     print_username = True
-    print_none = False
     args_are_email = True
-    print_comma = False
 
     # IOCCC requires use of C locale
     #
@@ -62,30 +62,24 @@ def main():
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="Print server account emails and/or usernames",
+                description="Print commands and comments about expired accounts",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
                         help="app directory path",
                         metavar='appdir',
                         nargs=1)
     parser.add_argument('-s', '--silence',
-                        help="silence printing (def: print email and username)",
+                        help="silence printing (def: print expired email and username info)",
                         metavar='{e,u,eu,ue}',
                         nargs=1)
     parser.add_argument('-l', '--log',
-                        help="log via: stdout stderr syslog none (def: syslog)",
-                        default="syslog",
+                        help="log via: stdout stderr syslog none (def: stderr)",
+                        default="stderr",
                         action="store",
                         metavar='logtype',
                         type=str)
-    parser.add_argument('-0', '--zero',
-                        help="print None when user has no registered email (def: skip user)",
-                        action='store_true')
     parser.add_argument('-u', '--username_args',
                         help="args are usernames (def: args are email addresses)",
-                        action='store_true')
-    parser.add_argument('-c', '--comma',
-                        help="print comma between email and username (def: print tab)",
                         action='store_true')
     parser.add_argument('-L', '--level',
                         help="set log level: dbg debug info warn warning error crit critical (def: info)",
@@ -106,7 +100,7 @@ def main():
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            error(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
+            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
@@ -129,20 +123,10 @@ def main():
             prerr(f'{program}: -e may only be followed by e, u, eu, or ue')
             sys.exit(4)
 
-    # -0 - print None when user has no registered email
-    #
-    if args.zero:
-        print_none = True
-
     # -u - args are usernames
     #
     if args.username_args:
         args_are_email = False
-
-    # -c - print command (instead of tab) between the email and the username
-    #
-    if args.comma:
-        print_comma = True
 
     # determine the number of optional args
     #
@@ -157,56 +141,63 @@ def main():
         #
         pw_dict = read_pwfile()
         if not pw_dict:
-            error(f'{program}: failed to load the submit server IOCCC password file')
+            prerr(f'{program}: failed to load the submit server IOCCC password file')
             prerr(f'{program}: failed to load the submit server IOCCC password file')
             sys.exit(5)
 
         # print information from the entire submit server IOCCC password file
         #
-        for i in pw_dict:
+        i = -1
+        for user_dict in pw_dict:
 
             # collect the username for this password entry
             #
-            if 'username' in i:
-                username = i['username']
+            i = i + 1
+            if 'username' in user_dict:
+                username = user_dict['username']
             else:
                 # malformed password entry as no username
-                error(f'{program}: password entry number {i} has no username')
+                prerr(f'{program}: password entry number {i} has no username')
                 continue
             if not isinstance(username, str):
-                error(f'{program}: password entry number {i} username is not a string')
+                prerr(f'{program}: password entry number {i} username is not a string')
                 continue
 
             # collect the email for this password entry
             #
-            if 'email' in i:
-                email = i['email']
+            if 'email' in user_dict:
+                email = user_dict['email']
             else:
                 # malformed password entry as no username
-                error(f'{program}: password entry number {i} has no email for username: {username}')
+                prerr(f'{program}: password entry number {i} has no email for username: {username}')
                 continue
 
-            # unless -0, ignore email that is None
+            # NOTE: We now have a valid user python dictionary
             #
-            if not print_none and not email:
+            debug(f'{program}: examining username: {username} with email: {email}')
+
+            # ignore any user with a disabled account
+            #
+            if user_disabled_login(user_dict):
+                debug(f'{program}: ignoring disabled username: {username} with email: {email}')
                 continue
 
-            # convert None email to "None"
+            # skip users w/o an expired password
             #
-            if not email:
-                email = "None"
+            if not user_expired_pw(user_dict):
+                debug(f'{program}: not expired username: {username} with email: {email}')
+                continue
 
-            # print information for this given password entry, if possible
+            # print information for user with an expired password
             #
-            if print_email and print_username:
-                if print_comma:
-                    print(f'{email},{username}')
-                else:
-                    print(f'{email}\t{username}')
-            elif print_email:
-                print(f'{email}')
-            elif print_username:
-                print(f'{username}')
+            print(f'# password expired for {username} on {user_dict['pw_change_by']}')
+            if print_email:
+                print()
+                print(f'  # remove from mailing list and email file: {email}')
+            if print_username:
+                print()
+                print(f'  ioccc_passwd.py -d \'{username}\'')
+            print()
 
     # case: process args
     #
@@ -240,42 +231,52 @@ def main():
             #
             else:
 
-                # firewall - verify username is valid
+                # determine the registered email address for this user
                 #
                 username = arg
-                user_dict = lookup_username(username)
-                if not user_dict:
-                    prerr(f'{program}: username not found: {username}')
+                email = lookup_email_by_username(username)
+
+                # verify we have email for this password entry
+                #
+                if not email:
+                    prerr(f'{program}: no registered email address for username: {username}')
                     exit_code = 1
                     continue
 
-                # determine the registered email address for this user
-                #
-                email = lookup_email_by_username(username)
-
-            # unless -0, ignore email that is None
+            # obtain the user python dictionary
             #
-            if not print_none and not email:
-                prerr(f'{program}: no registered email address for username: {username}')
+            user_dict = lookup_username(username)
+            if not user_dict:
+                prerr(f'{program}: username not found: {username}')
                 exit_code = 1
                 continue
 
-            # convert None email to "None"
+            # NOTE: We now have a valid user python dictionary
             #
-            if not email:
-                email = "None"
+            debug(f'{program}: examining username: {username} with email: {email}')
 
-            # print information for this given password entry, if possible
+            # ignore any user with a disabled account
             #
-            if print_email and print_username:
-                if print_comma:
-                    print(f'{email},{username}')
-                else:
-                    print(f'{email}\t{username}')
-            elif print_email:
-                print(f'{email}')
-            elif print_username:
-                print(f'{username}')
+            if user_disabled_login(user_dict):
+                debug(f'{program}: ignoring disabled username: {username} with email: {email}')
+                continue
+
+            # skip users w/o an expired password
+            #
+            if not user_expired_pw(user_dict):
+                debug(f'{program}: not expired username: {username} with email: {email}')
+                continue
+
+            # print information for user with an expired password
+            #
+            print(f'# password expired for {username} on {user_dict['pw_change_by']}')
+            if print_email:
+                print()
+                print(f'  # remove from mailing list and email file: {email}')
+            if print_username:
+                print()
+                print(f'  ioccc_passwd.py -d \'{username}\'')
+            print()
 
     # All Done!!! All Done!!! -- Jessica Noll, Age 2
     #

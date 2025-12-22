@@ -29,8 +29,8 @@ from .ioccc_common import \
         hash_password, \
         info, \
         initialize_user_tree, \
-        is_pw_pwned, \
         is_proper_password, \
+        is_pw_pwned, \
         lookup_email_by_username, \
         lookup_username, \
         lookup_username_by_email, \
@@ -60,6 +60,8 @@ from .ioccc_common import \
         update_state, \
         update_username, \
         user_allowed_to_login, \
+        user_disabled_login, \
+        user_expired_pw, \
         valid_password_change, \
         warning
 
