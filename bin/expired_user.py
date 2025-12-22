@@ -190,13 +190,13 @@ def main():
 
             # print information for user with an expired password
             #
-            print(f'# password expired for {username} on {user_dict['pw_change_by']}')
+            print(f"# password expired for {username} on {user_dict['pw_change_by']}")
             if print_email:
                 print()
                 print(f'  # remove from mailing list and email file: {email}')
             if print_username:
                 print()
-                print(f'  ioccc_passwd.py -d \'{username}\'')
+                print(f"  ioccc_passwd.py -d '{username}'")
             print()
 
     # case: process args
@@ -269,13 +269,13 @@ def main():
 
             # print information for user with an expired password
             #
-            print(f'# password expired for {username} on {user_dict['pw_change_by']}')
+            print(f"# password expired for {username} on {user_dict['pw_change_by']}")
             if print_email:
                 print()
                 print(f'  # remove from mailing list and email file: {email}')
             if print_username:
                 print()
-                print(f'  ioccc_passwd.py -d \'{username}\'')
+                print(f"  ioccc_passwd.py -d '{username}'")
             print()
 
     # All Done!!! All Done!!! -- Jessica Noll, Age 2
