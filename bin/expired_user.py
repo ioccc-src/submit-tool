@@ -36,7 +36,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.0 2025-12-21"
+VERSION = "2.0.1 2025-12-22"
 
 
 # pylint: disable=too-many-branches
@@ -193,10 +193,14 @@ def main():
             print(f"# password expired for {username} on {user_dict['pw_change_by']}")
             if print_email:
                 print()
-                print(f'  # remove from mailing list and email file: {email}')
+                print(f'  # 1st remove from file ~chongo/email:   {email}')
+                print()
+                print( '  # 2nd via submit execute the command:   ~chongo/send-email.sh')
+                print()
+                print(f'  # 3rd remove from the IOCCC reg list:   {email}')
             if print_username:
                 print()
-                print(f"  ioccc_passwd.py -d '{username}'")
+                print(f"  # 4th via submit execute the command:   ioccc_passwd.py -d '{username}'")
             print()
 
     # case: process args
@@ -272,10 +276,14 @@ def main():
             print(f"# password expired for {username} on {user_dict['pw_change_by']}")
             if print_email:
                 print()
-                print(f'  # remove from mailing list and email file: {email}')
+                print(f'  # 1st remove from file ~chongo/email:   {email}')
+                print()
+                print( '  # 2nd via submit execute the command:   ~chongo/send-email.sh')
+                print()
+                print(f'  # 3rd remove from the IOCCC reg list:   {email}')
             if print_username:
                 print()
-                print(f"  ioccc_passwd.py -d '{username}'")
+                print(f"  # 4th via submit execute the command:   ioccc_passwd.py -d '{username}'")
             print()
 
     # All Done!!! All Done!!! -- Jessica Noll, Age 2
