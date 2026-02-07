@@ -50,7 +50,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.0 2026-02-01"
+export VERSION="2.0.1 2026-02-07"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -369,7 +369,8 @@ if ! cmp -s "$IOCCC_DIR/tmp/j" "$IOCCC_DIR/tmp/i"; then
     echo
     echo "To acknowledge, run:"
     echo
-    echo "cp -v -f -p tmp/i tmp/j ; cat tmp/j > etc/save.iocccpasswd.json ; diff -u etc/save.iocccpasswd.json etc/iocccpasswd.json"
+    echo -n "cd $IOCCC_DIR ; cp -v -f -p tmp/i tmp/j ; cat tmp/j > etc/save.iocccpasswd.json ; "
+    echo "diff -u etc/save.iocccpasswd.json etc/iocccpasswd.json"
     echo
 fi
 
