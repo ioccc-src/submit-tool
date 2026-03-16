@@ -17,7 +17,7 @@
 #	environment variables will override any existing environment variables.
 #	unless "-I" was which in which case the "ioccc.rc" file is ignored.
 #
-# Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2025-2026 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -126,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.9.1 2025-11-16"
+export VERSION="2.9.2 2026-03-15"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -308,12 +308,12 @@ function git_add
     # git add
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in git_add: about to: $GIT_TOOL add $FILE" 1>&2
+	echo "$0: debug[1]: in git_add: about to: $GIT_TOOL add --force $FILE" 1>&2
     fi
-    "$GIT_TOOL" add "$FILE"
+    "$GIT_TOOL" add --force "$FILE"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in git_add: $GIT_TOOL add $FILE failed, error: $status" 1>&2
+	echo "$0: Warning: in git_add: $GIT_TOOL add --force $FILE failed, error: $status" 1>&2
 	return 3
     fi
 
@@ -861,6 +861,16 @@ if [[ $V_FLAG -ge 3 ]]; then
 fi
 
 
+# firewall - GIT_TOOL must be executable if git is to be used
+#
+if [[ -n $USE_GIT ]]; then
+    if [[ ! -x $GIT_TOOL ]]; then
+	echo "$0: ERROR: git tool not executable: $GIT_TOOL" 1>&2
+	exit 5
+    fi
+fi
+
+
 # determine if we can use git
 #
 # Use of -G will always prevent use of git.
@@ -931,16 +941,6 @@ if [[ $V_FLAG -ge 1 ]]; then
 	echo "$0: debug[1]: use of git is disabled" 1>&2
     else
 	echo "$0: debug[1]: enabled use of git" 1>&2
-    fi
-fi
-
-
-# firewall - GIT_TOOL must be executable if git is to be used
-#
-if [[ -n $USE_GIT ]]; then
-    if [[ ! -x $GIT_TOOL ]]; then
-	echo "$0: ERROR: git tool not executable: $GIT_TOOL" 1>&2
-	exit 5
     fi
 fi
 

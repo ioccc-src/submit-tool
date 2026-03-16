@@ -20,7 +20,7 @@
 #	environment variables will override any existing environment variables.
 #	unless "-I" was which in which case the "ioccc.rc" file is ignored.
 #
-# Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2025-2026 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -122,7 +122,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.2 2025-11-17"
+export VERSION="2.2.3 2025-03-15"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -309,12 +309,12 @@ function git_add
     # git add
     #
     if [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: in git_add: about to: $GIT_TOOL add $FILE >$TMP_STDERR 2>&1" 1>&2
+	echo "$0: debug[1]: in git_add: about to: $GIT_TOOL add --force $FILE >$TMP_STDERR 2>&1" 1>&2
     fi
-    "$GIT_TOOL" add "$FILE" >"$TMP_STDERR" 2>&1
+    "$GIT_TOOL" add --force "$FILE" >"$TMP_STDERR" 2>&1
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: Warning: in git_add: $GIT_TOOL add $FILE >$TMP_STDERR 2>&1 failed, error: $status" 1>&2
+	echo "$0: Warning: in git_add: $GIT_TOOL add --force $FILE >$TMP_STDERR 2>&1 failed, error: $status" 1>&2
 	return 3
     fi
 
