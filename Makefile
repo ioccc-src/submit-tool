@@ -41,6 +41,7 @@ MKDIR= mkdir
 TOUCH= touch
 PYTHON= python3
 RM= rm
+RMDIR= rmdir
 SED= sed
 SHELL= bash
 
@@ -414,6 +415,22 @@ sbin_install: ${SBIN_SRC} ${DESTSHARE_SRC}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
 	${INSTALL} -o root -g 0 -m 0444 ${DESTSHARE_SRC} ${DESTSHARE}
+	${V} echo DEBUG =-= $@ end =-=
+
+# undo the effects of an improperly performed make sbin_install
+#
+sbin_uninstall:
+	${V} echo DEBUG =-= $@ start =-=
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
+	@for i in ${SBIN_SRC}; do \
+	    echo ${RM} -f "${DESTSDIR}/$$(basename $$i)" ; \
+	    ${RM} -f "${DESTSDIR}/$$(basename $$i)"; \
+	done
+	@for i in ${DESTSHARE_SRC}; do \
+	    echo ${RM} -f "${DESTSHARE}/$$(basename $$i)" ; \
+	    ${RM} -f "${DESTSHARE}/$$(basename $$i)" ; \
+	done
+	-${RMDIR} ${DESTSHARE}
 	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
