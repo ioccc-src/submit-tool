@@ -210,18 +210,15 @@ IOCCC_WINNER_TREE= ../docroot/winner
 # LEET_MK_SRC - location of the master 1337.mk file
 # CLANG_FORMAT_SRC - location of the master .clang_format file
 # MAKEFILE_YEAR_SRC - location of thee template for Makefile.year
-# MAKEFILE_JUDGING_SRC - location of thee template for Makefile.judging
 #
 VAR_MK_SRC= ${IOCCC_WINNER_TREE}/var.mk
 LEET_MK_SRC= ${IOCCC_WINNER_TREE}/1337.mk
 CLANG_FORMAT_SRC= ${IOCCC_WINNER_TREE}/.clang-format
 MAKEFILE_YEAR_SRC= ${IOCCC_WINNER_TREE}/template/Makefile.year
-MAKEFILE_JUDGING_SRC= ${IOCCC_WINNER_TREE}/template/entry/Makefile.judging
-TRY_SH_SRC= ${IOCCC_WINNER_TREE}/template/entry/try.sh.judging
 #
 # DESTSHARE_SRC - files to install, via "make sbin_install" under ${DESTSHARE}
 #
-DESTSHARE_SRC= ${VAR_MK_SRC} ${LEET_MK_SRC} ${CLANG_FORMAT_SRC} ${MAKEFILE_YEAR_SRC} ${MAKEFILE_JUDGING_SRC} ${TRY_SH_SRC}
+DESTSHARE_SRC= ${VAR_MK_SRC} ${LEET_MK_SRC} ${CLANG_FORMAT_SRC} ${MAKEFILE_YEAR_SRC}
 
 # what to build
 #
@@ -417,7 +414,6 @@ sbin_install: ${SBIN_SRC} ${DESTSHARE_SRC}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
 	${INSTALL} -o root -g 0 -m 0444 ${DESTSHARE_SRC} ${DESTSHARE}
-	${CHMOD} 0755 ${DESTSHARE}/try.sh.judging
 	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux

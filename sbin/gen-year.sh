@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.1.2 2025-06-30"
+export VERSION="2.2.0 2026-04-22"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -192,9 +192,12 @@ export MAKEFILE_YEAR="$DESTSHARE/Makefile.year"
 export VAR_MK="$DESTSHARE/var.mk"
 export LEET_MK="$DESTSHARE/1337.mk"
 export CLANG_FORMAT="$DESTSHARE/.clang-format"
-export MAKEFILE_JUDGING="$DESTSHARE/Makefile.judging"
-export TRY_SH_JUDGING="$DESTSHARE/try.sh.judging"
-
+export DOCROOT_DIR="/usr/www"
+export IOCCC_DIR="$DOCROOT_DIR/ioccc"
+export NEXT_DIR="$IOCCC_DIR/next"
+export TRY_SH="$NEXT_DIR/try.sh"
+export TRY_ALT_SH="$NEXT_DIR/try.alt.sh"
+export MAKEFILE_EXAMPLE="$NEXT_DIR/Makefile.example"
 
 # rsync options we use to copy
 #
@@ -385,8 +388,9 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: VAR_MK=$VAR_MK" 1>&2
     echo "$0: debug[3]: LEET_MK=$LEET_MK" 1>&2
     echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
-    echo "$0: debug[3]: MAKEFILE_JUDGING=$MAKEFILE_JUDGING" 1>&2
-    echo "$0: debug[3]: TRY_SH_JUDGING=$TRY_SH_JUDGING" 1>&2
+    echo "$0: debug[3]: MAKEFILE_EXAMPLE=$MAKEFILE_EXAMPLE" 1>&2
+    echo "$0: debug[3]: TRY_SH=$TRY_SH" 1>&2
+    echo "$0: debug[3]: TRY_ALT_SH=$TRY_ALT_SH" 1>&2
 fi
 
 
@@ -438,18 +442,26 @@ if [[ ! -s $CLANG_FORMAT ]]; then
 fi
 
 
-# find the Makefile.judging file
+# find the Makefile.example file
 #
-if [[ ! -s $MAKEFILE_JUDGING ]]; then
-    echo "$0: ERROR: cannot find non-empty Makefile.judging file: $MAKEFILE_JUDGING" 1>&2
+if [[ ! -s $MAKEFILE_EXAMPLE ]]; then
+    echo "$0: ERROR: cannot find non-empty Makefile.example file: $MAKEFILE_EXAMPLE" 1>&2
     exit 5
 fi
 
 
-# find the try.sh.judging file
+# find the next/try.sh file
 #
-if [[ ! -s $TRY_SH_JUDGING ]]; then
-    echo "$0: ERROR: cannot find non-empty try.sh.judging file: $TRY_SH_JUDGING" 1>&2
+if [[ ! -s $TRY_SH ]]; then
+    echo "$0: ERROR: cannot find non-empty next/try.sh file: $TRY_SH" 1>&2
+    exit 5
+fi
+
+
+# find the next/try.alt.sh file
+#
+if [[ ! -s $TRY_ALT_SH ]]; then
+    echo "$0: ERROR: cannot find non-empty next/try.alt.sh file: $TRY_ALT_SH" 1>&2
     exit 5
 fi
 
@@ -1312,49 +1324,72 @@ elif [[ $V_FLAG -ge 1 ]]; then
 fi
 
 
-# update Makefile.judging under YYYY if needed
+# update Makefile.example under YYYY if needed
 #
-if ! cmp -s "$MAKEFILE_JUDGING" "$YYYY/Makefile.judging" 2>/dev/null; then
+if ! cmp -s "$MAKEFILE_EXAMPLE" "$YYYY/Makefile.example" 2>/dev/null; then
 
     if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging" 1>&2
+	echo "$0: debug[3]: about to cp -p -f $MAKEFILE_EXAMPLE $YYYY/Makefile.example" 1>&2
     fi
     if [[ -z $NOOP ]]; then
-	cp -p -f "$MAKEFILE_JUDGING" "$YYYY/Makefile.judging" 2>/dev/null
+	cp -p -f "$MAKEFILE_EXAMPLE" "$YYYY/Makefile.example" 2>/dev/null
 	status="$?"
-	if [[ $status -ne 0 || ! -s $YYYY/Makefile.judging ]]; then
-	    echo "$0: ERROR: cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging failed, error: $status" 1>&2
+	if [[ $status -ne 0 || ! -s $YYYY/Makefile.example ]]; then
+	    echo "$0: ERROR: cp -p -f $MAKEFILE_EXAMPLE $YYYY/Makefile.example failed, error: $status" 1>&2
 	    exit 7
 	fi
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $MAKEFILE_JUDGING $YYYY/Makefile.judging" 1>&2
+	echo "$0: debug[1]: because of -n, did not cp -p -f $MAKEFILE_EXAMPLE $YYYY/Makefile.example" 1>&2
     fi
 
 elif [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: Makefile.judging is up to date: $YYYY/Makefile.judging" 1>&2
+    echo "$0: debug[3]: Makefile.example is up to date: $YYYY/Makefile.example" 1>&2
 fi
 
 
-# update try.sh.judging under YYYY if needed
+# update try.sh.example under YYYY if needed
 #
-if ! cmp -s "$TRY_SH_JUDGING" "$YYYY/try.sh.judging" 2>/dev/null; then
+if ! cmp -s "$TRY_SH" "$YYYY/try.sh.example" 2>/dev/null; then
 
     if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging" 1>&2
+	echo "$0: debug[3]: about to cp -p -f $TRY_SH $YYYY/try.sh.example" 1>&2
     fi
     if [[ -z $NOOP ]]; then
-	cp -p -f "$TRY_SH_JUDGING" "$YYYY/try.sh.judging" 2>/dev/null
+	cp -p -f "$TRY_SH" "$YYYY/try.sh.example" 2>/dev/null
 	status="$?"
-	if [[ $status -ne 0 || ! -s $YYYY/try.sh.judging ]]; then
-	    echo "$0: ERROR: cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging failed, error: $status" 1>&2
+	if [[ $status -ne 0 || ! -s $YYYY/try.sh.example ]]; then
+	    echo "$0: ERROR: cp -p -f $TRY_SH $YYYY/try.sh.example failed, error: $status" 1>&2
 	    exit 7
 	fi
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_SH_JUDGING $YYYY/try.sh.judging" 1>&2
+	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_SH $YYYY/try.sh.example" 1>&2
     fi
 
 elif [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: try.sh.judging is up to date: $YYYY/try.sh.judging" 1>&2
+    echo "$0: debug[3]: try.sh.example is up to date: $YYYY/try.sh.example" 1>&2
+fi
+
+
+# update try.alt.sh.example under YYYY if needed
+#
+if ! cmp -s "$TRY_ALT_SH" "$YYYY/try.alt.sh.example" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $TRY_ALT_SH $YYYY/try.alt.sh.example" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$TRY_ALT_SH" "$YYYY/try.alt.sh.example" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $YYYY/try.alt.sh.example ]]; then
+	    echo "$0: ERROR: cp -p -f $TRY_ALT_SH $YYYY/try.alt.sh.example failed, error: $status" 1>&2
+	    exit 7
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $TRY_ALT_SH $YYYY/try.alt.sh.example" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: try.alt.sh.example is up to date: $YYYY/try.alt.sh.example" 1>&2
 fi
 
 
