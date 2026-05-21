@@ -212,8 +212,8 @@ IOCCC_WINNER_TREE= ../docroot/winner
 # CLANG_FORMAT_SRC - location of the master .clang_format file
 # MAKEFILE_YEAR_SRC - location of thee template for Makefile.year
 #
-VAR_MK_SRC= ${IOCCC_WINNER_TREE}/var.mk
-LEET_MK_SRC= ${IOCCC_WINNER_TREE}/1337.mk
+VAR_MK_SRC= ${IOCCC_WINNER_TREE}/template/var.mk
+LEET_MK_SRC= ${IOCCC_WINNER_TREE}/template/1337.mk
 CLANG_FORMAT_SRC= ${IOCCC_WINNER_TREE}/.clang-format
 MAKEFILE_YEAR_SRC= ${IOCCC_WINNER_TREE}/template/Makefile.year
 #
