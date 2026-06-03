@@ -140,7 +140,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.0 2026-04-22"
+export VERSION="2.3.0 2026-06-03"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -187,17 +187,10 @@ if [[ -z $TMPDIR ]]; then
     TMPDIR="/tmp"
 fi
 #
-export DESTSHARE="/usr/local/share/submit-tool"
-export MAKEFILE_YEAR="$DESTSHARE/Makefile.year"
-export VAR_MK="$DESTSHARE/var.mk"
-export LEET_MK="$DESTSHARE/1337.mk"
-export CLANG_FORMAT="$DESTSHARE/.clang-format"
 export DOCROOT_DIR="/usr/www"
 export IOCCC_DIR="$DOCROOT_DIR/ioccc"
 export NEXT_DIR="$IOCCC_DIR/next"
-export TRY_SH="$NEXT_DIR/try.sh"
-export TRY_ALT_SH="$NEXT_DIR/try.alt.sh"
-export MAKEFILE_EXAMPLE="$NEXT_DIR/Makefile.example"
+export TEMPLATE_DIR="$IOCCC_DIR/template"
 
 # rsync options we use to copy
 #
@@ -349,6 +342,17 @@ if [[ -n $IOCCC_RC ]]; then
 fi
 
 
+# set file path that sit under directories defined above
+#
+export CLANG_FORMAT="$IOCCC_DIR/.clang-format"
+export MAKEFILE_YEAR="$TEMPLATE_DIR/Makefile.year"
+export VAR_MK="$TEMPLATE_DIR/var.mk"
+export LEET_MK="$TEMPLATE_DIR/1337.mk"
+export TRY_SH="$NEXT_DIR/try.sh"
+export TRY_ALT_SH="$NEXT_DIR/try.alt.sh"
+export MAKEFILE_EXAMPLE="$NEXT_DIR/Makefile.example"
+
+
 # print running info if verbose
 #
 # If -v 3 or higher, print exported variables in order that they were exported.
@@ -383,14 +387,17 @@ if [[ $V_FLAG -ge 3 ]]; then
     echo "$0: debug[3]: RSYNC_OPTIONS=${RSYNC_OPTIONS[*]}" 1>&2
     echo "$0: debug[3]: RSYNC_VERBOSE_OPTIONS=${RSYNC_VERBOSE_OPTIONS[*]}" 1>&2
     echo "$0: debug[3]: YYYY=$YYYY" 1>&2
-    echo "$0: debug[3]: DESTSHARE=$DESTSHARE" 1>&2
+    echo "$0: debug[3]: DOCROOT_DIR=$DOCROOT_DIR" 1>&2
+    echo "$0: debug[3]: IOCCC_DIR=$IOCCC_DIR" 1>&2
+    echo "$0: debug[3]: NEXT_DIR=$NEXT_DIR" 1>&2
+    echo "$0: debug[3]: TEMPLATE_DIR=$TEMPLATE_DIR" 1>&2
+    echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
     echo "$0: debug[3]: MAKEFILE_YEAR=$MAKEFILE_YEAR" 1>&2
     echo "$0: debug[3]: VAR_MK=$VAR_MK" 1>&2
     echo "$0: debug[3]: LEET_MK=$LEET_MK" 1>&2
-    echo "$0: debug[3]: CLANG_FORMAT=$CLANG_FORMAT" 1>&2
-    echo "$0: debug[3]: MAKEFILE_EXAMPLE=$MAKEFILE_EXAMPLE" 1>&2
     echo "$0: debug[3]: TRY_SH=$TRY_SH" 1>&2
     echo "$0: debug[3]: TRY_ALT_SH=$TRY_ALT_SH" 1>&2
+    echo "$0: debug[3]: MAKEFILE_EXAMPLE=$MAKEFILE_EXAMPLE" 1>&2
 fi
 
 
@@ -518,52 +525,6 @@ if [[ -n $DO_NOT_PROCESS ]]; then
 	echo "$0: debug[3]: arguments parsed, -N given, exiting 0" 1>&2
     fi
     exit 0
-fi
-
-
-# update var.mk under WORKDIR if needed
-#
-if ! cmp -s "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null; then
-
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
-    fi
-    if [[ -z $NOOP ]]; then
-	cp -p -f "$VAR_MK" "$WORKDIR/var.mk" 2>/dev/null
-	status="$?"
-	if [[ $status -ne 0 || ! -s $WORKDIR/var.mk ]]; then
-	    echo "$0: ERROR: cp -p -f $VAR_MK $WORKDIR/var.mk failed, error: $status" 1>&2
-	    exit 7
-	fi
-    elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $VAR_MK $WORKDIR/var.mk" 1>&2
-    fi
-
-elif [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: var.mk is up to date: $WORKDIR/var.mk" 1>&2
-fi
-
-
-# update 1337.mk under WORKDIR if needed
-#
-if ! cmp -s "$LEET_MK" "$WORKDIR/1337.mk" 2>/dev/null; then
-
-    if [[ $V_FLAG -ge 3 ]]; then
-	echo "$0: debug[3]: about to cp -p -f $LEET_MK $WORKDIR/1337.mk" 1>&2
-    fi
-    if [[ -z $NOOP ]]; then
-	cp -p -f "$LEET_MK" "$WORKDIR/1337.mk" 2>/dev/null
-	status="$?"
-	if [[ $status -ne 0 || ! -s $WORKDIR/1337.mk ]]; then
-	    echo "$0: ERROR: cp -p -f $LEET_MK $WORKDIR/1337.mk failed, error: $status" 1>&2
-	    exit 7
-	fi
-    elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: because of -n, did not cp -p -f $LEET_MK $WORKDIR/1337.mk" 1>&2
-    fi
-
-elif [[ $V_FLAG -ge 3 ]]; then
-    echo "$0: debug[3]: 1337.mk is up to date: $WORKDIR/1337.mk" 1>&2
 fi
 
 
@@ -970,6 +931,52 @@ if [[ -z $NOOP ]]; then
     fi
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not form YYYY directory: $YYYY" 1>&2
+fi
+
+
+# update var.mk under YYYY if needed
+#
+if ! cmp -s "$VAR_MK" "$YYYY/var.mk" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $VAR_MK $YYYY/var.mk" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$VAR_MK" "$YYYY/var.mk" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $YYYY/var.mk ]]; then
+	    echo "$0: ERROR: cp -p -f $VAR_MK $YYYY/var.mk failed, error: $status" 1>&2
+	    exit 1
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $VAR_MK $YYYY/var.mk" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: var.mk is up to date: $YYYY/var.mk" 1>&2
+fi
+
+
+# update 1337.mk under YYYY if needed
+#
+if ! cmp -s "$LEET_MK" "$YYYY/1337.mk" 2>/dev/null; then
+
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: about to cp -p -f $LEET_MK $YYYY/1337.mk" 1>&2
+    fi
+    if [[ -z $NOOP ]]; then
+	cp -p -f "$LEET_MK" "$YYYY/1337.mk" 2>/dev/null
+	status="$?"
+	if [[ $status -ne 0 || ! -s $YYYY/1337.mk ]]; then
+	    echo "$0: ERROR: cp -p -f $LEET_MK $YYYY/1337.mk failed, error: $status" 1>&2
+	    exit 1
+	fi
+    elif [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: because of -n, did not cp -p -f $LEET_MK $YYYY/1337.mk" 1>&2
+    fi
+
+elif [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: 1337.mk is up to date: $YYYY/1337.mk" 1>&2
 fi
 
 

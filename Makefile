@@ -182,7 +182,6 @@ FLASK_KEY= etc/.secret
 #
 DESTDIR= /usr/local/bin
 DESTSDIR= /usr/local/sbin
-DESTSHARE= /usr/local/share/submit-tool
 
 # user to root_install under
 #
@@ -197,29 +196,6 @@ GROUP= apache
 # ioccc syslog file
 #
 IOCCC_SYSLOG= /var/log/ioccc
-
-# source for select files installed via: "make sbin_install"
-#
-# NOTE: These values NOT needed for the submit server.
-# 	The "make sbin_install" is NEVER run on the submit server.
-#
-# IOCCC_WINNER_TREE - location of the IOCCC winner tree
-#
-IOCCC_WINNER_TREE= ../docroot/winner
-#
-# VAR_MK_SRC - location of the master var.mk file
-# LEET_MK_SRC - location of the master 1337.mk file
-# CLANG_FORMAT_SRC - location of the master .clang_format file
-# MAKEFILE_YEAR_SRC - location of thee template for Makefile.year
-#
-VAR_MK_SRC= ${IOCCC_WINNER_TREE}/template/var.mk
-LEET_MK_SRC= ${IOCCC_WINNER_TREE}/template/1337.mk
-CLANG_FORMAT_SRC= ${IOCCC_WINNER_TREE}/.clang-format
-MAKEFILE_YEAR_SRC= ${IOCCC_WINNER_TREE}/template/Makefile.year
-#
-# DESTSHARE_SRC - files to install, via "make sbin_install" under ${DESTSHARE}
-#
-DESTSHARE_SRC= ${VAR_MK_SRC} ${LEET_MK_SRC} ${CLANG_FORMAT_SRC} ${MAKEFILE_YEAR_SRC}
 
 # what to build
 #
@@ -407,14 +383,12 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 #
 # NOTE: The "make sbin_install" is NEVER run on the submit server.
 #
-sbin_install: ${SBIN_SRC} ${DESTSHARE_SRC}
+sbin_install: ${SBIN_SRC}
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
-	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSHARE}
-	${INSTALL} -o root -g 0 -m 0444 ${DESTSHARE_SRC} ${DESTSHARE}
 	${V} echo DEBUG =-= $@ end =-=
 
 # undo the effects of an improperly performed make sbin_install
@@ -426,11 +400,6 @@ sbin_uninstall:
 	    echo ${RM} -f "${DESTSDIR}/$$(basename $$i)" ; \
 	    ${RM} -f "${DESTSDIR}/$$(basename $$i)"; \
 	done
-	@for i in ${DESTSHARE_SRC}; do \
-	    echo ${RM} -f "${DESTSHARE}/$$(basename $$i)" ; \
-	    ${RM} -f "${DESTSHARE}/$$(basename $$i)" ; \
-	done
-	-${RMDIR} ${DESTSHARE}
 	${V} echo DEBUG =-= $@ end =-=
 
 # as root: after root_setup, setup ${DOCROOT} under for SELinux
