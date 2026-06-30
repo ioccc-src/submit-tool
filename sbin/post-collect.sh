@@ -3,7 +3,7 @@
 # post-collect.sh - actions on a collected submission directory
 #
 # After `sbin/collect.sh` obtains a new submission, performs checks via
-#	`txzchk(1)` and `chkentry(1)` we need to compress the `.auth.json`
+#	`txzchk(1)` and `chksubmit(1)` we need to compress the `.auth.json`
 #	file and to setup several symlnks.  The former is to help avoid
 #	accidental authorship disclose during the judging process and
 #	the later is to help navigate among the various uploads
@@ -19,7 +19,7 @@
 #	environment variables will override any existing environment variables.
 #	unless "-I" was which in which case the "ioccc.rc" file is ignored.
 #
-# Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2025-2026 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -128,7 +128,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.0.1 2025-05-06"
+export VERSION="2.0.2 2026-06-30"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0

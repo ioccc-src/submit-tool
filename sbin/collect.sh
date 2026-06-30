@@ -126,7 +126,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.9.2 2026-03-15"
+export VERSION="2.9.3 2026-06-30"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -2392,7 +2392,7 @@ elif [[ -f $DEST ]]; then
 		status="$?"
 		if [[ $status -ne 0 ]]; then
 
-		    # report chkentry failure
+		    # report chkentry failure as a chksubmit failure
 		    #
 		    PROBLEM_CODE=26
 		    {
@@ -2408,9 +2408,11 @@ elif [[ -f $DEST ]]; then
 			cat 1>&2
 		    fi
 
-		    # update the slot comment on the remote server to note chkentry faulure
+		    # update the slot comment on the remote server to note chkentry failure
 		    #
-		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed chkentry test! Use mkiocccentry to rebuild and resubmit to this slot."
+		    # We report this as a chksubmit failure for purposes of understanding from the submitter perspective.
+		    #
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file failed chksubmit test! Use mkiocccentry to rebuild and resubmit to this slot."
 		    CHKENTRY_ERR_REPORTED="true"
 		    # Having noted the problem, try to just carry on
 		fi
@@ -2460,8 +2462,10 @@ elif [[ -f $DEST ]]; then
 
 		# case: report submission success unless chkentry failed
 		#
+		# We report this as a chksubmit success or purposes of understanding from the submitter perspective.
+		#
 		if [[ -z $CHKENTRY_ERR_REPORTED ]]; then
-		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chkentry tests."
+		    change_slot_comment "$IOCCC_USERNAME" "$SLOT_NUM" "submit file received by the IOCCC judges. Passed both txzchk and chksubmit tests."
 		fi
 
 		# success !!!
