@@ -25,8 +25,8 @@ NOTE: This flask-login was inspired by the following:
 #
 import inspect
 import re
-import subprocess
 import os
+import socket
 
 # import from modules
 #
@@ -117,20 +117,17 @@ login_manager.init_app(application)
 
 # determine our storage URI for the Flask limiter
 #
-# case: We have memcached installed - use memcached port
+# case: We have memcached installed - check port availability
 #
 if Path("/etc/sysconfig/memcached").is_file():
 
-    # Check if memcached is running properly
+    # Check if memcached is listening on 127.0.0.1:11211
     #
     try:
-        result = subprocess.run(
-            ['systemctl', 'is-active', '--quiet', 'memcached'],
-            check=True
-        )
-        STORAGE_URI = "memcached://127.0.0.1:11211"
-    except subprocess.CalledProcessError:
-        warning("Memcached configuration file exists, but memcached is not running. Falling back to memory storage.")
+        with socket.create_connection(("127.0.0.1", 11211), timeout=1):
+            STORAGE_URI = "memcached://127.0.0.1:11211"
+    except (OSError, socket.error):
+        warning("Memcached configuration file exists, but port 11211 is unreachable. Falling back to memory storage.")
         STORAGE_URI = "memory://"
 
 # else: use just local memory

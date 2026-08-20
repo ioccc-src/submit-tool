@@ -12,8 +12,18 @@ in the /etc/httpd/conf/wsgi.conf file on the submit server.
 """
 
 
+import sys
+import site
+
+# Ensure system-installed local site-packages (from make root_install) are accessible
+#
+site.addsitedir("/usr/local/lib/python" + sys.version[:4] + "/site-packages")
+site.addsitedir("/usr/local/lib64/python" + sys.version[:4] + "/site-packages")
+
+
 # import the ioccc server and common utility code
 #
+# pylint: disable=wrong-import-position
 from iocccsubmit import application, setup_logger
 
 
@@ -21,7 +31,7 @@ from iocccsubmit import application, setup_logger
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_WSGI = "2.2.0 2024-12-22"
+VERSION_IOCCC_WSGI = "2.2.1 2026-08-19"
 
 
 # setup logging as syslog at INFO level
