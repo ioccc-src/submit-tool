@@ -36,14 +36,17 @@ CHOWN= chown
 CMP= cmp
 CP= cp
 ID= id
+FIND= find
 INSTALL= install
 MKDIR= mkdir
 TOUCH= touch
 PYTHON= python3
 RM= rm
 RMDIR= rmdir
+RSYMC= rsync
 SED= sed
 SHELL= bash
+XARGS= xargs
 
 ######################
 # target information #
@@ -462,4 +465,12 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${TOUCH} ${IOCCC_SYSLOG}
 	${CHOWN} root:root ${IOCCC_SYSLOG}
 	${CHMOD} 0600 ${IOCCC_SYSLOG}
+	${RM} -rf ${DOCROOT}/saved.users
+	${MKDIR} -p ${DOCROOT}/saved.users
+	${CHOWN} ${USER}:${GROUP} ${DOCROOT}/saved.users
+	${CHMOD} 2770 ${DOCROOT}/saved.users
+	${RSYNC} -avzP save.users/ ${DOCROOT}/saved.users
+	${CHOWN} -R ${USER}:${GROUP} ${DOCROOT}/saved.users
+	${FIND} ${DOCROOT}/saved.users -type -d -print0 | ${XARGS} -0 ${CHMOD} -v 2750
+	${FIND} ${DOCROOT}/saved.users -type -f -print0 | ${XARGS} -0 ${CHMOD} -v 0644
 	${V} echo DEBUG =-= $@ end =-=
