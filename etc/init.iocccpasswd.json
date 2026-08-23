@@ -19,6 +19,6 @@
         "force_pw_change": false,
         "pw_change_by": null,
         "email": "user0@example.org",
-        "disable_login": true
+        "disable_login": false
     }
 ]
