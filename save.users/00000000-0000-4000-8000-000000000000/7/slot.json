@@ -1,0 +1,11 @@
+{
+    "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+    "slot_JSON_format_version": "1.2 2025-01-26",
+    "slot": 7,
+    "filename": null,
+    "length": null,
+    "date": null,
+    "SHA256": null,
+    "collected": false,
+    "status": "slot is empty"
+}
