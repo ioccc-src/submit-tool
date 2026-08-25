@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.5 2025-12-21"
+VERSION_IOCCC_COMMON = "2.9.6 2026-08-25"
 
 # force password change grace time
 #
@@ -115,33 +115,20 @@ DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 IP_ADDRESS = "127.0.0.1"
 TCP_PORT = "8191"
 
+# Base APPDIR resolution based on script location
+#
+SCRIPT_DIR = Path(__file__).resolve().parent
+
 # determine the default APPDIR
 #
 # important directories and files that are relative to APPDIR
 #
-try:
-
-    # case: We have template sub-directory, assume our APPDIR is .
-    #       (likely testing from the command line)
-    #
-    if Path("./templates").is_dir():
-        APPDIR = "."
-
-    # case: assume are are running under the Apache server, and
-    #       APPDIR is /var/ioccc
-    #
-    # Tests suggest that Apache seems to run applications from the / directory.
-    #
-    else:
-        APPDIR = "/var/ioccc"
-
-# Do not use: except OSError as errcode: because we have no easy way to report the errcode
-#
-except OSError:
-
-    # If we are not allowed access to templates, assume we must use /var/ioccc
-    #
+if (SCRIPT_DIR / "templates").is_dir():
+    APPDIR = str(SCRIPT_DIR)
+elif Path("/var/ioccc/templates").is_dir():
     APPDIR = "/var/ioccc"
+else:
+    APPDIR = "."
 
 #
 # We set FOO_RELATIVE_PATH, the value relative to APPDIR, and
@@ -402,6 +389,10 @@ LOCK_INTERVAL = random.uniform(0.8, 1.2)    # poll for lock at interval 0.8 <= s
 # pylint: disable-next=invalid-name
 ioccc_logger = None
 
+# Global logger reference
+#
+ioccc_logger = None
+
 
 def return_last_errmsg():
     """
@@ -642,7 +633,7 @@ def check_username_arg(username, parent):
 
     NOTE: This function does NOT check if the username is a known username in the password file,
           nor if that user is allowed to login.  This is because we call this function within
-          other functions that mange crearing of new users and that may change if said user
+          other functions that mange creation of new users and that may change if said user
           is allowed to login.
 
     NOTE: This function performs various canonical firewall checks on the username arg.
@@ -1237,13 +1228,14 @@ def return_submit_path(slot_dict, username, slot_num):
 
 
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-statements
 #
 def ioccc_file_lock(file_lock):
     """
     Lock a file
 
     A side effect of locking a file is that the file will be created with
-    more 0664 it it does not exist.
+    more 0664 if it does not exist.
 
     Given:
         file_lock               the filename to lock
@@ -1340,6 +1332,11 @@ def ioccc_file_lock(file_lock):
 
     except Timeout:
 
+        # clear the lock record
+        #
+        ioccc_last_lock_fd = None
+        ioccc_last_lock_path = None
+
         # too too long to get the lock
         #
         ioccc_last_errmsg = f'Warning: {me}: lock timeout after {LOCK_TIMEOUT} secs for: {ioccc_last_lock_path}'
@@ -1347,6 +1344,14 @@ def ioccc_file_lock(file_lock):
         return None
 
     except OSError as errcode:
+
+        # clear the lock record
+        #
+        ioccc_last_lock_fd = None
+        ioccc_last_lock_path = None
+
+        # failed to get the lock
+        #
         ioccc_last_errmsg = f'ERROR: {me}: cannot acquire lock: {file_lock} failed: <<{errcode}>>'
         error(f'{me}: cannot acquire lock: {file_lock} failed: <<{errcode}>>')
 
@@ -1373,6 +1378,7 @@ def ioccc_file_lock(file_lock):
     return ioccc_last_lock_fd
 #
 # pylint: enable=too-many-return-statements
+# pylint: enable=too-many-statements
 
 
 def ioccc_file_unlock() -> None:
@@ -5558,21 +5564,17 @@ def setup_logger(logtype, dbglvl) -> None:
         elif dbglvl.lower() == "crit" or dbglvl.lower() == "critical":
             logging_level = logging.CRITICAL
 
-    # create the logger, which will change the state
-    #
-    # As this point we know that that logtype of an allowed string.
+    # set the logger's level directly - obtain the named logger instance
     #
     my_logger = logging.getLogger('ioccc')
+    my_logger.setLevel(logging_level)
 
-    # paranoia
+    # remove pre-existing handlers to prevent duplicate lines if reconfigured
     #
-    if not my_logger:
-        print(f'ERROR via print: logging.getLogger returned None for logtype: {logtype}')
-        return
+    if my_logger.hasHandlers():
+        my_logger.handlers.clear()
 
     # case: logtype is "stdout"
-    #
-    # log to stdout
     #
     if logtype.lower() == "stdout":
 
@@ -5582,28 +5584,16 @@ def setup_logger(logtype, dbglvl) -> None:
                         '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-        # setup stdout logging handler
+        # configure the logger
         #
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setLevel(logging_level)
         stdout_handler.setFormatter(formatter)
-
-        # configure the logger
-        #
-        # There is BUG in logging where logging requires
-        # an additional call to the logging.basicConfig function.
-        #
-        # To avoid duplicate messages, we do not call:
-        #
-        #   my_logger.addHandler(stdout_handler)
-        #
-        logging.basicConfig(level=logging_level, handlers=[stdout_handler])
+        my_logger.addHandler(stdout_handler)
 
     # case: logtype is "stderr"
     #
-    # log to stderr
-    #
-    if logtype.lower() == "stderr":
+    elif logtype.lower() == "stderr":
 
         # set logging format
         #
@@ -5611,28 +5601,16 @@ def setup_logger(logtype, dbglvl) -> None:
                         '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-        # setup stderr logging handler
+        # configure the logger
         #
         stderr_handler = logging.StreamHandler(sys.stderr)
         stderr_handler.setLevel(logging_level)
         stderr_handler.setFormatter(formatter)
-
-        # configure the logger
-        #
-        # There is BUG in logging where logging requires
-        # an additional call to the logging.basicConfig function.
-        #
-        # To avoid duplicate messages, we do not call:
-        #
-        #   my_logger.addHandler(stderr_handler)
-        #
-        logging.basicConfig(level=logging_level, handlers=[stderr_handler])
+        my_logger.addHandler(stderr_handler)
 
     # case: logtype is "syslog"
     #
-    # log via syslog local5 facility
-    #
-    if logtype.lower() == "syslog":
+    elif logtype.lower() == "syslog":
 
         # set logging format
         #
@@ -5679,20 +5657,12 @@ def setup_logger(logtype, dbglvl) -> None:
             #
             log_address = "/dev/null"
 
-        # setup the syslog handler
+        # configure the logger
         #
-        syslog_handler = SysLogHandler(address = log_address,
-                                       facility = SysLogHandler.LOG_LOCAL5)
+        syslog_handler = SysLogHandler(address=log_address, facility=SysLogHandler.LOG_LOCAL5)
         syslog_handler.setLevel(logging_level)
         syslog_handler.setFormatter(formatter)
-
-        # add the file logging handler to the logger
-        #
-        # To avoid duplicate messages, we do not call:
-        #
-        #   my_logger.addHandler(syslog_handler)
-        #
-        logging.basicConfig(level=logging_level, handlers=[syslog_handler])
+        my_logger.addHandler(syslog_handler)
 
     # more paranoia
     #

@@ -161,11 +161,14 @@ semanage fcontext -a -t httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
 # 5. Log context rules (covers /var/log/ioccc and any rotated variants)
 semanage fcontext -a -t httpd_log_t '/var/log/ioccc.*'
 
+# Apply SELinux context
+semanage fcontext -a -t httpd_sys_rw_content_t "/var/ioccc(/.*)?"
+
 # 6. Apply permissions and contexts
-chown -Rv apache:apache /var/ioccc
+chown -Rv apache:apache /var/ioccc 2>/dev/null || true
 chown -v apache:apache /var/log/ioccc 2>/dev/null || true
 
-restorecon -vFR /var/ioccc
+restorecon -vFR /var/ioccc 2>/dev/null || true
 restorecon -vF /var/log/ioccc* 2>/dev/null || true
 restorecon -vF /etc/httpd/conf 2>/dev/null || true
 restorecon -vFR /var/log/trap-httpd 2>/dev/null || true

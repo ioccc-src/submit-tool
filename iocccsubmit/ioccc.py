@@ -27,6 +27,7 @@ import inspect
 import re
 import os
 import socket
+import ipaddress
 
 # import from modules
 #
@@ -81,7 +82,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.0 2025-03-13"
+VERSION_IOCCC = "2.10.1 2026-08-25"
 
 
 # IOCCC requires use of C locale
@@ -136,13 +137,32 @@ else:
     STORAGE_URI = "memory://"
 
 
+# sanitize IP addresses for the Flask limiter
+#
+def sanitize_ip_address():
+    """
+    IP addresses for the Flask limiter
+    """
+
+    ip_str = get_remote_address()
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        if ip.version == 6:
+            # Map all IPv6 addresses to a specific prefix or fallback bucket,
+            # or return the /64 network representation to prevent key bloat
+            return str(ipaddress.ip_network(f"{ip_str}/64", strict=False))
+        return str(ip)
+    except ValueError:
+        return "127.0.0.1"  # Default fallback for malformed address headers
+
+
 # Setup for default the Flask limiter
 #
 limiter = Limiter(
-    get_remote_address,
-    default_limits = ["8 per minute"],
-    app = application,
-    storage_uri = STORAGE_URI,
+    key_func=sanitize_ip_address,
+    default_limits=["8 per minute"],
+    app=application,
+    storage_uri=STORAGE_URI,
 )
 
 
@@ -150,7 +170,6 @@ limiter = Limiter(
 #
 ip_based_limit = limiter.limit(
     limit_value = "8 per minute",
-    key_func = get_remote_address,
     per_method = True,
     error_message = (
         # pylint: disable-next=f-string-without-interpolation
@@ -467,7 +486,7 @@ def submit():
         if not close_datetime:
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest close date')
-            open_datetime = "ERROR: unknown close date"
+            close_datetime = "ERROR: unknown close date"
             flash('ERROR: cannot determine the contest close date.')
         return render_template('not-open.html',
                                flask_login = flask_login,
@@ -601,6 +620,7 @@ def submit():
     # Because the Flask file upload size may exceed MAX_TARBALL_LEN bytes by
     # as much as MARGIN_SIZE bytes, we also enforce the MAX_TARBALL_LEN limit.
     #
+    file_length = None
     try:
         file_length = os.path.getsize(upload_file)
     except OSError:
@@ -638,6 +658,10 @@ def submit():
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} update_slot failed: {return_last_errmsg()}')
         flash(f'ERROR: in: {me}: update_slot failed: {return_last_errmsg()}')
+        try:
+            os.remove(upload_file)
+        except OSError:
+            pass
         return render_template('submit.html',
                                flask_login = flask_login,
                                username = username,
@@ -648,7 +672,7 @@ def submit():
     #
     info(f'{me}: {return_client_ip()}: '
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
-    flash(f'File {file.filename} was uploaded sucessfully.')
+    flash(f'File {file.filename} was uploaded successfully.')
     return render_template('submit.html',
                            flask_login = flask_login,
                            username = username,
@@ -731,7 +755,7 @@ def upload():
         if not close_datetime:
             info(f'{me}: {return_client_ip()}: '
                  f'cannot determine the contest close date')
-            open_datetime = "ERROR: unknown close date"
+            close_datetime = "ERROR: unknown close date"
             flash('ERROR: cannot determine the contest close date.')
         return render_template('not-open.html',
                                flask_login = flask_login,
@@ -865,6 +889,7 @@ def upload():
     # Because the Flask file upload size may exceed MAX_TARBALL_LEN bytes by
     # as much as MARGIN_SIZE bytes, we also enforce the MAX_TARBALL_LEN limit.
     #
+    file_length = None
     try:
         file_length = os.path.getsize(upload_file)
     except OSError:
@@ -916,7 +941,7 @@ def upload():
     #
     info(f'{me}: {return_client_ip()}: '
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
-    flash(f'File {file.filename}  was uploaded sucessfully.')
+    flash(f'File {file.filename}  was uploaded successfully.')
 
     # get, again, the JSON for all slots for the user
     #

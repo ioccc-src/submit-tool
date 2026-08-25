@@ -415,6 +415,32 @@ root_install: ${SELINUX_SET} root_setup
 	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	@echo
+	@echo Set directory ownership
+	@echo
+	${CHOWN} -R apache:apache ${DOCROOT}
+	@echo
+	@echo Set permissions: for critical directories
+	@echo
+	${CHMOD} 0555 ${DOCROOT}
+	${FIND} ${DOCROOT}/etc ${DOCROOT}/save.users ${DOCROOT}/staged -type d -exec ${CHMOD} 2770 {} +
+	${FIND} ${DOCROOT}/tmp ${DOCROOT}/unexpected ${DOCROOT}/users -type d -exec ${CHMOD} 2770 {} +
+	${FIND} ${DOCROOT}/templates ${DOCROOT}/static ${DOCROOT}/wsgi -type d -exec ${CHMOD} 0555 {} +
+	@echo
+	@echo Set permissions: for critical files
+	@echo
+	${CHMOD} 0664 ${DOCROOT}/etc/init.iocccpasswd.json ${DOCROOT}/etc/init.state.json
+	${CHMOD} 0664 ${DOCROOT}/etc/iocccpasswd.json ${DOCROOT}/etc/iocccpasswd.lock
+	${CHMOD} 0444 ${DOCROOT}/etc/mail.head ${DOCROOT}/etc/mail.tail
+	${CHMOD} 0444 ${DOCROOT}/etc/pw.words ${DOCROOT}/etc/requirements.txt
+	${CHMOD} 0664 ${DOCROOT}/etc/save.iocccpasswd.json ${DOCROOT}/etc/state.json ${DOCROOT}/etc/state.lock
+	${FIND} ${DOCROOT}/static ${DOCROOT}/templates -type f -exec ${CHMOD} 0444 {} +
+	${CHMOD} 0555 ${DOCROOT}/wsgi/ioccc.wsgi
+	@echo
+	@echo Set permissions: for files in directories whose entire content may be modified
+	@echo
+	${FIND} ${DOCROOT}/save.users ${DOCROOT}/tmp ${DOCROOT}/unexpected -type f -exec chmod 0644 {} +
+	${FIND} ${DOCROOT}/users -type f -exec chmod 0644 {} +
+	@echo
 	@echo About to setup ${DOCROOT} for SELinux
 	@echo
 	${SELINUX_SET}
