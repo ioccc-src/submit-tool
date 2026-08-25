@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables
 #
-export VERSION="2.2.0 2025-03-13"
+export VERSION="2.3.0 2026-08-24"
 NAME=$(basename "$0")
 export NAME
 
@@ -123,26 +123,58 @@ fi
 # setup /var/ioccc, /var/log/ioccc, /etc/httpd/conf, /var/log/trap-httpd, /var/log/httpd for SELinux
 #
 set -x
-semanage fcontext --list --locallist --noheading
+set -e
+
+echo "=== Updating SELinux Contexts for IOCCC Submit Server ==="
+
+# 1. Clear existing local context definitions for IOCCC paths to avoid collisions
+semanage fcontext -d '/var/ioccc(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/etc(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/static(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/templates(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/users(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/save.users(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/staged(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/tmp(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/unexpected(/.*)?' 2>/dev/null || true
+semanage fcontext -d '/var/ioccc/wsgi(/.*)?' 2>/dev/null || true
+semanage fcontext -d -f f '/var/log/ioccc' 2>/dev/null || true
+semanage fcontext -d '/var/log/ioccc' 2>/dev/null || true
+semanage fcontext -d '/var/log/ioccc.*' 2>/dev/null || true
+
+# 2. Add base context rule
+semanage fcontext -a -t httpd_sys_content_t '/var/ioccc(/.*)?'
+
+# 3. Add specific read-write context rules
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/etc(/.*)?'
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/users(/.*)?'
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/save.users(/.*)?'
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/staged(/.*)?'
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/tmp(/.*)?'
+semanage fcontext -a -t httpd_sys_rw_content_t '/var/ioccc/unexpected(/.*)?'
+
+# 4. Add execution and static rules
+semanage fcontext -a -t httpd_sys_content_t '/var/ioccc/static(/.*)?'
+semanage fcontext -a -t httpd_sys_content_t '/var/ioccc/templates(/.*)?'
+semanage fcontext -a -t httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
+
+# 5. Log context rules (covers /var/log/ioccc and any rotated variants)
+semanage fcontext -a -t httpd_log_t '/var/log/ioccc.*'
+
+# 6. Apply permissions and contexts
 chown -Rv apache:apache /var/ioccc
-ls -lRZa /var/ioccc
-semanage fcontext --add --ftype a --type httpd_sys_content_t '/var/ioccc(/.*)?'
-semanage fcontext --add --ftype a --type httpd_sys_rw_content_t '/var/ioccc/etc(/.*)?'
-semanage fcontext --add --ftype a --type httpd_sys_content_t '/var/ioccc/static(/.*)?'
-semanage fcontext --add --ftype a --type httpd_sys_content_t '/var/ioccc/templates(/.*)?'
-semanage fcontext --add --ftype a --type httpd_sys_rw_content_t '/var/ioccc/users(/.*)?'
-semanage fcontext --add --ftype a --type httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
-semanage fcontext --add --ftype f --type httpd_log_t '/var/log/ioccc'
-semanage fcontext --add --ftype f --type httpd_config_t '/etc/httpd/conf(/.*)?'
-semanage fcontext --add --ftype a --type httpd_log_t '/var/log/trap-httpd(/.*)?'
-semanage fcontext --add --ftype a --type httpd_log_t '/var/log/httpd(/.*)?'
-restorecon -vR /var/ioccc
-restorecon -v /var/log/ioccc
-restorecon -v /etc/httpd/conf
-restorecon -vR /var/log/trap-httpd
-restorecon -vR /var/log/httpd
-#no#ls -lRZa /var/ioccc
-semanage fcontext --list --locallist --noheading
+chown -v apache:apache /var/log/ioccc 2>/dev/null || true
+
+restorecon -vFR /var/ioccc
+restorecon -vF /var/log/ioccc* 2>/dev/null || true
+restorecon -vF /etc/httpd/conf 2>/dev/null || true
+restorecon -vFR /var/log/trap-httpd 2>/dev/null || true
+restorecon -vFR /var/log/httpd 2>/dev/null || true
+
+echo "=== Current Local SELinux Contexts ==="
+semanage fcontext -l -C
+
+set +e
 set +x
 
 
