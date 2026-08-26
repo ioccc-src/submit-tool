@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables
 #
-export VERSION="2.3.0 2026-08-24"
+export VERSION="2.3.1 2026-08-25"
 NAME=$(basename "$0")
 export NAME
 
@@ -166,7 +166,7 @@ semanage fcontext -a -t httpd_sys_rw_content_t "/var/ioccc(/.*)?"
 
 # 6. Apply permissions and contexts
 chown -Rv apache:apache /var/ioccc 2>/dev/null || true
-chown -v apache:apache /var/log/ioccc 2>/dev/null || true
+chown -v root:adm /var/log/ioccc 2>/dev/null || true
 
 restorecon -vFR /var/ioccc 2>/dev/null || true
 restorecon -vF /var/log/ioccc* 2>/dev/null || true
