@@ -60,7 +60,7 @@ V=@:
 
 # package version
 #
-VERSION= 2.3.6
+VERSION= 2.3.7
 
 # Python package name
 #
@@ -489,8 +489,8 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
 	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${TOUCH} ${IOCCC_SYSLOG}
-	${CHOWN} root:root ${IOCCC_SYSLOG}
-	${CHMOD} 0600 ${IOCCC_SYSLOG}
+	${CHOWN} root:adm ${IOCCC_SYSLOG}
+	${CHMOD} 0640 ${IOCCC_SYSLOG}
 	${RM} -rf ${DOCROOT}/save.users
 	${MKDIR} -p ${DOCROOT}/save.users
 	${CHOWN} ${USER}:${GROUP} ${DOCROOT}/save.users

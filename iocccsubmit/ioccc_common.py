@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.6 2026-08-25"
+VERSION_IOCCC_COMMON = "2.9.7 2026-08-25"
 
 # force password change grace time
 #
@@ -119,18 +119,29 @@ TCP_PORT = "8191"
 #
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# determine the default APPDIR
+# Resolve APPDIR strictly using explicit absolute locations
 #
-# important directories and files that are relative to APPDIR
+# A valid APPDIR MUST have an etc, templates, and users sub-directory.
 #
-if (SCRIPT_DIR / "templates").is_dir():
-    APPDIR = str(SCRIPT_DIR)
-elif Path("/var/ioccc/templates").is_dir():
-    APPDIR = "/var/ioccc"
-else:
-    APPDIR = "."
+cwd = Path.cwd()
+repo_root = SCRIPT_DIR.parent
 
-#
+if (repo_root / "etc").is_dir() and (repo_root / "templates").is_dir() and (repo_root / "users").is_dir():
+    # 1. Developer checkout / local repo testing (/home/ioccc/submit-tool)
+    APPDIR = str(repo_root)
+elif (cwd / "etc").is_dir() and (cwd / "templates").is_dir() and (cwd / "users").is_dir():
+    # 2. Executed explicitly from inside a repo root or valid runtime tree
+    APPDIR = str(cwd.resolve())
+elif Path("/var/ioccc/etc").is_dir() and Path("/var/ioccc/templates").is_dir() and Path("/var/ioccc/users").is_dir():
+    # 3. Production installation
+    APPDIR = "/var/ioccc"
+elif (SCRIPT_DIR / "etc").is_dir() and (SCRIPT_DIR / "templates").is_dir() and (SCRIPT_DIR / "users").is_dir():
+    # 4. Flat directory fallback
+    APPDIR = str(SCRIPT_DIR)
+else:
+    # 5. Production fallback
+    APPDIR = "/var/ioccc"
+
 # We set FOO_RELATIVE_PATH, the value relative to APPDIR, and
 # then set FOO to be APPDIR + "/" + FOO_RELATIVE_PATH.
 #

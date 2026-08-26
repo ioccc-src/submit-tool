@@ -12,8 +12,17 @@ in the /etc/httpd/conf/wsgi.conf file on the submit server.
 """
 
 
+# import modules
+#
 import sys
 import site
+import os
+
+
+# import from modules
+#
+from pathlib import Path
+
 
 # Ensure system-installed local site-packages (from make root_install) are accessible
 #
@@ -31,7 +40,13 @@ from iocccsubmit import application, setup_logger
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_WSGI = "2.2.1 2026-08-19"
+VERSION_IOCCC_WSGI = "2.2.2 2026-08-25"
+
+
+# Force WSGI working directory to production application root
+#
+if os.path.isdir("/var/ioccc"):
+    os.chdir("/var/ioccc")
 
 
 # setup logging as syslog at INFO level
