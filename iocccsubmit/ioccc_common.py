@@ -115,24 +115,26 @@ DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 IP_ADDRESS = "127.0.0.1"
 TCP_PORT = "8191"
 
-# Directory containing this module (.../submit-tool/iocccsubmit)
+# Directory containing this module (.../iocccsubmit)
 #
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# Repository root when running in source tree (.../submit-tool)
+# Candidate repository root when running in source tree (.../submit-tool)
 #
 REPO_ROOT = SCRIPT_DIR.parent
-IOCCCSUBMIT_DIR = REPO_ROOT / "iocccsubmit"
 
-# Determine base runtime directory (APPDIR)
+# Check for repository-only files that exist in the repo root but NOT in site-packages
+#
+IS_REPO_TREE = (REPO_ROOT / "pyproject.toml").exists() or (REPO_ROOT / "Makefile").exists()
+
 # Priority:
 # 1. $IOCCC_BASE_DIR environment variable (if explicitly set)
-# 2. REPO_ROOT (if running inside a repo tree, detected by iocccsubmit/)
-# 3. /var/ioccc (production fallback)
+# 2. REPO_ROOT (if executing inside a checked-out repo tree)
+# 3. /var/ioccc (production fallback for installed package)
 #
 if "IOCCC_BASE_DIR" in os.environ:
     APPDIR = Path(os.environ["IOCCC_BASE_DIR"])
-elif IOCCCSUBMIT_DIR.exists():
+elif IS_REPO_TREE:
     APPDIR = REPO_ROOT
 elif Path("/var/ioccc").exists():
     APPDIR = Path("/var/ioccc")
@@ -151,6 +153,7 @@ STATE_FILE_RELATIVE_PATH = "etc/state.json"
 INIT_STATE_FILE_RELATIVE_PATH = "etc/init.state.json"
 STATE_FILE_LOCK_RELATIVE_PATH = "etc/state.lock"
 PW_WORDS_RELATIVE_PATH = "etc/pw.words"
+TEMPLATES_DIR_RELATIVE_PATH = "templates"
 
 # Absolute path resolutions (as Path objects)
 #
@@ -164,6 +167,7 @@ STATE_FILE = APPDIR / STATE_FILE_RELATIVE_PATH
 INIT_STATE_FILE = APPDIR / INIT_STATE_FILE_RELATIVE_PATH
 STATE_FILE_LOCK = APPDIR / STATE_FILE_LOCK_RELATIVE_PATH
 PW_WORDS = APPDIR / PW_WORDS_RELATIVE_PATH
+TEMPLATES_DIR = APPDIR / TEMPLATES_DIR_RELATIVE_PATH
 
 # minimum SECRET length in characters
 #

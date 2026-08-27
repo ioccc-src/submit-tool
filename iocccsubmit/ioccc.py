@@ -82,7 +82,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.2 2026-08-25"
+VERSION_IOCCC = "2.10.3 2026-08-26"
 
 
 # IOCCC requires use of C locale
@@ -92,9 +92,12 @@ set_ioccc_locale()
 
 # Configure the application
 #
-application = Flask(__name__,
-            template_folder=f'{APPDIR}/templates',
-            root_path=APPDIR)
+application = Flask(
+    __name__,
+    template_folder=str(TEMPLATES_DIR),
+    static_folder=str(APPDIR / "static"),
+    root_path=str(APPDIR)
+)
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN + MARGIN_SIZE
 application.config['FLASH_APP'] = "iocccsubmit"
 application.debug = False
