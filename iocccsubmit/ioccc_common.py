@@ -70,7 +70,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.9.7 2026-08-25"
+VERSION_IOCCC_COMMON = "2.9.8 2026-08-26"
 
 # force password change grace time
 #
@@ -115,70 +115,55 @@ DATETIME_USEC_FORMAT = "%Y-%m-%d %H:%M:%S.%f UTC"
 IP_ADDRESS = "127.0.0.1"
 TCP_PORT = "8191"
 
-# Base APPDIR resolution based on script location
+# Directory containing this module (.../submit-tool/iocccsubmit)
 #
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# Resolve APPDIR strictly using explicit absolute locations
+# Repository root when running in source tree (.../submit-tool)
 #
-# A valid APPDIR MUST have an etc, templates, and users sub-directory.
-#
-cwd = Path.cwd()
-repo_root = SCRIPT_DIR.parent
+REPO_ROOT = SCRIPT_DIR.parent
+IOCCCSUBMIT_DIR = REPO_ROOT / "iocccsubmit"
 
-if (repo_root / "etc").is_dir() and (repo_root / "templates").is_dir() and (repo_root / "users").is_dir():
-    # 1. Developer checkout / local repo testing (/home/ioccc/submit-tool)
-    APPDIR = str(repo_root)
-elif (cwd / "etc").is_dir() and (cwd / "templates").is_dir() and (cwd / "users").is_dir():
-    # 2. Executed explicitly from inside a repo root or valid runtime tree
-    APPDIR = str(cwd.resolve())
-elif Path("/var/ioccc/etc").is_dir() and Path("/var/ioccc/templates").is_dir() and Path("/var/ioccc/users").is_dir():
-    # 3. Production installation
-    APPDIR = "/var/ioccc"
-elif (SCRIPT_DIR / "etc").is_dir() and (SCRIPT_DIR / "templates").is_dir() and (SCRIPT_DIR / "users").is_dir():
-    # 4. Flat directory fallback
-    APPDIR = str(SCRIPT_DIR)
+# Determine base runtime directory (APPDIR)
+# Priority:
+# 1. $IOCCC_BASE_DIR environment variable (if explicitly set)
+# 2. REPO_ROOT (if running inside a repo tree, detected by iocccsubmit/)
+# 3. /var/ioccc (production fallback)
+#
+if "IOCCC_BASE_DIR" in os.environ:
+    APPDIR = Path(os.environ["IOCCC_BASE_DIR"])
+elif IOCCCSUBMIT_DIR.exists():
+    APPDIR = REPO_ROOT
+elif Path("/var/ioccc").exists():
+    APPDIR = Path("/var/ioccc")
 else:
-    # 5. Production fallback
-    APPDIR = "/var/ioccc"
+    APPDIR = REPO_ROOT
 
-# We set FOO_RELATIVE_PATH, the value relative to APPDIR, and
-# then set FOO to be APPDIR + "/" + FOO_RELATIVE_PATH.
-#
-# IMPORTANT NOTE: Calling change_startup_appdir(topdir) can
-#                 change APPDIR and all of the values below
-#                 that depend on APPDIR.
+# Relative path definitions
 #
 PW_FILE_RELATIVE_PATH = "etc/iocccpasswd.json"
-PW_FILE = f'{APPDIR}/{PW_FILE_RELATIVE_PATH}'
-#
-
 INIT_PW_FILE_RELATIVE_PATH = "etc/init.iocccpasswd.json"
-INIT_PW_FILE = f'{APPDIR}/{INIT_PW_FILE_RELATIVE_PATH}'
-#
 PW_LOCK_RELATIVE_PATH = "etc/iocccpasswd.lock"
-PW_LOCK = f'{APPDIR}/{PW_LOCK_RELATIVE_PATH}'
-#
 ADM_FILE_RELATIVE_PATH = "etc/admins.json"
-ADM_FILE = f'{APPDIR}/{ADM_FILE_RELATIVE_PATH}'
-#
 SECRET_FILE_RELATIVE_PATH = "etc/.secret"
-SECRET_FILE = f'{APPDIR}/{SECRET_FILE_RELATIVE_PATH}'
-#
 USERS_DIR_RELATIVE_PATH = "users"
-USERS_DIR = f'{APPDIR}/{USERS_DIR_RELATIVE_PATH}'
-#
 STATE_FILE_RELATIVE_PATH = "etc/state.json"
-STATE_FILE = f'{APPDIR}/{STATE_FILE_RELATIVE_PATH}'
-#
 INIT_STATE_FILE_RELATIVE_PATH = "etc/init.state.json"
-INIT_STATE_FILE = f'{APPDIR}/{INIT_STATE_FILE_RELATIVE_PATH}'
-#
 STATE_FILE_LOCK_RELATIVE_PATH = "etc/state.lock"
-STATE_FILE_LOCK = f'{APPDIR}/{STATE_FILE_LOCK_RELATIVE_PATH}'
-#
 PW_WORDS_RELATIVE_PATH = "etc/pw.words"
-PW_WORDS = f'{APPDIR}/{PW_WORDS_RELATIVE_PATH}'
+
+# Absolute path resolutions (as Path objects)
+#
+PW_FILE = APPDIR / PW_FILE_RELATIVE_PATH
+INIT_PW_FILE = APPDIR / INIT_PW_FILE_RELATIVE_PATH
+PW_LOCK = APPDIR / PW_LOCK_RELATIVE_PATH
+ADM_FILE = APPDIR / ADM_FILE_RELATIVE_PATH
+SECRET_FILE = APPDIR / SECRET_FILE_RELATIVE_PATH
+USERS_DIR = APPDIR / USERS_DIR_RELATIVE_PATH
+STATE_FILE = APPDIR / STATE_FILE_RELATIVE_PATH
+INIT_STATE_FILE = APPDIR / INIT_STATE_FILE_RELATIVE_PATH
+STATE_FILE_LOCK = APPDIR / STATE_FILE_LOCK_RELATIVE_PATH
+PW_WORDS = APPDIR / PW_WORDS_RELATIVE_PATH
 
 # minimum SECRET length in characters
 #
