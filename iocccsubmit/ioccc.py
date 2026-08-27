@@ -50,10 +50,6 @@ from flask_limiter.util import get_remote_address
 # pylint: disable-next=unused-import
 from iocccsubmit.ioccc_common import \
         APPDIR, \
-        MARGIN_SIZE, \
-        MAX_PASSWORD_LENGTH, \
-        MAX_TARBALL_LEN, \
-        MIN_PASSWORD_LENGTH, \
         contest_open_close, \
         debug, \
         error, \
@@ -62,6 +58,10 @@ from iocccsubmit.ioccc_common import \
         initialize_user_tree, \
         is_proper_password, \
         lookup_username, \
+        MARGIN_SIZE, \
+        MAX_PASSWORD_LENGTH, \
+        MAX_TARBALL_LEN, \
+        MIN_PASSWORD_LENGTH, \
         must_change_password, \
         read_state, \
         return_client_ip, \
@@ -70,6 +70,7 @@ from iocccsubmit.ioccc_common import \
         return_slot_dir_path, \
         return_user_dir_path, \
         set_ioccc_locale, \
+        TEMPLATES_DIR, \
         update_password, \
         update_slot, \
         user_allowed_to_login, \
