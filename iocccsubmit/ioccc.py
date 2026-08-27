@@ -48,42 +48,44 @@ from flask_limiter.util import get_remote_address
 # Sort the import list with: sort -d -u
 #
 # pylint: disable-next=unused-import
-from iocccsubmit.ioccc_common import \
-        APPDIR, \
-        contest_open_close, \
-        debug, \
-        error, \
-        get_all_json_slots, \
-        info, \
-        initialize_user_tree, \
-        is_proper_password, \
-        lookup_username, \
-        MARGIN_SIZE, \
-        MAX_PASSWORD_LENGTH, \
-        MAX_TARBALL_LEN, \
-        MIN_PASSWORD_LENGTH, \
-        must_change_password, \
-        read_state, \
-        return_client_ip, \
-        return_last_errmsg, \
-        return_secret, \
-        return_slot_dir_path, \
-        return_user_dir_path, \
-        set_ioccc_locale, \
-        TEMPLATES_DIR, \
-        update_password, \
-        update_slot, \
-        user_allowed_to_login, \
-        valid_password_change, \
-        verify_hashed_password, \
-        warning
+from iocccsubmit.ioccc_common import (
+    APPDIR,
+    contest_open_close,
+    debug,
+    error,
+    get_all_json_slots,
+    info,
+    initialize_user_tree,
+    is_proper_password,
+    lookup_username,
+    MARGIN_SIZE,
+    MAX_PASSWORD_LENGTH,
+    MAX_TARBALL_LEN,
+    MIN_PASSWORD_LENGTH,
+    must_change_password,
+    read_state,
+    return_client_ip,
+    return_last_errmsg,
+    return_secret,
+    return_slot_dir_path,
+    return_user_dir_path,
+    set_ioccc_locale,
+    STATIC_DIR,
+    TEMPLATES_DIR,
+    update_password,
+    update_slot,
+    user_allowed_to_login,
+    valid_password_change,
+    verify_hashed_password,
+    warning,
+)
 
 
 # ioccc.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.3 2026-08-26"
+VERSION_IOCCC = "2.10.4 2026-08-26"
 
 
 # IOCCC requires use of C locale
@@ -95,9 +97,9 @@ set_ioccc_locale()
 #
 application = Flask(
     __name__,
-    template_folder=str(TEMPLATES_DIR),
-    static_folder=str(APPDIR / "static"),
-    root_path=str(APPDIR)
+    template_folder=TEMPLATES_DIR,
+    static_folder=STATIC_DIR,
+    root_path=str(APPDIR),
 )
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN + MARGIN_SIZE
 application.config['FLASH_APP'] = "iocccsubmit"
