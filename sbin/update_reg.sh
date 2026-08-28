@@ -122,7 +122,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.4 2026-08-27"
+export VERSION="2.2.5 2026-08-28"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -538,9 +538,9 @@ function replace_file_git_add
     SRC="$1"
     DEST="$2"
 
-    # do nothing if src is not a readable non-empty file
+    # do nothing if src is not a readable file
     #
-    if [[ -z $SRC || ! -e $SRC || ! -f $SRC || ! -s $SRC ]]; then
+    if [[ -z $SRC || ! -e $SRC || ! -f $SRC ]]; then
 	return
     fi
 
@@ -1275,17 +1275,6 @@ if [[ -z $NOOP ]]; then
     fi
     replace_file_git_add "$TMP_WHO_IOCCC" "$WHO_IOCCC"
     rm -f "$TMP_WHO_IOCCC" # temp file no longer needed
-
-    # Explicit sanitation of WHO_IOCCC
-    if [[ -f $WHO_IOCCC && -s $WHO_IOCCC ]]; then
-	if [[ $V_FLAG -ge 3 ]]; then
-	    echo "$0: debug[3]: sanitizing $WHO_IOCCC" 1>&2
-	fi
-	sed -i -e '/^[[:space:]]*$/d' \
-	       -e '/^[[:space:]]*[Mm]embership/d' \
-	       -e '/^[[:space:]]*-/d' \
-	       -e '/^[[:space:]]*Ecartis/d' "$WHO_IOCCC" 2>"$TMP_STDERR"
-    fi
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not update who-ioccc file: $WHO_IOCCC" 1>&2
 fi
@@ -1333,23 +1322,12 @@ if [[ -z $NOOP ]]; then
     fi
     replace_file_git_add "$TMP_FREELISTS_LST" "$FREELISTS_LST"
     rm -f "$TMP_FREELISTS_LST" # temp file no longer needed
-
-    # Explicit sanitation of FREELISTS_LST
-    if [[ -f $FREELISTS_LST && -s $FREELISTS_LST ]]; then
-	if [[ $V_FLAG -ge 3 ]]; then
-	    echo "$0: debug[3]: sanitizing $FREELISTS_LST" 1>&2
-	fi
-	sed -i -e '/^[[:space:]]*$/d' \
-	       -e '/^[[:space:]]*[Mm]embership/d' \
-	       -e '/^[[:space:]]*-/d' \
-	       -e '/^[[:space:]]*Ecartis/d' "$FREELISTS_LST" 2>"$TMP_STDERR"
-    fi
 elif [[ $V_FLAG -ge 1 ]]; then
     echo "$0: debug[1]: because of -n, did not update freelists.lst file: $FREELISTS_LST" 1>&2
 fi
 
 
-# form temporary regsier.lst file
+# form temporary register.lst file
 #
 export TMP_REGISTER_LST="$TMP_DIR/.tmp.$NAME.REGISTER_LST.$$.tmp"
 if [[ -z $NOOP ]]; then
@@ -1373,7 +1351,7 @@ if [[ $V_FLAG -ge 3 ]]; then
 fi
 
 
-# update regsier.lst if needed
+# update register.lst if needed
 #
 if [[ -z $NOOP ]]; then
     if [[ $V_FLAG -ge 1 ]]; then
