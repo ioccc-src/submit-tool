@@ -1460,7 +1460,7 @@ if [[ -z $NOOP ]]; then
 	GIT_COMMIT_NEEDED="true"
 
     elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: the run list if empty: $TMP_RUN_LST" 1>&2
+	echo "$0: debug[1]: the run list is empty: $TMP_RUN_LST" 1>&2
     fi
 
     # remove the TMP_RUN_LST list
