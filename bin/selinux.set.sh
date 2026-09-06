@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables
 #
-export VERSION="2.3.2 2026-08-25"
+export VERSION="2.3.3 2026-09-06"
 NAME=$(basename "$0")
 export NAME
 
@@ -159,7 +159,7 @@ semanage fcontext -a -t httpd_sys_content_t '/var/ioccc/templates(/.*)?'
 semanage fcontext -a -t httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
 
 # 5. Log context rules (covers /var/log/ioccc and any rotated variants)
-semanage fcontext -a -t httpd_log_t '/var/log/ioccc.*'
+semanage fcontext -a -t var_log_t '/var/log/ioccc.*'
 
 # 6. Apply permissions and contexts
 chown -Rv apache:apache /var/ioccc 2>/dev/null || true
