@@ -23,6 +23,7 @@ NOTE: This flask-login was inspired by the following:
 
 # system imports
 #
+import logging
 import inspect
 import re
 import os
@@ -48,6 +49,8 @@ from flask_limiter.util import get_remote_address
 # Sort the import list with: sort -d -u
 #
 # pylint: disable-next=unused-import
+#
+from iocccsubmit import ioccc_common
 from iocccsubmit.ioccc_common import (
     APPDIR,
     contest_open_close,
@@ -56,8 +59,6 @@ from iocccsubmit.ioccc_common import (
     get_all_json_slots,
     info,
     initialize_user_tree,
-    ioccc_logger,
-    is_proper_password,
     lookup_username,
     MARGIN_SIZE,
     MAX_PASSWORD_LENGTH,
@@ -76,17 +77,18 @@ from iocccsubmit.ioccc_common import (
     update_password,
     update_slot,
     user_allowed_to_login,
-    valid_password_change,
     verify_hashed_password,
     warning,
 )
+#
+# pylint: enable-next=unused-import
 
 
 # ioccc.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.6 2026-09-06"
+VERSION_IOCCC = "2.10.7 2026-09-06"
 
 
 # IOCCC requires use of C locale
@@ -1156,8 +1158,6 @@ def passwd():
 
 # pylint: disable=unused-argument
 #
-# Handle standard rate limit errors.
-#
 @application.errorhandler(429)
 def ratelimit_error_handler(e):
     """
@@ -1170,11 +1170,12 @@ def ratelimit_error_handler(e):
 
     msg = f"flasklim: {ip}: rate limit exceeded on {request.path}: {e}"
 
-    # Log via ioccc_logger if available, or fall back to application.logger / syslog
-    if ioccc_logger is not None:
-        ioccc_logger.warning(msg)
+    # Query ioccc_common.ioccc_logger directly at runtime
+    if ioccc_common.ioccc_logger is not None:
+        ioccc_common.ioccc_logger.warning(msg)
     else:
-        application.logger.warning(msg)
+        # Fallback directly to Python logging under the "ioccc" syslog logger name
+        logging.getLogger("ioccc").warning(msg)
 
     return render_template_string(
         """
