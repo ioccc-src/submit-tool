@@ -86,7 +86,7 @@ from iocccsubmit.ioccc_common import (
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.5 2026-09-06"
+VERSION_IOCCC = "2.10.6 2026-09-06"
 
 
 # IOCCC requires use of C locale
@@ -1168,9 +1168,13 @@ def ratelimit_error_handler(e):
     if ip and "," in ip:
         ip = ip.split(",")[0].strip()
 
-    # Log to syslog (facility local5 / ioccc logger) for mksidecar parsing
+    msg = f"flasklim: {ip}: rate limit exceeded on {request.path}: {e}"
+
+    # Log via ioccc_logger if available, or fall back to application.logger / syslog
     if ioccc_logger is not None:
-        ioccc_logger.warning("flasklim: %s: rate limit exceeded on %s: %s", ip, request.path, e)
+        ioccc_logger.warning(msg)
+    else:
+        application.logger.warning(msg)
 
     return render_template_string(
         """
