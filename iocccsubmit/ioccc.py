@@ -1168,7 +1168,7 @@ def ratelimit_error_handler(e):
     if ip and "," in ip:
         ip = ip.split(",")[0].strip()
 
-    msg = f"flasklim: {ip}: rate limit exceeded on {request.path}: {e}"
+    msg = f"flasklim: {ip}: rate limit exceeded on {request.path}"
 
     # Query ioccc_common.ioccc_logger directly at runtime
     if ioccc_common.ioccc_logger is not None:
