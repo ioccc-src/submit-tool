@@ -56,6 +56,7 @@ from iocccsubmit.ioccc_common import (
     get_all_json_slots,
     info,
     initialize_user_tree,
+    ioccc_logger,
     is_proper_password,
     lookup_username,
     MARGIN_SIZE,
@@ -85,7 +86,7 @@ from iocccsubmit.ioccc_common import (
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.4 2026-08-26"
+VERSION_IOCCC = "2.10.5 2026-09-06"
 
 
 # IOCCC requires use of C locale
@@ -1160,8 +1161,17 @@ def passwd():
 @application.errorhandler(429)
 def ratelimit_error_handler(e):
     """
-    Handle normal rate limit errors with a nice friendly error message.
+    Handle normal rate limit errors with a nice friendly error message and log to syslog.
     """
+    # Extract client IP (handle proxy header if present)
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if ip and "," in ip:
+        ip = ip.split(",")[0].strip()
+
+    # Log to syslog (facility local5 / ioccc logger) for mksidecar parsing
+    if ioccc_logger is not None:
+        ioccc_logger.warning("flasklim: %s: rate limit exceeded on %s: %s", ip, request.path, e)
+
     return render_template_string(
         """
         <html>
