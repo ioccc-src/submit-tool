@@ -323,6 +323,7 @@ ${PW}: ${INIT_PW}
 
 # IOCCC submit server state file - initialize if missing or empty
 #
+.PHONY: ${STATE}
 ${STATE}: ${INIT_STATE}
 	@if [[ ! -s $@ ]]; then \
 	    echo ${CP} -v -f ${INIT_STATE} $@; \
