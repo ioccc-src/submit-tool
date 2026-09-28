@@ -94,7 +94,7 @@ def main():
                         metavar='dbglvl',
                         type=str)
     parser.add_argument('arg',
-                        help="email (or usernane of -u)",
+                        help="email (or username if -u)",
                         nargs="*")
     args = parser.parse_args()
 
@@ -126,7 +126,7 @@ def main():
             print_email = False
             print_username = False
         else:
-            prerr(f'{program}: -e may only be followed by e, u, eu, or ue')
+            prerr(f'{program}: -s may only be followed by e, u, eu, or ue')
             sys.exit(4)
 
     # -0 - print None when user has no registered email

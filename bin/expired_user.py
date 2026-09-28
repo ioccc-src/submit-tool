@@ -94,7 +94,7 @@ def main():
                         metavar='dbglvl',
                         type=str)
     parser.add_argument('arg',
-                        help="email (or usernane of -u)",
+                        help="email (or username if -u)",
                         nargs="*")
     args = parser.parse_args()
 
@@ -106,7 +106,6 @@ def main():
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             prerr(f'{program}: change_startup_appdir failed: {return_last_errmsg()}')
             sys.exit(3)
 
@@ -126,7 +125,7 @@ def main():
             print_email = False
             print_username = False
         else:
-            prerr(f'{program}: -e may only be followed by e, u, eu, or ue')
+            prerr(f'{program}: -s may only be followed by e, u, eu, or ue')
             sys.exit(4)
 
     # -u - args are usernames
@@ -147,7 +146,6 @@ def main():
         #
         pw_dict = read_pwfile()
         if not pw_dict:
-            prerr(f'{program}: failed to load the submit server IOCCC password file')
             prerr(f'{program}: failed to load the submit server IOCCC password file')
             sys.exit(5)
 
