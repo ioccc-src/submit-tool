@@ -312,6 +312,7 @@ reflaskkey:
 
 # IOCCC submit server password file - initialize if missing or empty
 #
+.PHONY: ${PW}
 ${PW}: ${INIT_PW}
 	@if [[ ! -s $@ ]]; then \
 	    echo ${CP} -v -f ${INIT_PW} $@; \
