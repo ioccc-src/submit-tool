@@ -337,7 +337,7 @@ uuidgen)
 	echo "$0: ERROR: $UUIDGEN_TOOL for VALU2 failed, error code: $status" 1>&1
 	exit 1
     fi
-    echo "$VALUE1.$VALUE2" | tr -d -
+    echo "$VALUE1.$VALUE2" | tr -d '-'
     ;;
 
 base64)

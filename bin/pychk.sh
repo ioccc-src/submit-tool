@@ -204,6 +204,10 @@ if [[ -n $CD_FAILED ]]; then
     exit 6
 fi
 
+# Run pylint against this checkout's sources, even before the package has been installed.
+#
+export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
+
 
 # pylint iocccsubmit module files
 #
