@@ -6,7 +6,7 @@
 #
 #   bin/pychk.sh
 #
-# Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2024,2026 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.5.1 2025-12-22"
+export VERSION="2.6.0 2026-09-27"
 NAME=$(basename "$0")
 export NAME
 #

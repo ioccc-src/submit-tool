@@ -37,7 +37,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.3 2026-02-07"
+VERSION = "2.1.0 2026-09-27"
 
 
 # pylint: disable=too-many-branches
