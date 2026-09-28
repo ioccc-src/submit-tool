@@ -60,7 +60,7 @@ V=@:
 
 # package version
 #
-VERSION= 2.4.2
+VERSION= 2.5.0
 
 # Python package name
 #
@@ -310,6 +310,28 @@ reflaskkey:
 	${GENFLASHKEY} -F ${FLASK_KEY}
 	${V} echo DEBUG =-= $@ end =-=
 
+# IOCCC submit server password file - initialize if missing or empty
+#
+.PHONY: ${PW}
+${PW}: ${INIT_PW}
+	@if [[ ! -s $@ ]]; then \
+	    echo ${CP} -v -f ${INIT_PW} $@; \
+	    ${CP} -v -f ${INIT_PW} $@; \
+	    echo ${CHMOD} -v 0664 $@; \
+	    ${CHMOD} -v 0664 $@; \
+	fi
+
+# IOCCC submit server state file - initialize if missing or empty
+#
+.PHONY: ${STATE}
+${STATE}: ${INIT_STATE}
+	@if [[ ! -s $@ ]]; then \
+	    echo ${CP} -v -f ${INIT_STATE} $@; \
+	    ${CP} -v -f ${INIT_STATE} $@; \
+	    echo ${CHMOD} -v 0664 $@; \
+	    ${CHMOD} -v 0664 $@; \
+	fi
+
 # rebuild etc/pw.words from POLITE_ENGLISH_WORDS
 #
 rebuild_pw_words: ${POLITE_ENGLISH_WORDS}
@@ -374,7 +396,7 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@mkdir -p staged unexpected
 	@echo 'This only installs locally into a python virtual environment.'
 	@echo
-	@echo 'If you are on the submit sever, next as root, run:'
+	@echo 'If you are on the submit server, next as root, run:'
 	@echo
 	@echo '    make root_install'
 	@echo
@@ -388,7 +410,7 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 #
 sbin_install: ${SBIN_SRC}
 	${V} echo DEBUG =-= $@ start =-=
-	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
+	@if [[ -d ${DOCROOT} ]]; then echo "ERROR: dir cannot exist: ${DOCROOT} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	${INSTALL} -o root -g 0 -m 0755 -d ${DESTSDIR}
 	${INSTALL} -o root -g 0 -m 0555 ${SBIN_SRC} ${DESTSDIR}
@@ -412,7 +434,7 @@ sbin_uninstall:
 #
 root_install: ${SELINUX_SET} root_setup
 	${V} echo DEBUG =-= $@ start =-=
-	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT}} to make $@" 1>&2; exit 1; fi
+	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
 	@echo
 	@echo Set directory ownership
@@ -454,7 +476,7 @@ root_install: ${SELINUX_SET} root_setup
 # NOTE: ${DOCROOT} must be a directory before this rule can function.
 # 	This is a "firewall" against installing on the wrong system.
 #
-root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
+root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASK_KEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ ! -d ${DOCROOT} ]]; then echo "ERROR: dir must exist: ${DOCROOT} to make $@" 1>&2; exit 1; fi
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi

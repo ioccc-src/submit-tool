@@ -88,7 +88,7 @@ from iocccsubmit.ioccc_common import (
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.10.7 2026-09-06"
+VERSION_IOCCC = "2.11.0 2026-09-27"
 
 
 # IOCCC requires use of C locale
@@ -341,7 +341,7 @@ def login():
             if not close_datetime:
                 info(f'{me}: {return_client_ip()}: '
                      f'cannot determine the contest close date')
-                open_datetime = "ERROR: unknown close date"
+                close_datetime = "ERROR: unknown close date"
                 flash('ERROR: cannot determine the contest close date.')
             return render_template('not-open.html',
                                    flask_login = flask_login,
@@ -950,7 +950,7 @@ def upload():
     #
     info(f'{me}: {return_client_ip()}: '
          f'username: {username} slot_num: {slot_num} uploaded: {file.filename}')
-    flash(f'File {file.filename}  was uploaded successfully.')
+    flash(f'File {file.filename} was uploaded successfully.')
 
     # get, again, the JSON for all slots for the user
     #

@@ -13,7 +13,7 @@
 #	     production since each instance of the application has a
 #	     different SECRET_KEY value.
 #
-# Copyright (c) 2024-2025 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2024-2026 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -58,7 +58,7 @@ export LC_ALL="C"
 
 # setup
 #
-export VERSION="2.2.0 2025-03-13"
+export VERSION="2.3.0 2026-09-27"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
@@ -337,7 +337,7 @@ uuidgen)
 	echo "$0: ERROR: $UUIDGEN_TOOL for VALU2 failed, error code: $status" 1>&1
 	exit 1
     fi
-    echo "$VALUE1.$VALUE2" | tr -d -
+    echo "$VALUE1.$VALUE2" | tr -d '-'
     ;;
 
 base64)
