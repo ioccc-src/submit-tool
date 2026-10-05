@@ -88,7 +88,7 @@ from iocccsubmit.ioccc_common import (
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.11.0 2026-09-27"
+VERSION_IOCCC = "2.11.1 2026-10-05"
 
 
 # IOCCC requires use of C locale
