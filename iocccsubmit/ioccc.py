@@ -65,6 +65,7 @@ from iocccsubmit.ioccc_common import (
     MAX_TARBALL_LEN,
     MIN_PASSWORD_LENGTH,
     must_change_password,
+    POSIX_SAFE_RE,
     read_state,
     return_client_ip,
     return_last_errmsg,
@@ -875,8 +876,17 @@ def upload():
 
     # verify that the filename is in a submit file form
     #
-    re_match_str = f'^submit\\.{username}-{slot_num}\\.[1-9][0-9]{{9,}}\\.txz$'
-    if not re.match(re_match_str, file.filename):
+    if not re.fullmatch(POSIX_SAFE_RE, username):
+        error(f'{me}: {return_client_ip()}: username: {username} invalid upload filename component')
+        flash('Invalid upload path.')
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    re_match_str = f'submit\\.{re.escape(username)}-{slot_num}\\.(?P<ts>[1-9][0-9]{{9,}})\\.txz'
+    filename_match = re.fullmatch(re_match_str, file.filename)
+    if not filename_match:
         debug(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} invalid form of a filename')
         flash(f'Filename for slot: {slot_num} must match this regular expression: {re_match_str}')
@@ -888,8 +898,7 @@ def upload():
 
     # save the file in the slot
     #
-    ts_match = re.match(r'^submit\.[^-]+-[0-9]+\.(?P<ts>[1-9][0-9]{9,})\.txz$', file.filename)
-    submit_ts = ts_match.group('ts') if ts_match else None
+    submit_ts = filename_match.group('ts')
     safe_filename = f'submit.{username}-{slot_num}.{submit_ts}.txz'
     slot_root = os.path.realpath(os.path.join(user_dir, str(slot_num)))
     upload_file = os.path.realpath(os.path.join(slot_root, safe_filename))
