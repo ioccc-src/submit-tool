@@ -888,7 +888,17 @@ def upload():
 
     # save the file in the slot
     #
-    upload_file = f'{user_dir}/{slot_num}/{file.filename}'
+    slot_root = os.path.realpath(os.path.join(user_dir, str(slot_num)))
+    upload_file = os.path.realpath(os.path.join(slot_root, file.filename))
+    if os.path.commonpath([slot_root, upload_file]) != slot_root:
+        error(f'{me}: {return_client_ip()}: '
+              f'username: {username} slot_num: {slot_num} invalid upload path')
+        flash('Invalid upload path.')
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
     file.save(upload_file)
 
     # verify file size
