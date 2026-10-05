@@ -888,8 +888,11 @@ def upload():
 
     # save the file in the slot
     #
+    ts_match = re.match(r'^submit\.[^-]+-[0-9]+\.(?P<ts>[1-9][0-9]{9,})\.txz$', file.filename)
+    submit_ts = ts_match.group('ts') if ts_match else None
+    safe_filename = f'submit.{username}-{slot_num}.{submit_ts}.txz'
     slot_root = os.path.realpath(os.path.join(user_dir, str(slot_num)))
-    upload_file = os.path.realpath(os.path.join(slot_root, file.filename))
+    upload_file = os.path.realpath(os.path.join(slot_root, safe_filename))
     if os.path.commonpath([slot_root, upload_file]) != slot_root:
         error(f'{me}: {return_client_ip()}: '
               f'username: {username} slot_num: {slot_num} invalid upload path')
