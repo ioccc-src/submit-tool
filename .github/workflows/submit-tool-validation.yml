@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out submit-tool
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -42,12 +42,13 @@ jobs:
   ubuntu-e2e:
     name: Disposable Ubuntu Apache install and login
     runs-on: ubuntu-24.04
+    environment: submit-httpd-e2e
     if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.ref == 'refs/heads/submit-workflow' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Check out submit-tool
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Require private Apache configuration access
         env:
@@ -59,7 +60,7 @@ jobs:
           fi
 
       - name: Check out submit.httpd
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: lcn2/submit.httpd
           ref: master
@@ -164,6 +165,7 @@ jobs:
           sudo apache2 -f /etc/httpd/conf/httpd.conf -k start
           for attempt in $(seq 1 30); do
             if curl --silent --show-error --insecure \
+              --noproxy '*' \
               --resolve submit.ioccc.org:443:127.0.0.1 \
               https://submit.ioccc.org/ -o /tmp/submit-login.html; then
               break
@@ -192,6 +194,7 @@ jobs:
           url = "https://submit.ioccc.org/"
           context = ssl._create_unverified_context()
           opener = urllib.request.build_opener(
+              urllib.request.ProxyHandler({}),
               urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
               urllib.request.HTTPSHandler(context=context),
           )

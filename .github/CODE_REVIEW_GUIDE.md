@@ -49,10 +49,13 @@ Pull-request CI runs the build and `bin/pychk.sh`. Its separate Ubuntu
 integration job runs `make root_install` only in a fresh, disposable GitHub
 hosted runner, then checks the Apache-hosted login page and a generated
 temporary account. That job checks out the private `lcn2/submit.httpd`
-configuration using the `SUBMIT_HTTPD_READ_TOKEN` Actions secret, which must
-have read-only contents access to that repository. The job is skipped for
-pull requests from forks, where secrets are not provided. It is not a test of
-SELinux enforcement on RHEL.
+configuration using the `SUBMIT_HTTPD_READ_TOKEN` secret from the
+`submit-httpd-e2e` Actions environment. Restrict that environment to deployments
+from the `submit-workflow` branch and store the token only as an environment
+secret, not a repository secret. The integration job runs only on pushes to or
+manual dispatches from that trusted branch; it does not run on pull requests.
+This prevents unreviewed PR code from receiving the private-repository token.
+The job is not a test of SELinux enforcement on RHEL.
 
 ## Safe script testing
 
@@ -112,3 +115,9 @@ GitHub Actions must not deploy to Conway or `submit.ioccc.org`. It may run the
 root-only `root_install` target only inside its fresh hosted VM. The
 `submit.httpd` configuration and generated credentials used by that test are
 test-only; no production account, password, or data may be used.
+
+The private configuration checkout token must be an environment secret on the
+`submit-httpd-e2e` environment. Configure that environment's deployment
+branches to allow only `submit-workflow`. Do not store this token as a
+repository-level secret; the integration test deliberately does not run for
+pull requests.
