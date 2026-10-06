@@ -97,8 +97,12 @@ jobs:
           sudo systemctl stop apache2
           sudo install -d /etc/httpd
           sudo cp -a submit.httpd/. /etc/httpd/
+          # The RHEL configuration repository uses links to RHEL-specific
+          # paths. Replace these links with writable Ubuntu test directories.
+          sudo rm -f /etc/httpd/modules /etc/httpd/run /etc/httpd/state
           sudo install -d /etc/httpd/modules /etc/httpd/run \
-            /var/ioccc /var/log/httpd /var/log/ioccc /var/log/trap-httpd
+            /etc/httpd/state /var/ioccc /var/log/httpd /var/log/ioccc \
+            /var/log/trap-httpd
           for module in /usr/lib/apache2/modules/*.so; do
             sudo ln -sfn "$module" "/etc/httpd/modules/${module##*/}"
           done
