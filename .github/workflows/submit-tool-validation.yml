@@ -1,0 +1,191 @@
+name: Submit-tool validation
+
+on:
+  pull_request:
+    branches:
+      - submit-workflow
+  push:
+    branches:
+      - submit-workflow
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Build, Pylint, and ShellCheck
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out submit-tool
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y shellcheck
+
+      - name: Build and install the local virtual environment
+        run: make clobber all install
+
+      - name: Run Pylint and ShellCheck
+        shell: bash
+        run: |
+          source venv/bin/activate
+          bin/pychk.sh
+
+  ubuntu-e2e:
+    name: Disposable Ubuntu Apache install and login
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Check out submit-tool
+        uses: actions/checkout@v4
+
+      - name: Require private Apache configuration access
+        env:
+          SUBMIT_HTTPD_READ_TOKEN: ${{ secrets.SUBMIT_HTTPD_READ_TOKEN }}
+        run: |
+          if [[ -z $SUBMIT_HTTPD_READ_TOKEN ]]; then
+            echo "Configure the SUBMIT_HTTPD_READ_TOKEN Actions secret with read-only access to lcn2/submit.httpd" >&2
+            exit 1
+          fi
+
+      - name: Check out submit.httpd
+        uses: actions/checkout@v4
+        with:
+          repository: lcn2/submit.httpd
+          ref: master
+          path: submit.httpd
+          token: ${{ secrets.SUBMIT_HTTPD_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Install Apache, SELinux utilities, and build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            apache2 \
+            curl \
+            libapache2-mod-wsgi-py3 \
+            openssl \
+            policycoreutils \
+            policycoreutils-python-utils \
+            python3-pip \
+            python3-venv \
+            rsync \
+            selinux-policy-default \
+            selinux-utils
+
+      - name: Configure disposable Apache test host
+        shell: bash
+        run: |
+          if ! getent group apache >/dev/null; then
+            sudo groupadd --system apache
+          fi
+          if ! getent passwd apache >/dev/null; then
+            sudo useradd --system --gid apache --home-dir /var/www \
+              --shell /usr/sbin/nologin apache
+          fi
+
+          sudo systemctl stop apache2
+          sudo install -d /etc/httpd
+          sudo cp -a submit.httpd/. /etc/httpd/
+          sudo install -d /etc/httpd/modules /etc/httpd/run \
+            /var/ioccc /var/log/httpd /var/log/ioccc /var/log/trap-httpd
+          for module in /usr/lib/apache2/modules/*.so; do
+            sudo ln -sfn "$module" "/etc/httpd/modules/${module##*/}"
+          done
+
+          # The checked-out production config binds to the submit server's
+          # public address. Rebind only the disposable copy to loopback.
+          sudo find /etc/httpd -type f -name '*.conf' \
+            -exec sed -i 's/209\.94\.60\.67/127.0.0.1/g' {} +
+
+          sudo install -d /etc/letsencrypt/live/submit.ioccc.org
+          sudo openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj /CN=submit.ioccc.org \
+            -keyout /etc/letsencrypt/live/submit.ioccc.org/privkey.pem \
+            -out /etc/letsencrypt/live/submit.ioccc.org/fullchain.pem
+          sudo install -m 0644 /dev/null \
+            /etc/letsencrypt/options-ssl-apache.conf
+          printf '127.0.0.1 submit.ioccc.org\n' | sudo tee -a /etc/hosts >/dev/null
+
+      - name: Build and install submit-tool locally
+        run: make clobber all install
+
+      - name: Run Pylint and ShellCheck
+        shell: bash
+        run: |
+          source venv/bin/activate
+          bin/pychk.sh
+
+      - name: Install submit-tool under /var/ioccc
+        run: |
+          sudo env "PATH=$PATH" PIP_BREAK_SYSTEM_PACKAGES=1 make root_install
+
+      - name: Check SELinux setup tools and Apache configuration
+        run: |
+          sudo semanage fcontext --list >/dev/null
+          sudo apache2 -f /etc/httpd/conf/httpd.conf -t
+
+      - name: Start Apache and verify the login page and generated account
+        shell: bash
+        run: |
+          sudo apache2 -f /etc/httpd/conf/httpd.conf -k start
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --insecure \
+              --resolve submit.ioccc.org:443:127.0.0.1 \
+              https://submit.ioccc.org/ -o /tmp/submit-login.html; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q 'Status: Not logged in' /tmp/submit-login.html
+
+          account=$(sudo -u apache /usr/local/bin/gen_acct.sh \
+            devnull@example.org)
+          username=$(sed -n 's/^[[:space:]]*username: //p' <<< "$account")
+          password=$(sed -n 's/^[[:space:]]*password: //p' <<< "$account")
+          if [[ -z $username || -z $password ]]; then
+            echo "Test account generation did not return a username and password" >&2
+            exit 1
+          fi
+          echo "::add-mask::$password"
+
+          TEST_USERNAME="$username" TEST_PASSWORD="$password" python3 - <<'PY'
+          import http.cookiejar
+          import os
+          import ssl
+          import urllib.parse
+          import urllib.request
+
+          url = "https://submit.ioccc.org/"
+          context = ssl._create_unverified_context()
+          opener = urllib.request.build_opener(
+              urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
+              urllib.request.HTTPSHandler(context=context),
+          )
+          login_page = opener.open(url)
+          if login_page.status != 200 or b"Status: Not logged in" not in login_page.read():
+              raise SystemExit("Login page did not render as expected")
+
+          form = urllib.parse.urlencode({
+              "username": os.environ["TEST_USERNAME"],
+              "password": os.environ["TEST_PASSWORD"],
+          }).encode()
+          response = opener.open(urllib.request.Request(url, data=form))
+          body = response.read()
+          if not response.geturl().endswith("/passwd") or b"Current Password" not in body:
+              raise SystemExit("Generated account did not authenticate successfully")
+          PY
+
+      - name: Stop Apache
+        if: always()
+        run: sudo apache2 -f /etc/httpd/conf/httpd.conf -k stop
