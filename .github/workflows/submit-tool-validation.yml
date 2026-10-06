@@ -101,8 +101,9 @@ jobs:
           # paths. Replace these links with writable Ubuntu test directories.
           sudo rm -f /etc/httpd/modules /etc/httpd/run /etc/httpd/state
           sudo install -d /etc/httpd/modules /etc/httpd/run \
-            /etc/httpd/state /var/ioccc /var/log/httpd /var/log/ioccc \
+            /etc/httpd/state /var/ioccc/etc /var/log/httpd /var/log/ioccc \
             /var/log/trap-httpd
+          sudo touch /var/ioccc/etc/save.iocccpasswd.json
           for module in /usr/lib/apache2/modules/*.so; do
             sudo ln -sfn "$module" "/etc/httpd/modules/${module##*/}"
           done
