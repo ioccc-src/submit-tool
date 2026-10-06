@@ -188,4 +188,9 @@ jobs:
 
       - name: Stop Apache
         if: always()
-        run: sudo apache2 -f /etc/httpd/conf/httpd.conf -k stop
+        run: |
+          if [[ -f /etc/httpd/conf/httpd.conf ]] && pgrep -x apache2 >/dev/null; then
+            sudo apache2 -f /etc/httpd/conf/httpd.conf -k stop
+          else
+            echo "No test Apache process to stop."
+          fi
