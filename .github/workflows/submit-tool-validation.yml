@@ -132,7 +132,8 @@ jobs:
 
       - name: Install submit-tool under /var/ioccc
         run: |
-          sudo env "PATH=$PATH" PIP_BREAK_SYSTEM_PACKAGES=1 make root_install
+          sudo env "PATH=$PATH" PIP_BREAK_SYSTEM_PACKAGES=1 \
+            PIP_IGNORE_INSTALLED=1 make root_install
 
       - name: Check SELinux setup tools and Apache configuration
         run: |
