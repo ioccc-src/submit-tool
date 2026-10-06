@@ -107,6 +107,15 @@ jobs:
           for module in /usr/lib/apache2/modules/*.so; do
             sudo ln -sfn "$module" "/etc/httpd/modules/${module##*/}"
           done
+          # Ubuntu statically builds a few modules that the RHEL config
+          # attempts to load dynamically. Drop only those redundant entries.
+          while IFS= read -r module; do
+            module=${module%.c}
+            module=${module#mod_}
+            sudo sed -i \
+              "/^[[:space:]]*LoadModule[[:space:]]\\+${module}_module[[:space:]]/d" \
+              /etc/httpd/conf.modules.d/*.conf
+          done < <(sudo apache2 -l | sed -n 's/^[[:space:]]*\\(mod_[^[:space:]]*\\.c\\)$/\\1/p')
 
           # The checked-out production config binds to the submit server's
           # public address. Rebind only the disposable copy to loopback.
