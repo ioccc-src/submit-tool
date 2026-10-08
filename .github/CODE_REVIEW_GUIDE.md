@@ -49,7 +49,7 @@ Pull-request CI runs the build and `bin/pychk.sh`. Its separate Ubuntu
 integration job runs `make root_install` only in a fresh, disposable GitHub
 hosted runner, then checks the Apache-hosted login page and a generated
 temporary account. It changes the initial password through the web application,
-opens a disposable contest window, builds a pinned `mkiocccentry` revision,
+opens a disposable contest window, builds the latest commit from the toolkit’s `master` branch,
 and uses `test_ioccc/gen_submit.sh` to generate submission archives for that
 account's UUID. It uploads the good slot-5 archive and verifies the stored
 bytes, slot metadata, and the slot's displayed filename, length, and SHA256
