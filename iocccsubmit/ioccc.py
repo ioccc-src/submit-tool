@@ -244,10 +244,13 @@ class User(flask_login.UserMixin):
 @limiter.exempt
 def user_loader(user_id):
     """
-    load the user
+    Load the user only while the account remains eligible to login.
     """
     user = User(user_id)
     if user and hasattr(user, 'id') and user.id:
+        if not user_allowed_to_login(user.user_dict):
+            info(f'user_loader: login not allowed for username: {user_id}')
+            return None
         return user
     return None
 

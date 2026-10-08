@@ -105,7 +105,7 @@ export LC_ALL="C"
 
 # setup variables referenced in the usage message
 #
-export VERSION="2.6.0 2026-09-27"
+export VERSION="2.6.1 2026-10-08"
 NAME=$(basename "$0")
 export NAME
 #
@@ -211,7 +211,8 @@ export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 # pylint iocccsubmit module files
 #
-for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py ; do
+for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py \
+	 tests/test_session_login.py ; do
 
     # announce
     #

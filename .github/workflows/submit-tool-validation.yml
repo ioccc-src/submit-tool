@@ -39,6 +39,9 @@ jobs:
           source venv/bin/activate
           bin/pychk.sh
 
+      - name: Run session eligibility regression tests
+        run: venv/bin/python -m unittest discover -s tests -v
+
   ubuntu-e2e:
     name: Disposable Ubuntu Apache install, login, and upload
     runs-on: ubuntu-latest
