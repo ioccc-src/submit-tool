@@ -3,11 +3,9 @@ name: Submit-tool validation
 on:
   pull_request:
     branches:
-      - submit-workflow
       - master
   push:
     branches:
-      - submit-workflow
       - master
   workflow_dispatch:
 
@@ -17,7 +15,7 @@ permissions:
 jobs:
   checks:
     name: Build, Pylint, and ShellCheck
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out submit-tool
         uses: actions/checkout@v7
@@ -43,11 +41,10 @@ jobs:
 
   ubuntu-e2e:
     name: Disposable Ubuntu Apache install, login, and upload
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment: submit-httpd-e2e
     if: >-
-      (github.ref == 'refs/heads/submit-workflow' ||
-       github.ref == 'refs/heads/master') &&
+      github.ref == 'refs/heads/master' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Check out submit-tool

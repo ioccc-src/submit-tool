@@ -59,9 +59,9 @@ This test does not validate the complete Pwned password dataset or archive
 acceptance by the IOCCC judging process. That job checks out the private `lcn2/submit.httpd`
 configuration using the `SUBMIT_HTTPD_READ_TOKEN` secret from the
 `submit-httpd-e2e` Actions environment. Restrict that environment to deployments
-from the `master` and `submit-workflow` branches and store the token only as an
+from the `master` branch, and store the token only as an
 environment secret, not a repository secret. The integration job runs only on
-pushes to or manual dispatches from those trusted branches; it does not run on
+pushes to or manual dispatches from that trusted branch; it does not run on
 pull requests.
 
 This prevents unreviewed PR code from receiving the private-repository token.
@@ -128,6 +128,6 @@ test-only; no production account, password, or data may be used.
 
 The private configuration checkout token must be an environment secret on the
 `submit-httpd-e2e` environment. Configure that environment's deployment
-branches to allow only `master` and `submit-workflow`. Do not store this token
+branch to allow only `master`. Do not store this token
 as a repository-level secret; the integration test deliberately does not run
 for pull requests.
