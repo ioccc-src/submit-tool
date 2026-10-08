@@ -211,7 +211,8 @@ export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 # pylint iocccsubmit module files
 #
-for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py ; do
+for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py \
+	 tests/test_session_login.py ; do
 
     # announce
     #

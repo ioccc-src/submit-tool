@@ -45,7 +45,10 @@ Every `*.sh` file under `bin/` and `sbin/` must have a clean ShellCheck report:
 no errors, warnings, or informational messages. `sbin/who_email.awk` is AWK and
 is not included in that ShellCheck requirement.
 
-Pull-request CI runs the build and `bin/pychk.sh`. Its separate Ubuntu
+Pull-request CI runs the build, `bin/pychk.sh`, and isolated session-eligibility
+regression tests (`python -m unittest discover -s tests -v`). Existing sessions
+must lose access when login is disabled or the password-change deadline expires.
+Its separate Ubuntu
 integration job runs `make root_install` only in a fresh, disposable GitHub
 hosted runner, then checks the Apache-hosted login page and a generated
 temporary account. It changes the initial password through the web application,
