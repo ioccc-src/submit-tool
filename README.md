@@ -11,7 +11,7 @@ This is the mechanism to upload submissions to an open
 You **MUST set up the python environment** before you run any of the commands in test mode.
 </div>
 
-All of examples assume you have **cd-ed into the top directory**
+All examples assume you have **cd-ed into the top directory**
 where you cloned the [submit tool repo](https://github.com/ioccc-src/submit-tool).
 
 First, make sure to clean out the cache and then build the python virtual environment:
@@ -81,7 +81,7 @@ $ ./bin/ioccc_submit.py
 
 .. where the last blank line is not a command line but rather the server running.
 
-**NOTE**: Do **NOT** put the `bin/ioccc_submit.py` application into background, that
+**NOTE**: Do **NOT** put the `bin/ioccc_submit.py` application into the background.
 
 **NOTE**: in macOS you might see an alert asking you if you wish to allow the
 program to bind and listen to the addresses and port. If you wish to proceed you
@@ -115,7 +115,7 @@ At the console (where the server is running), you should see something like:
 2024-12-20 22:48:53.616: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:48:53] "GET /static/ioccc.png HTTP/1.1" 200 -
 ```
 
-After logging in, should see something like:
+After logging in, you should see something like:
 
 ```
 2024-12-20 22:49:10.521: ioccc: INFO: login: success: username: -your-username-here-
@@ -175,12 +175,12 @@ under wsgi.
 
 **NOTE**: When logging with syslog, the _local5_ facility is used.
 
-**NOTE**: Unless your syslog service it configured to send _local5_
+**NOTE**: Unless your syslog service is configured to send _local5_
 facility to some place useful, `-l syslog` won't do anything useful.
 
-**NOTE**: On some systems, the syslog service is handled `syslogd(8)`
+**NOTE**: On some systems, the syslog service is handled by `syslogd(8)`
 and on others by `rsyslog(8)`.  See `syslog.conf(5)` or `rsyslog.conf(5)`
-details on how to configure syslog.
+for details on how to configure syslog.
 
 **WARNING**: On some systems, the lack of a proper syslog service may
 cause `bin/ioccc_submit.py` to crash due to bogons in the `SysLogHandler`
@@ -248,7 +248,7 @@ ioccc_passwd.py version: 2.2.0 2024-12-22
 
 **NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
-An example in how to add a new user:
+An example of how to add a new user:
 
 ```sh
 ./bin/ioccc_passwd.py -a username -l stderr
@@ -263,7 +263,7 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 **NOTE**: You must [set up the python environment](#setup) **BEFORE** running any of the command(s) below:
 
-For example, to add a user called `username`:
+For example, to remove a user called `username`:
 
 ```sh
 ./bin/ioccc_passwd.py -d username -l stderr
@@ -281,8 +281,8 @@ and a requirement to change that temporary password within the grace period:
 ./bin/ioccc_passwd.py -U -c -l stderr
 ```
 
-The tool will output the username and temporary random that has just been
-added to the `etc/iocccpasswd.json` IOCCC password file.
+The tool will output the username and temporary random password for the account
+that has just been added to the `etc/iocccpasswd.json` IOCCC password file.
 
 
 # bin/ioccc_date.py - manage IOCCC open and close dates
@@ -345,26 +345,10 @@ To set / change the status comment of a user's slot:
 ./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status' -l stderr
 ```
 
-The usage message of the `./bin/ioccc_date.py` is as follows:
+For the current usage message, including the optional collected flag, run:
 
-```
-usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime] [-l logtype]
-                     [-L dbglvl]
-
-Manage IOCCC submit server password file and state file
-
-options:
-  -h, --help            show this help message and exit
-  -t, --topdir appdir   app directory path
-  -s, --start DateTime  set IOCCC start date in YYYY-MM-DD
-                        HH:MM:SS.micros+hh:mm format
-  -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
-                        HH:MM:SS.micros+hh:mm format
-  -l, --log logtype     log via: stdout stderr syslog none (def: syslog)
-  -L, --level dbglvl    set log level: dbg debug info warn warning error crit
-                        critical (def: info)
-
-ioccc_date.py version: 2.2.0 2024-12-22
+```sh
+./bin/set_slot_status.py --help
 ```
 
 
@@ -380,8 +364,8 @@ All that we ask is that your code contributions:
 
 - be well commented, or at least better commented than our code
 - pass pylint 10/10 with a minimum of disable lines
-- work as good, if not better than our code
-- code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
+- work as well as, if not better than, our code
+- be contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 - practice defense in depth and assume bad stuff might slip by external defenses
 - **NOT** spew python stack traces
 
