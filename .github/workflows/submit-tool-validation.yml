@@ -40,7 +40,7 @@ jobs:
           bin/pychk.sh
 
   ubuntu-e2e:
-    name: Disposable Ubuntu Apache install and login
+    name: Disposable Ubuntu Apache install, login, and upload
     runs-on: ubuntu-24.04
     environment: submit-httpd-e2e
     if: >-
@@ -68,11 +68,20 @@ jobs:
           token: ${{ secrets.SUBMIT_HTTPD_READ_TOKEN }}
           persist-credentials: false
 
+      - name: Check out mkiocccentry
+        uses: actions/checkout@v7
+        with:
+          repository: ioccc-src/mkiocccentry
+          ref: d494d2bb5cfb35c8d5417d53752ea9d2c8141179
+          path: mkiocccentry
+          persist-credentials: false
+
       - name: Install Apache, SELinux utilities, and build prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             apache2 \
+            build-essential \
             curl \
             libapache2-mod-wsgi-py3 \
             openssl \
@@ -83,6 +92,10 @@ jobs:
             rsync \
             selinux-policy-default \
             selinux-utils
+
+      - name: Build mkiocccentry
+        working-directory: mkiocccentry
+        run: make clobber all
 
       - name: Configure disposable Apache test host
         shell: bash
@@ -159,7 +172,24 @@ jobs:
           sudo semanage fcontext --list >/dev/null
           sudo apache2 -f /etc/httpd/conf/httpd.conf -t
 
-      - name: Start Apache and verify the login page and generated account
+      - name: Open the disposable contest window
+        run: |
+          sudo /usr/bin/python3 - <<'PY'
+          import datetime
+          import json
+          from pathlib import Path
+
+          state_file = Path("/var/ioccc/etc/state.json")
+          state = json.loads(state_file.read_text())
+          now = datetime.datetime.now(datetime.timezone.utc)
+          for field, offset in (("open_date", -1), ("close_date", 1)):
+              state[field] = (now + datetime.timedelta(days=offset)).strftime(
+                  "%Y-%m-%d %H:%M:%S.%f UTC"
+              )
+          state_file.write_text(json.dumps(state, indent=4) + "\n")
+          PY
+
+      - name: Start Apache and verify login, password change, and upload
         shell: bash
         run: |
           sudo apache2 -f /etc/httpd/conf/httpd.conf -k start
@@ -174,8 +204,9 @@ jobs:
           done
           grep -q 'Status: Not logged in' /tmp/submit-login.html
 
-          account=$(sudo -u apache /usr/local/bin/gen_acct.sh \
-            devnull@example.org)
+          email="ci-$(openssl rand -hex 16)@example.org"
+          account=$(sudo -u apache /usr/local/bin/ioccc_passwd.py \
+            -U -E -c -e "$email")
           username=$(sed -n 's/^[[:space:]]*username: //p' <<< "$account")
           password=$(sed -n 's/^[[:space:]]*password: //p' <<< "$account")
           if [[ -z $username || -z $password ]]; then
@@ -184,10 +215,22 @@ jobs:
           fi
           echo "::add-mask::$password"
 
+          (
+            cd mkiocccentry
+            test_ioccc/gen_submit.sh "$username" "$RUNNER_TEMP/slot_tree"
+          )
+
           TEST_USERNAME="$username" TEST_PASSWORD="$password" python3 - <<'PY'
+          import hashlib
+          import html
           import http.cookiejar
+          import json
           import os
+          from pathlib import Path
+          import re
+          import secrets
           import ssl
+          import subprocess
           import urllib.parse
           import urllib.request
 
@@ -210,6 +253,78 @@ jobs:
           body = response.read()
           if not response.geturl().endswith("/passwd") or b"Current Password" not in body:
               raise SystemExit("Generated account did not authenticate successfully")
+
+          new_password = secrets.token_urlsafe(32)
+          print(f"::add-mask::{new_password}", flush=True)
+          form = urllib.parse.urlencode({
+              "old_password": os.environ["TEST_PASSWORD"],
+              "new_password": new_password,
+              "reenter_new_password": new_password,
+          }).encode()
+          response = opener.open(urllib.request.Request(url + "passwd", data=form), timeout=30)
+          if b"Password successfully changed." not in response.read():
+              raise SystemExit("Initial password change failed")
+
+          form = urllib.parse.urlencode({
+              "username": os.environ["TEST_USERNAME"],
+              "password": new_password,
+          }).encode()
+          response = opener.open(urllib.request.Request(url, data=form), timeout=30)
+          if b'name="slot_num"' not in response.read():
+              raise SystemExit("Changed password did not unlock the submission page")
+
+          slot = 5
+          username = os.environ["TEST_USERNAME"]
+          archive_dir = Path(os.environ["RUNNER_TEMP"]) / "slot_tree/good/workdir" / f"{username}-{slot}"
+          archives = list(archive_dir.glob(f"submit.{username}-{slot}.*.txz"))
+          if len(archives) != 1:
+              raise SystemExit("Expected exactly one generated archive for slot 5")
+          archive = archives[0]
+          original = archive.read_bytes()
+          expected_hash = hashlib.sha256(original).hexdigest()
+
+          boundary = secrets.token_hex(24)
+          payload = (
+              f"--{boundary}\r\n"
+              'Content-Disposition: form-data; name="slot_num"\r\n\r\n'
+              f"{slot}\r\n"
+              f"--{boundary}\r\n"
+              f'Content-Disposition: form-data; name="file"; filename="{archive.name}"\r\n'
+              "Content-Type: application/x-xz\r\n\r\n"
+          ).encode() + original + f"\r\n--{boundary}--\r\n".encode()
+          request = urllib.request.Request(url + "update", data=payload, headers={
+              "Content-Type": f"multipart/form-data; boundary={boundary}",
+          })
+          response = opener.open(request, timeout=30)
+          if b"was uploaded successfully." not in response.read():
+              raise SystemExit("Generated submission upload was not accepted")
+
+          slot_dir = Path("/var/ioccc/users") / username / str(slot)
+          stored = subprocess.check_output(["sudo", "cat", str(slot_dir / archive.name)])
+          if stored != original:
+              raise SystemExit("Stored submission differs from the original archive")
+          metadata = json.loads(subprocess.check_output(["sudo", "cat", str(slot_dir / "slot.json")]))
+          if (
+              metadata["filename"] != archive.name
+              or metadata["length"] != len(original)
+              or metadata["SHA256"] != expected_hash
+          ):
+              raise SystemExit("Stored slot filename, length, or SHA256 is incorrect")
+
+          page = opener.open(url + "submit", timeout=30).read().decode()
+          rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.DOTALL)
+          slot_rows = [row for row in rows if f'id="slots{slot}"' in row]
+          if len(slot_rows) != 1:
+              raise SystemExit("Uploaded slot was not uniquely displayed")
+          text = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", slot_rows[0])).split())
+          for expected in (
+              f"Filename : {archive.name}",
+              f"File length : {len(original)}",
+              f"SHA256 : {expected_hash}",
+          ):
+              if not re.search(re.escape(expected) + r"(?=\s|$)", text):
+                  raise SystemExit("Uploaded slot page has incorrect filename, length, or SHA256")
+          print("Slot 5 upload verified: stored bytes, metadata, and displayed length/SHA256 match.")
           PY
 
       - name: Stop Apache

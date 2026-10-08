@@ -48,7 +48,15 @@ is not included in that ShellCheck requirement.
 Pull-request CI runs the build and `bin/pychk.sh`. Its separate Ubuntu
 integration job runs `make root_install` only in a fresh, disposable GitHub
 hosted runner, then checks the Apache-hosted login page and a generated
-temporary account. That job checks out the private `lcn2/submit.httpd`
+temporary account. It changes the initial password through the web application,
+opens a disposable contest window, builds a pinned `mkiocccentry` revision,
+and uses `test_ioccc/gen_submit.sh` to generate submission archives for that
+account's UUID. It uploads the good slot-5 archive and verifies the stored
+bytes, slot metadata, and the slot's displayed filename, length, and SHA256
+against the original archive. The runner installs a C compiler/build tools and
+`rsync` for the toolkit; account emails use random local parts at `example.org`.
+This test does not validate the complete Pwned password dataset or archive
+acceptance by the IOCCC judging process. That job checks out the private `lcn2/submit.httpd`
 configuration using the `SUBMIT_HTTPD_READ_TOKEN` secret from the
 `submit-httpd-e2e` Actions environment. Restrict that environment to deployments
 from the `submit-workflow` branch and store the token only as an environment
