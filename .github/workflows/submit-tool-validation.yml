@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ioccc-src/mkiocccentry
-          ref: d494d2bb5cfb35c8d5417d53752ea9d2c8141179
+          ref: master
           path: mkiocccentry
           persist-credentials: false
 
