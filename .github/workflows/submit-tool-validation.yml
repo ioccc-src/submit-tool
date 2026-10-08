@@ -116,7 +116,7 @@ jobs:
           sudo rm -f /etc/httpd/modules /etc/httpd/run /etc/httpd/state
           sudo install -d /etc/httpd/modules /etc/httpd/run \
             /etc/httpd/state /var/ioccc/etc /var/log/httpd /var/log/ioccc \
-            /var/log/trap-httpd
+            /var/log/trap-httpd /var/trap-www/html
           sudo touch /var/ioccc/etc/save.iocccpasswd.json
           for module in /usr/lib/apache2/modules/*.so; do
             sudo ln -sfn "$module" "/etc/httpd/modules/${module##*/}"
@@ -254,7 +254,7 @@ jobs:
           if not response.geturl().endswith("/passwd") or b"Current Password" not in body:
               raise SystemExit("Generated account did not authenticate successfully")
 
-          new_password = secrets.token_urlsafe(32)
+          new_password = secrets.token_urlsafe(24)
           print(f"::add-mask::{new_password}", flush=True)
           form = urllib.parse.urlencode({
               "old_password": os.environ["TEST_PASSWORD"],
