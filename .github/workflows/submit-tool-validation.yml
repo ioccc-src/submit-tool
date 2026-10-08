@@ -4,9 +4,11 @@ on:
   pull_request:
     branches:
       - submit-workflow
+      - master
   push:
     branches:
       - submit-workflow
+      - master
   workflow_dispatch:
 
 permissions:
@@ -44,7 +46,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: submit-httpd-e2e
     if: >-
-      github.ref == 'refs/heads/submit-workflow' &&
+      (github.ref == 'refs/heads/submit-workflow' ||
+       github.ref == 'refs/heads/master') &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Check out submit-tool
