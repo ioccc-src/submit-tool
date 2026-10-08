@@ -88,7 +88,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-T tmpdir] [-c comm] [-s sort] fil
 	-T tmpdir	form temp files under tmpdir (def: $TMPDIR)
 
 	-c comm	        use comm tool (def: $COMM_TOOL)
-	-s sort		use soer tool (def: $SORT_TOOL)
+	-s sort		use sort tool (def: $SORT_TOOL)
 
 	file1.lst	1st file containing email addresses, one per line
 	file2.lst	2nd file containing email addresses, one per line
@@ -100,7 +100,7 @@ Exit codes:
      1	       output.lst not given, and some email addresses from 1st file not in 2nd file
      2         -h and help string printed or -V and version string printed
      3         command line error
-     4	       comm tool ar sort tool not found or exited non-zero
+     4	       comm tool or sort tool not found or exited non-zero
      5	       unable to read for sorting, file1.lst or file2.lst files
      6	       update to update output.lst
  >= 10         internal error
