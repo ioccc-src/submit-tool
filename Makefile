@@ -84,7 +84,7 @@ MAX_POLITE_WORD_LENGTH= 10
 
 # etc read-only directory source owned by root
 #
-ETC_RO_SRC= etc/pw.words etc/requirements.txt etc/mail.head etc/mail.tail
+ETC_RO_SRC= etc/pw.words etc/requirements.txt etc/mail.head etc/mail.tail etc/listmgr.email
 
 # IOCCC submit server password file
 #
